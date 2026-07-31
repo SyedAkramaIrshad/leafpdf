@@ -1,0 +1,48 @@
+{
+  "name": "leafpdf",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A free, local-first PDF annotation, fill, sign, and page-management editor.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SyedAkramaIrshad/leafpdf.git"
+  },
+  "homepage": "https://github.com/SyedAkramaIrshad/leafpdf#readme",
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:large": "${PYTHON:-python3} scripts/create-large-fixture.py 78 && playwright test large-file",
+    "verify:self-test": "${PYTHON:-python3} scripts/test_verify_export.py"
+  },
+  "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.1.200",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "regenerator-runtime": "^0.14.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.0",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^26.1.2",
+    "@types/pako": "^2.0.4",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "fake-indexeddb": "^6.2.5",
+    "jsdom": "^29.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  }
+}

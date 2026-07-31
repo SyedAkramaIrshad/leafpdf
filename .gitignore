@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.claude/
+.codex/
+.agents/
+# A compiled vite.config.js in the project root silently shadows vite.config.ts,
+# because Vite resolves the .js name first. Never keep one in the tree.
+vite.config.js
+vite.config.d.ts
+*.tsbuildinfo
+test-results/
+playwright-report/
+tmp/
+output/
+docs/superpowers/
+coverage/
+.env
+.env.*
+!.env.example
+.DS_Store
