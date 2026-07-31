@@ -18,7 +18,7 @@ signing, annotating, arranging pages, and exporting a new copy. PDF processing r
 browser, the protected source page stays untouched, and the project is open source so its privacy
 claims can be inspected rather than merely trusted.
 
-![LeafPDF editor with text, shape, checkmark, and signature](docs/screenshots/leafpdf-editor.png)
+![LeafPDF editor with text, checkmark, and signature](docs/screenshots/leafpdf-editor.jpg)
 
 ## Quick start
 
