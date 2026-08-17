@@ -643,8 +643,11 @@ test('keeps the main thread responsive while exporting a 100-page PDF', async ({
     const tickableWindows = Math.floor(exportWallMs / 100)
     expect(ticks).toBeGreaterThanOrEqual(tickableWindows - 1)
     expect(ticks).toBeGreaterThanOrEqual(3)
-    // A synchronous export would leave one gap as long as the export itself.
-    expect(maxGap).toBeLessThan(250)
+    // A synchronous export would leave one gap as long as the export itself,
+    // so the bound is relative to the export, with a floor for scheduler
+    // jitter on busy CI runners (a 100 ms timer has been observed 254 ms late
+    // there while ticks kept flowing).
+    expect(maxGap).toBeLessThan(Math.max(400, exportWallMs / 2))
     expect(elapsed).toBeGreaterThan(0)
   } else {
     testInfo.annotations.push({
