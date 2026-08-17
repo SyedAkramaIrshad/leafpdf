@@ -4,6 +4,12 @@
  * these separate keeps pdf-lib out of the main-thread bundle entirely.
  */
 export interface SourcePdfFeatures {
+  /**
+   * The document carries an /Encrypt dictionary. Very common in the wild with
+   * an empty user password, set only to declare permission flags: pdf.js can
+   * display such a file, but pdf-lib cannot decrypt, so no export is possible.
+   */
+  isEncrypted: boolean
   hasMetadata: boolean
   hasOutlines: boolean
   hasAttachments: boolean
@@ -19,6 +25,7 @@ export interface SourcePdfFeatures {
 }
 
 export const NO_SOURCE_FEATURES: SourcePdfFeatures = {
+  isEncrypted: false,
   hasMetadata: false,
   hasOutlines: false,
   hasAttachments: false,

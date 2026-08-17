@@ -1,17 +1,44 @@
 export type ShapeTool = 'rectangle' | 'ellipse' | 'line' | 'arrow'
 export type StampTool = 'check' | 'cross' | 'dot' | 'date'
-export type Tool = 'select' | 'text' | 'highlight' | 'pen' | 'image' | 'signature' | ShapeTool | StampTool
+export type Tool = 'select' | 'text' | 'highlight' | 'redact' | 'pen' | 'image' | 'signature' | ShapeTool | StampTool
 
 export interface NormalizedPoint {
   x: number
   y: number
 }
 
-export interface EditorPage {
+export type PageRotation = 0 | 90 | 180 | 270
+
+interface EditorPageBase {
   id: string
-  sourceIndex: number
-  rotation: 0 | 90 | 180 | 270
+  rotation: PageRotation
 }
+
+/** A page of the PDF the user opened. */
+export interface OriginalPage extends EditorPageBase {
+  kind: 'original'
+  sourceIndex: number
+}
+
+/** An empty page the user added, sized in PDF points. */
+export interface BlankPage extends EditorPageBase {
+  kind: 'blank'
+  width: number
+  height: number
+}
+
+/**
+ * A page inserted from another PDF during this session. The other document's
+ * bytes live in the session's inserted-document registry, keyed by
+ * `documentId`; they are never persisted, so recovery drops these pages.
+ */
+export interface ExternalPage extends EditorPageBase {
+  kind: 'external'
+  documentId: string
+  sourceIndex: number
+}
+
+export type EditorPage = OriginalPage | BlankPage | ExternalPage
 
 interface AnnotationBase {
   id: string
@@ -66,6 +93,16 @@ export interface HighlightAnnotation extends AnnotationBase {
   opacity: number
 }
 
+/**
+ * A region marked for permanent removal. At export, every source-backed page
+ * carrying one of these is replaced by a rasterized copy with the region burned
+ * in black — the original page content does not exist in the exported file.
+ * Always opaque black; anything configurable would invite a see-through "redaction".
+ */
+export interface RedactionAnnotation extends AnnotationBase {
+  kind: 'redaction'
+}
+
 export interface InkAnnotation extends AnnotationBase {
   kind: 'ink'
   points: NormalizedPoint[]
@@ -99,15 +136,31 @@ export interface StampAnnotation extends AnnotationBase {
 export type Annotation =
   | TextAnnotation
   | HighlightAnnotation
+  | RedactionAnnotation
   | InkAnnotation
   | ImageAnnotation
   | ShapeAnnotation
   | StampAnnotation
 
+/** True when any page of the document carries a pending redaction. */
+export function hasRedactions(document: EditorDocument): boolean {
+  return document.annotations.some((annotation) => annotation.kind === 'redaction')
+}
+
+/** A filled AcroForm value: text/radio/dropdown store strings, checkboxes booleans. */
+export type FormValue = string | boolean
+
 export interface EditorDocument {
   fileName: string
   pages: EditorPage[]
   annotations: Annotation[]
+  /**
+   * Values the user typed into the source PDF's own form fields, keyed by fully
+   * qualified field name. Only fields the user actually edited appear here;
+   * untouched fields keep whatever the source PDF stores. Living in the document
+   * gives form filling undo/redo, the dirty flag, and recovery for free.
+   */
+  formValues: Record<string, FormValue>
 }
 
 export interface EditorState {
@@ -131,12 +184,20 @@ export interface EditorState {
 
 export type EditorAction =
   | { type: 'selectPage'; pageId: string }
+  /**
+   * Scroll-driven variant of selectPage: the page under the viewport centre
+   * becomes current without clearing the annotation selection, so scrolling
+   * past other pages never deselects what the user is working on.
+   */
+  | { type: 'viewPage'; pageId: string }
   | { type: 'selectAnnotation'; annotationId: string | null }
   | { type: 'setTool'; tool: Tool }
   | { type: 'setZoom'; zoom: number }
   | { type: 'rotatePage'; pageId: string; degrees: 90 | -90 }
   | { type: 'movePage'; pageId: string; direction: -1 | 1 }
   | { type: 'removePage'; pageId: string }
+  /** Insert ready-made pages after `afterPageId`, or at the front when null. */
+  | { type: 'insertPages'; afterPageId: string | null; pages: EditorPage[] }
   | { type: 'addAnnotation'; annotation: Annotation }
   | { type: 'addAnnotations'; annotations: Annotation[] }
   | { type: 'updateAnnotation'; annotationId: string; patch: Partial<Annotation>; historyGroup?: string }
@@ -148,6 +209,7 @@ export type EditorAction =
   | { type: 'bringForward'; annotationId: string }
   | { type: 'sendBackward'; annotationId: string }
   | { type: 'restoreDocument'; document: EditorDocument }
+  | { type: 'setFormValue'; fieldName: string; value: FormValue; historyGroup?: string }
   | { type: 'endHistoryGroup' }
   /**
    * Carries the exact document that was written to disk. Export runs
@@ -164,12 +226,13 @@ export function createEditorState(fileName: string, pageCount: number): EditorSt
   if (pageCount < 1) throw new Error('A PDF must contain at least one page.')
   const pages: EditorPage[] = Array.from({ length: pageCount }, (_, index) => ({
     id: `page-${index + 1}`,
+    kind: 'original',
     sourceIndex: index,
     rotation: 0,
   }))
   return {
     past: [],
-    present: { fileName, pages, annotations: [] },
+    present: { fileName, pages, annotations: [], formValues: {} },
     future: [],
     selectedPageId: pages[0].id,
     selectedAnnotationId: null,
@@ -227,6 +290,10 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return state.present.pages.some((page) => page.id === action.pageId)
         ? { ...state, selectedPageId: action.pageId, selectedAnnotationId: null }
         : state
+    case 'viewPage':
+      return state.selectedPageId !== action.pageId && state.present.pages.some((page) => page.id === action.pageId)
+        ? { ...state, selectedPageId: action.pageId }
+        : state
     case 'selectAnnotation':
       return { ...state, selectedAnnotationId: action.annotationId }
     case 'setTool':
@@ -261,6 +328,25 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return {
         ...commit(state, { ...state.present, pages, annotations }),
         selectedPageId,
+        selectedAnnotationId: null,
+      }
+    }
+    case 'insertPages': {
+      if (action.pages.length === 0) return state
+      const existingIds = new Set(state.present.pages.map((page) => page.id))
+      if (action.pages.some((page) => existingIds.has(page.id))) return state
+      const at = action.afterPageId === null
+        ? 0
+        : state.present.pages.findIndex((page) => page.id === action.afterPageId) + 1
+      if (at === 0 && action.afterPageId !== null) return state
+      const pages = [
+        ...state.present.pages.slice(0, at),
+        ...action.pages,
+        ...state.present.pages.slice(at),
+      ]
+      return {
+        ...commit(state, { ...state.present, pages }),
+        selectedPageId: action.pages[0].id,
         selectedAnnotationId: null,
       }
     }
@@ -345,6 +431,16 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       if (target < 0 || target >= annotations.length) return state
       ;[annotations[index], annotations[target]] = [annotations[target], annotations[index]]
       return commit(state, { ...state.present, annotations })
+    }
+    case 'setFormValue': {
+      if (state.present.formValues[action.fieldName] === action.value) return state
+      const next = {
+        ...state.present,
+        formValues: { ...state.present.formValues, [action.fieldName]: action.value },
+      }
+      return action.historyGroup
+        ? commitGrouped(state, next, action.historyGroup)
+        : commit(state, next)
     }
     case 'restoreDocument':
       if (action.document.pages.length === 0) return state

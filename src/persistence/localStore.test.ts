@@ -14,11 +14,12 @@ import {
 function makeDocument(): EditorDocument {
   return {
   fileName: 'resume.pdf',
-  pages: [{ id: 'page-1', sourceIndex: 0, rotation: 0 }],
+  pages: [{ id: 'page-1', kind: 'original', sourceIndex: 0, rotation: 0 }],
   annotations: [{
     id: 'note-1', pageId: 'page-1', kind: 'text', x: 0.1, y: 0.2,
     width: 0.3, height: 0.1, text: 'Private note', color: '#111111', fontSize: 12,
   }],
+  formValues: { 'owner.name': 'Syed', 'subscribe': true },
   }
 }
 
@@ -56,6 +57,44 @@ describe('local browser persistence', () => {
     const key = 'broken-record'
     await expect(saveSession(key, { ...makeDocument(), pages: [] } as EditorDocument)).rejects.toThrow(/invalid/i)
     expect(await loadSession(key)).toBeNull()
+  })
+
+  it('stores blank pages but strips inserted-PDF pages and their annotations', async () => {
+    const key = sessionKey({ name: 'resume.pdf', size: 1234, lastModified: 99 } as File, 'pdf-id')
+    const document = makeDocument()
+    document.pages = [
+      ...document.pages,
+      { id: 'page-blank', kind: 'blank', width: 595, height: 842, rotation: 0 },
+      { id: 'page-ext', kind: 'external', documentId: 'inserted-1', sourceIndex: 0, rotation: 0 },
+    ]
+    document.annotations = [
+      ...document.annotations,
+      {
+        id: 'on-blank', pageId: 'page-blank', kind: 'text', x: 0.1, y: 0.1,
+        width: 0.3, height: 0.1, text: 'Stays', color: '#111111', fontSize: 12,
+      },
+      {
+        id: 'on-external', pageId: 'page-ext', kind: 'text', x: 0.1, y: 0.1,
+        width: 0.3, height: 0.1, text: 'Cannot be restored', color: '#111111', fontSize: 12,
+      },
+    ]
+    await saveSession(key, document)
+    const recovered = await loadSession(key)
+    expect(recovered?.pages.map(({ id }) => id)).toEqual(['page-1', 'page-blank'])
+    expect(recovered?.annotations.map(({ id }) => id)).toEqual(['note-1', 'on-blank'])
+  })
+
+  it('restores records saved before pages carried an explicit kind', async () => {
+    const key = sessionKey({ name: 'resume.pdf', size: 1234, lastModified: 99 } as File, 'pdf-id')
+    const legacy = makeDocument()
+    // Simulate an old record: no `kind` on the page, no formValues field.
+    ;(legacy.pages[0] as { kind?: string }).kind = undefined
+    delete (legacy.pages[0] as { kind?: string }).kind
+    delete (legacy as { formValues?: unknown }).formValues
+    await saveSession(key, legacy)
+    const recovered = await loadSession(key)
+    expect(recovered?.pages[0]).toEqual({ id: 'page-1', kind: 'original', sourceIndex: 0, rotation: 0 })
+    expect(recovered?.formValues).toEqual({})
   })
 
   it('keeps only valid reusable PNG signatures and returns cloned entries', async () => {

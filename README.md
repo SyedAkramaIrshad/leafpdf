@@ -36,7 +36,16 @@ Open the local URL printed by Vite. No API key, server, database, or environment
 ## Included
 
 - PDF file picker and drag-and-drop opening up to 100 MB (measured, see below)
-- Multi-page rendering, page thumbnails, selection, zoom, rotation, reordering, and deletion
+- Continuous scrolling through all pages, page thumbnails, selection, zoom, rotation, reordering, and deletion
+- Blank-page insertion and merging: every page of another PDF can be inserted after any page
+- Real form filling: the source PDF's own AcroForm text fields, checkboxes, radio groups, and
+  dropdowns are shown as live inputs and written back into the actual fields on export. Verified
+  against a real IRS W-9, an XFA-hybrid form with hierarchical field names; filling drops the
+  stale XFA overlay so every viewer shows the filled values
+- Selectable, copyable source text (a pdf.js text layer), plus find-in-document with per-page
+  match counts and Ctrl/Cmd+F
+- True redaction: a redacted page is exported as a rasterized copy, so the covered content is
+  removed from the file, not hidden under a box
 - Added text edited directly on the page, with family, exact 6–96 pt size, colour, bold, and italic controls
 - Highlight, freehand ink, PNG/JPEG images, rectangles, ellipses, lines, and arrows
 - Checkmarks, crosses, dots, date stamps, editable watermarks, and page numbers
@@ -53,13 +62,20 @@ Open the local URL printed by Vite. No API key, server, database, or environment
 
 - Editing, removing, or reflowing existing text inside the source PDF
 - OCR for scanned PDFs
-- Secure content redaction. Covering text with a filled rectangle hides it visually but does not
-  remove it, so LeafPDF must not be used to redact sensitive information.
-- Filling and preserving every AcroForm/XFA variant
+- Multi-select list boxes and non-Latin text in filled form fields (the form's own fonts store
+  WinAnsi text only; LeafPDF refuses by field name rather than dropping the value)
+- Decrypting encrypted PDFs. This includes the very common permissions-only lock with an empty
+  password: such a file opens and reads normally in LeafPDF, with a banner explaining that
+  exporting is disabled, because writing an edited copy would require decrypting it.
 - Password encryption, certificate-based digital signatures, PDF/A or PDF/UA conformance
-- Chinese, Japanese, Korean, Hebrew, and Thai text in added text (source text in those scripts still
-  renders normally because the source page is untouched)
+- Chinese, Japanese, and Korean text in added text (source text in those scripts still renders
+  normally because the source page is untouched)
 - Cloud storage, accounts, collaboration, or telemetry
+
+Redaction is real but has a stated cost: the redacted page is converted to a picture, so its text
+is no longer selectable and the file grows by the size of that image. This is the honest trade
+for a removal that cannot be reversed; a black box over live text is exactly what LeafPDF
+previously refused to call redaction.
 
 A drawn signature is a visual mark; it is not a certificate-backed cryptographic signature. If the
 source PDF carries a digital signature, LeafPDF says so before you edit: any edit invalidates that
@@ -91,7 +107,15 @@ nothing that could end up referencing a removed page.
 copies pages into a fresh catalog. Title, author, subject, keywords, creator, creation date,
 `/Lang`, `/PageMode`, and `/PageLayout` are copied across explicitly.
 
-**Blocked pending your confirmation.** If reordering or deleting a page would drop or invalidate
+**Inserted pages.** A blank page or a page from another PDF is inserted in place when the source
+has no catalog feature that could be invalidated, keeping everything else intact. The inserted
+PDF's own bookmarks and form fields are not carried over, and the insert dialog says so.
+
+**Redaction.** Any redaction forces a rebuild, because only a rebuild guarantees the redacted
+page's original objects never reach the output; the compatibility confirmation applies as usual
+when the source has features to lose.
+
+**Blocked pending your confirmation.** If reordering, deleting, or inserting a page would drop or invalidate
 something, LeafPDF stops and names exactly what is at risk before you decide. It checks for
 bookmarks, form fields, attachments, digital signatures, tagged-PDF structure, page labels, optional
 content layers, named destinations, document JavaScript, open/additional actions, XMP metadata,
@@ -158,13 +182,12 @@ from the CSS viewport, so a reduced preview never changes the exported result.
 ## Unicode and fonts
 
 Text you add is exported with a real embedded font, so it is not limited to WinAnsi.
-Latin, Greek, Cyrillic, Arabic, and Devanagari are supported, with proper shaping — Arabic letters
-join and Devanagari conjuncts form correctly. Fonts are bundled with the application under the SIL
+Latin, Greek, Cyrillic, Arabic, Devanagari, Hebrew, and Thai are supported, with proper shaping —
+Arabic letters join and Devanagari conjuncts form correctly. Fonts are bundled with the application under the SIL
 Open Font License (see `src/assets/fonts/README.md`), loaded from LeafPDF's own build output only
 when an export needs them, and never fetched from Google or any other host at runtime.
 
-Scripts with no bundled font — Chinese, Japanese, Korean, Hebrew, Thai, and others — are not
-supported yet. Rather than exporting blank boxes, LeafPDF refuses the export and names the text it
+Scripts with no bundled font — Chinese, Japanese, Korean, and others — are not supported yet. Rather than exporting blank boxes, LeafPDF refuses the export and names the text it
 cannot draw. Ordinary Latin text still uses the standard PDF fonts and embeds nothing.
 
 Italic is exported using the standard italic and oblique faces, so it survives for ASCII and
@@ -190,6 +213,7 @@ Open the local URL printed by Vite, choose a PDF, annotate it, and use **Export 
 ## Verify
 
 ```bash
+npm run lint
 npm test
 npm run build
 ```
@@ -217,6 +241,26 @@ python3 scripts/create-large-fixture.py 78
 
 The browser tests save their exported PDFs under `output/pdf/`.
 
+`e2e/real-world.spec.ts` additionally exercises two real documents that are not committed — the
+IRS W-9 (an XFA-hybrid form) and the 756-page, permissions-encrypted PDF 32000 specification.
+Those tests skip themselves unless the files are fetched from their official sources:
+
+```bash
+mkdir -p tmp/pdfs/real
+curl -sSLo tmp/pdfs/real/fw9.pdf https://www.irs.gov/pub/irs-pdf/fw9.pdf
+curl -sSLo tmp/pdfs/real/pdf-spec.pdf https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf
+```
+
+The same suite also runs against the production build — the artifact users actually get, with its
+Content-Security-Policy meta tag active — by setting one variable:
+
+```bash
+LEAFPDF_E2E_SERVER=preview npm run test:e2e
+```
+
+CI runs lint, unit tests, the build, the verifier self-test, and the full browser suite in both
+server modes on every push and pull request.
+
 ### Verifying an exported PDF
 
 `scripts/verify_export.py` reopens an export with pypdf, checks page count, rotations, `/Producer`,
@@ -243,6 +287,15 @@ accepts a page holding one short line of text.
 For an export the user accepted as a compatibility copy, pass `--expect-compatibility-copy`: catalog
 features are then allowed to be absent, but metadata is still required to have been copied.
 
+For an export with inserted pages, declare the expected total with `--expect-pages N` — without it,
+more pages than the source is a failure. User-inserted blank pages are declared with
+`--allow-blank-pages`, since the blank-render check cannot tell an intentional blank from a broken
+one:
+
+```bash
+python3 scripts/verify_export.py tmp/pdfs/mvp-fixture.pdf output/pdf/mvp-with-insertions.pdf --expect-pages 5 --allow-blank-pages 2
+```
+
 ```bash
 python3 scripts/verify_export.py tmp/pdfs/edge-form.pdf output/pdf/edge-form-compatibility-copy.pdf --expect-compatibility-copy
 ```
@@ -264,6 +317,10 @@ python3 scripts/verify_export.py tmp/pdfs/edge-form.pdf output/pdf/edge-form-com
   unsaved-change protection, UI responsiveness during export, and an assertion that no request ever
   leaves the test origin.
 - `scripts/verify_export.py` provides structural and render verification outside the browser.
+- The production build carries a Content-Security-Policy meta tag that allows no other host for
+  any resource, so the browser enforces the no-network promise rather than merely trusting the code.
+- Redacted pages are rasterized on the main thread (pdf.js needs a canvas) and replaced outright
+  during the worker rebuild; the export refuses to run if a redacted page's bitmap is missing.
 
 The PDF.js worker is still a substantial download because it is the offline document renderer, but it
 no longer blocks the initial landing-page bundle, which is about 195 kB.

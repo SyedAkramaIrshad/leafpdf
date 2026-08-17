@@ -26,13 +26,18 @@ export default function App() {
   // `destroy()` tears down the PDF.js worker and releases its page and font caches;
   // `cleanup()` only trims transient render data and leaves the document allocated.
   // In PDF.js 6 `destroy()` lives on the loading task, reached from the document.
+  //
+  // The document leaves state *before* the await: clearing it afterwards raced a
+  // quick close-then-open, wiping the newly opened document once the old worker
+  // finally shut down.
   const closeFile = async () => {
+    const closingDocument = loaded
+    setLoaded(null)
     setClosing(true)
     try {
-      await loaded?.document.loadingTask.destroy()
+      await closingDocument?.document.loadingTask.destroy()
     } finally {
       setClosing(false)
-      setLoaded(null)
     }
   }
 

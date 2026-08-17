@@ -361,6 +361,9 @@ export function AnnotationLayer({
               {renderedAnnotation.kind === 'highlight' && (
                 <span style={{ background: renderedAnnotation.color, opacity: renderedAnnotation.opacity }} />
               )}
+              {renderedAnnotation.kind === 'redaction' && (
+                <span className="redaction-fill" title="Redaction: exported as permanent removal" />
+              )}
               {renderedAnnotation.kind === 'image' && <img src={renderedAnnotation.dataUrl} alt="Placed annotation" draggable={false} />}
               {renderedAnnotation.kind === 'shape' && (
                 <svg className="shape-preview" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">

@@ -12,6 +12,18 @@ export interface ExportStartRequest {
   sourceFile: File
   document: EditorDocument
   allowCompatibilityCopy: boolean
+  /**
+   * The other PDFs whose pages the document inserts, keyed by the id carried in
+   * each external page. Also Files, for the same no-main-thread-bytes reason.
+   */
+  insertedFiles: Array<{ id: string; file: File }>
+  /**
+   * Pre-rendered bitmaps for every source-backed page carrying a redaction.
+   * Rendered on the main thread (pdf.js needs a canvas); the buffers are
+   * transferred, not cloned. The exporter refuses to fall back to the original
+   * page when one is missing.
+   */
+  rasterizedPages: Array<{ pageId: string; width: number; height: number; png: ArrayBuffer }>
 }
 
 export interface AnalyzeRequest {

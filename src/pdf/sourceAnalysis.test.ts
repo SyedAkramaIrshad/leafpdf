@@ -1,7 +1,10 @@
+import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { PDFDocument, PDFHexString, PDFName, PDFString } from 'pdf-lib'
 import { analyzeSourcePdf, chooseExportStrategy, type SourcePdfFeatures } from './sourceAnalysis'
 import { createEditorState, editorReducer, type EditorDocument } from '../model/editor'
+
+const ENCRYPTED_FIXTURE = 'tmp/pdfs/edge-encrypted.pdf'
 
 async function plainPdf(pages = 2): Promise<Uint8Array> {
   const document = await PDFDocument.create()
@@ -75,6 +78,7 @@ async function signedPdf(): Promise<Uint8Array> {
 }
 
 const NO_FEATURES: SourcePdfFeatures = {
+  isEncrypted: false,
   hasMetadata: false,
   hasOutlines: false,
   hasAttachments: false,
@@ -264,6 +268,14 @@ describe('analyzeSourcePdf', () => {
   it('reports no features rather than throwing on damaged bytes', async () => {
     expect(await analyzeSourcePdf(new Uint8Array([1, 2, 3]))).toEqual(NO_FEATURES)
   })
+
+  // Permissions-only encryption (empty user password) opens in any viewer but
+  // cannot be exported; it must be reported as encryption, not as "no features".
+  it.skipIf(!existsSync(ENCRYPTED_FIXTURE))('reports an encrypted document as encrypted', async () => {
+    const bytes = new Uint8Array(readFileSync(ENCRYPTED_FIXTURE))
+    const features = await analyzeSourcePdf(bytes)
+    expect(features.isEncrypted).toBe(true)
+  })
 })
 
 describe('chooseExportStrategy', () => {
@@ -305,7 +317,7 @@ describe('chooseExportStrategy', () => {
     // The remaining pages still sit at their own source indexes after a trailing
     // delete, so an order-only check reported "unchanged" and skipped confirmation.
     const trailingDeleted = documentOf((state) => editorReducer(state, { type: 'removePage', pageId: 'page-3' }))
-    expect(trailingDeleted.pages.map((page) => page.sourceIndex)).toEqual([0, 1])
+    expect(trailingDeleted.pages.map((page) => page.kind === 'original' ? page.sourceIndex : -1)).toEqual([0, 1])
 
     expect(chooseExportStrategy({ ...NO_FEATURES, hasOutlines: true }, trailingDeleted, 3))
       .toBe('requires-confirmation')
@@ -314,6 +326,37 @@ describe('chooseExportStrategy', () => {
 
   it('still preserves when every page is present in order', () => {
     expect(chooseExportStrategy({ ...NO_FEATURES, hasOutlines: true }, untouched, 3)).toBe('preserve')
+  })
+
+  it('treats insertions like deletions: in place when plain, confirmed when structured', () => {
+    const inserted = documentOf((state) => editorReducer(state, {
+      type: 'insertPages',
+      afterPageId: 'page-1',
+      pages: [{ id: 'page-new', kind: 'blank', width: 595, height: 842, rotation: 0 }],
+    }))
+    expect(chooseExportStrategy(NO_FEATURES, inserted, 3)).toBe('preserve')
+    expect(chooseExportStrategy({ ...NO_FEATURES, hasOutlines: true }, inserted, 3)).toBe('requires-confirmation')
+
+    // Inserting AND reordering the originals can only be expressed by a rebuild.
+    const insertedAndReordered = documentOf((state) => {
+      const withInsert = editorReducer(state, {
+        type: 'insertPages',
+        afterPageId: 'page-1',
+        pages: [{ id: 'page-new', kind: 'blank', width: 595, height: 842, rotation: 0 }],
+      })
+      return editorReducer(withInsert, { type: 'movePage', pageId: 'page-3', direction: -1 })
+    })
+    expect(chooseExportStrategy(NO_FEATURES, insertedAndReordered, 3)).toBe('rebuild-safe')
+  })
+
+  it('routes any redaction through a rebuild, confirmed when features exist', () => {
+    const redacted = documentOf((state) => editorReducer(state, {
+      type: 'addAnnotation',
+      annotation: { id: 'r1', pageId: 'page-1', kind: 'redaction', x: 0.1, y: 0.1, width: 0.3, height: 0.1 },
+    }))
+    // Even with untouched page order, a redaction can never take the preserve path.
+    expect(chooseExportStrategy(NO_FEATURES, redacted, 3)).toBe('rebuild-safe')
+    expect(chooseExportStrategy({ ...NO_FEATURES, hasAcroForm: true }, redacted, 3)).toBe('requires-confirmation')
   })
 
   it('requires confirmation for any additional catalog feature', () => {

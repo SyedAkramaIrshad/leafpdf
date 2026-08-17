@@ -144,6 +144,12 @@ export function Inspector({ annotation, dispatch, canPaste = false }: InspectorP
         </label>
       )}
       {annotation.kind === 'image' && <p className="inspector-copy">Drag the image to move it. Select it and drag the blue corner handle to resize it.</p>}
+      {annotation.kind === 'redaction' && (
+        <p className="inspector-copy redaction-copy">
+          On export, this page is converted to a picture with the covered area removed for good.
+          The area is not recoverable from the exported file. Text on that page will no longer be selectable.
+        </p>
+      )}
       <div className="object-actions" aria-label="Object actions">
         <button type="button" onClick={() => dispatch({ type: 'duplicateAnnotation', annotationId: annotation.id, newId: createAnnotationId() })}>Duplicate</button>
         <button type="button" onClick={() => dispatch({ type: 'copyAnnotation', annotationId: annotation.id })}>Copy</button>

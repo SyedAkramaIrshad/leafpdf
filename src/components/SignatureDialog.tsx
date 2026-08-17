@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
 import { IMAGE_LIMITS } from '../model/imageValidation'
 import type { SavedSignature } from '../persistence/localStore'
+import { useModalDialog } from './useModalDialog'
 export type { SavedSignature } from '../persistence/localStore'
 
 type SignatureMode = 'draw' | 'type' | 'upload'
@@ -19,7 +20,6 @@ export interface SignatureDialogProps {
   onDeleteSavedSignature?: (signatureId: string) => void
 }
 
-const FOCUSABLE = 'button:not([disabled]), [href], input, select, textarea, canvas[tabindex], [tabindex]:not([tabindex="-1"])'
 const CANVAS_WIDTH = 1120
 const CANVAS_HEIGHT = 380
 
@@ -30,10 +30,10 @@ function clearCanvas(canvas: HTMLCanvasElement | null) {
 
 function drawTypedName(canvas: HTMLCanvasElement | null, name: string) {
   const context = canvas?.getContext('2d')
-  if (!canvas || !context) return false
+  if (!canvas || !context) return
   context.clearRect(0, 0, canvas.width, canvas.height)
   const trimmed = name.trim()
-  if (!trimmed) return false
+  if (!trimmed) return
 
   // The browser selects the best locally-installed cursive face. It is rasterised
   // before leaving this dialog, avoiding an external font request or dependency.
@@ -46,7 +46,6 @@ function drawTypedName(canvas: HTMLCanvasElement | null, name: string) {
   context.fillStyle = '#182026'
   context.textBaseline = 'middle'
   context.fillText(trimmed, 56, canvas.height / 2 + 10)
-  return true
 }
 
 function paintImage(canvas: HTMLCanvasElement, image: HTMLImageElement) {
@@ -93,89 +92,53 @@ export async function normalizeSignatureUpload(file: File, canvas: HTMLCanvasEle
   }
 }
 
-export function SignatureDialog({
-  open,
+export function SignatureDialog({ open, ...rest }: SignatureDialogProps) {
+  // Mounted only while open: each open starts on a fresh Draw tab with an empty
+  // pad, and `useModalDialog` arms and disarms with the dialog itself.
+  if (!open) return null
+  return <SignatureDialogContent {...rest} />
+}
+
+function SignatureDialogContent({
   onClose,
   onApply,
   savedSignatures = [],
   onDeleteSavedSignature,
-}: SignatureDialogProps) {
+}: Omit<SignatureDialogProps, 'open'>) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const dialogRef = useRef<HTMLElement>(null)
   const clearRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useModalDialog<HTMLElement>({ onEscape: onClose, initialFocusRef: clearRef })
   const [mode, setMode] = useState<SignatureMode>('draw')
-  const [hasInk, setHasInk] = useState(false)
+  const [hasDrawnInk, setHasDrawnInk] = useState(false)
   const [typedName, setTypedName] = useState('')
   const [uploadedDataUrl, setUploadedDataUrl] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [saveForReuse, setSaveForReuse] = useState(false)
 
-  const resetForMode = useCallback((nextMode: SignatureMode) => {
+  // Whether "Place signature" has something real to place is derived per mode,
+  // so no effect has to mirror it into state.
+  const placeable = mode === 'draw'
+    ? hasDrawnInk
+    : mode === 'type'
+      ? typedName.trim().length > 0
+      : uploadedDataUrl !== null
+
+  // The canvas is an external system: keep its pixels in sync with the typed name.
+  useEffect(() => {
+    if (mode === 'type') drawTypedName(canvasRef.current, typedName)
+  }, [mode, typedName])
+
+  const resetForMode = (nextMode: SignatureMode) => {
     setMode(nextMode)
     setUploadError(null)
     // Switching away from an upload starts a fresh source on return. Keeping an
     // invisible stale PNG would make the preview and placed result disagree.
     if (nextMode !== 'upload') setUploadedDataUrl(null)
-    setHasInk(nextMode === 'type' ? Boolean(typedName.trim()) : false)
-    if (nextMode === 'draw') clearCanvas(canvasRef.current)
-  }, [typedName])
-
-  useEffect(() => {
-    if (!open) return
-    setMode('draw')
-    setHasInk(false)
-    setTypedName('')
-    setUploadedDataUrl(null)
-    setUploadError(null)
-    setSaveForReuse(false)
-    clearCanvas(canvasRef.current)
-  }, [open])
-
-  useEffect(() => {
-    if (!open || mode !== 'type') return
-    setHasInk(drawTypedName(canvasRef.current, typedName))
-  }, [open, mode, typedName])
-
-  // Return focus to the opener so keyboard users are not dropped at page top.
-  const openerRef = useRef<HTMLElement | null>(null)
-  useEffect(() => {
-    if (!open) return
-    openerRef.current = document.activeElement as HTMLElement | null
-    clearRef.current?.focus()
-    return () => openerRef.current?.focus()
-  }, [open])
-
-  // The callbacks can be inline parent functions. Refs keep the window listener
-  // stable even if a parent renders during the same key event.
-  const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
-  const trapTab = useCallback((event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      event.stopPropagation()
-      onCloseRef.current()
-      return
+    if (nextMode === 'draw') {
+      setHasDrawnInk(false)
+      clearCanvas(canvasRef.current)
     }
-    if (event.key !== 'Tab') return
-    const dialog = dialogRef.current
-    if (!dialog) return
-    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE))
-      .filter((element) => element.offsetParent !== null || element === document.activeElement)
-    if (!focusable.length) return
-    const first = focusable[0]
-    const last = focusable[focusable.length - 1]
-    if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault(); first.focus()
-    } else if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault(); last.focus()
-    }
-  }, [])
-  useEffect(() => {
-    if (!open) return
-    window.addEventListener('keydown', trapTab)
-    return () => window.removeEventListener('keydown', trapTab)
-  }, [open, trapTab])
-
-  if (!open) return null
+  }
 
   const point = (event: PointerEvent<HTMLCanvasElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect()
@@ -196,7 +159,7 @@ export function SignatureDialog({
     context.fill()
     context.beginPath(); context.moveTo(p.x, p.y)
     context.strokeStyle = '#182026'; context.lineWidth = 6; context.lineCap = 'round'; context.lineJoin = 'round'
-    setHasInk(true)
+    setHasDrawnInk(true)
   }
   const move = (event: PointerEvent<HTMLCanvasElement>) => {
     if (mode !== 'draw' || !event.currentTarget.hasPointerCapture(event.pointerId)) return
@@ -212,8 +175,10 @@ export function SignatureDialog({
     if (mode === 'type') setTypedName('')
     else if (mode === 'upload') {
       setUploadedDataUrl(null); clearCanvas(canvasRef.current)
-    } else clearCanvas(canvasRef.current)
-    setHasInk(false)
+    } else {
+      clearCanvas(canvasRef.current)
+      setHasDrawnInk(false)
+    }
   }
   const upload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0]
@@ -224,10 +189,8 @@ export function SignatureDialog({
     try {
       const normalized = await normalizeSignatureUpload(file, canvasRef.current)
       setUploadedDataUrl(normalized)
-      setHasInk(true)
     } catch (error) {
       setUploadedDataUrl(null)
-      setHasInk(false)
       clearCanvas(canvasRef.current)
       setUploadError(error instanceof Error ? error.message : 'The signature image could not be read.')
     }
@@ -235,7 +198,7 @@ export function SignatureDialog({
   const apply = () => {
     const canvas = canvasRef.current
     const dataUrl = mode === 'upload' ? uploadedDataUrl : canvas?.toDataURL('image/png')
-    if (!dataUrl || !hasInk) return
+    if (!dataUrl || !placeable) return
     onApply(dataUrl, saveForReuse)
   }
 
@@ -316,7 +279,7 @@ export function SignatureDialog({
         <div className="dialog-actions">
           <button type="button" ref={clearRef} className="text-button" onClick={clear}>Clear</button>
           <button type="button" className="text-button" onClick={onClose}>Cancel</button>
-          <button type="button" className="primary-button" disabled={!hasInk} onClick={apply}>Place signature</button>
+          <button type="button" className="primary-button" disabled={!placeable} onClick={apply}>Place signature</button>
         </div>
       </section>
     </div>

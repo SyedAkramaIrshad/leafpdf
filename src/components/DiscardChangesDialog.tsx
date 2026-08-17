@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useRef } from 'react'
+import { useModalDialog } from './useModalDialog'
 
 interface DiscardChangesDialogProps {
   open: boolean
@@ -11,48 +12,14 @@ interface DiscardChangesDialogProps {
  * focus and Escape maps to it, so the destructive choice is never the accidental
  * one.
  */
-export function DiscardChangesDialog({ open, onContinue, onDiscard }: DiscardChangesDialogProps) {
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const continueRef = useRef<HTMLButtonElement>(null)
-  const openerRef = useRef<HTMLElement | null>(null)
-  const onContinueRef = useRef(onContinue)
-  onContinueRef.current = onContinue
-
-  useEffect(() => {
-    if (!open) return
-    openerRef.current = document.activeElement as HTMLElement | null
-    continueRef.current?.focus()
-    return () => openerRef.current?.focus()
-  }, [open])
-
-  const keyboard = useCallback((event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      event.stopPropagation()
-      onContinueRef.current()
-      return
-    }
-    if (event.key !== 'Tab') return
-    const buttons = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled])') ?? [])
-    if (buttons.length === 0) return
-    const first = buttons[0]
-    const last = buttons[buttons.length - 1]
-    if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault()
-      first.focus()
-    } else if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault()
-      last.focus()
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
-    window.addEventListener('keydown', keyboard)
-    return () => window.removeEventListener('keydown', keyboard)
-  }, [open, keyboard])
-
+export function DiscardChangesDialog({ open, ...handlers }: DiscardChangesDialogProps) {
   if (!open) return null
+  return <DiscardChangesDialogContent {...handlers} />
+}
+
+function DiscardChangesDialogContent({ onContinue, onDiscard }: Omit<DiscardChangesDialogProps, 'open'>) {
+  const continueRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useModalDialog<HTMLDivElement>({ onEscape: onContinue, initialFocusRef: continueRef })
 
   return (
     <div className="dialog-backdrop">

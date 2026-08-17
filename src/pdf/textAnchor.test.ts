@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PDFArray, PDFDocument, PDFName, PDFRawStream, StandardFonts } from 'pdf-lib'
-import pako from 'pako'
+import * as pako from 'pako'
 import { createEditorState, editorReducer } from '../model/editor'
 import { anchorAtOffsetFromTop, exportEditedPdf } from './exportPdf'
 

@@ -37,12 +37,12 @@ test.describe(() => {
     await page.goto('/')
     const openedAt = Date.now()
     await page.locator('input[type="file"]').first().setInputFiles(FIXTURE)
-    await expect(page.getByLabel('Rendered PDF page')).toBeVisible({ timeout: 180_000 })
+    await expect(page.getByLabel('Rendered PDF page').first()).toBeVisible({ timeout: 180_000 })
     const openMs = Date.now() - openedAt
     const heapAfterOpen = await readHeapMb(page)
 
     await page.getByRole('button', { name: 'Add text' }).click()
-    await page.locator('.annotation-layer').click({ position: { x: 120, y: 160 } })
+    await page.locator('.annotation-layer').first().click({ position: { x: 120, y: 160 } })
     await expect(page.locator('.text-annotation')).toBeVisible()
 
     const downloadPromise = page.waitForEvent('download', { timeout: 240_000 })

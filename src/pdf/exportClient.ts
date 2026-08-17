@@ -33,6 +33,7 @@ function runOnWorker<T>(
   request: ExportWorkerRequest,
   settle: (response: ExportWorkerResponse, resolve: (value: T) => void, reject: (error: unknown) => void) => void,
   onProgress?: (progress: ExportProgress) => void,
+  transfer: Transferable[] = [],
 ): Promise<T> {
   const worker = createExportWorker()
 
@@ -65,7 +66,7 @@ function runOnWorker<T>(
       finish(() => reject(new ExportWorkerError(message, 'ExportWorkerError')))
     }
 
-    worker.postMessage(request)
+    worker.postMessage(request, { transfer })
   })
 }
 
@@ -78,19 +79,28 @@ export function exportInWorker(
   file: File,
   document: EditorDocument,
   onProgress?: (progress: ExportProgress) => void,
-  options: { allowCompatibilityCopy?: boolean } = {},
+  options: {
+    allowCompatibilityCopy?: boolean
+    insertedFiles?: Array<{ id: string; file: File }>
+    rasterizedPages?: Array<{ pageId: string; width: number; height: number; png: ArrayBuffer }>
+  } = {},
 ): Promise<Uint8Array> {
+  const rasterizedPages = options.rasterizedPages ?? []
   return runOnWorker<Uint8Array>(
     {
       type: 'start',
       sourceFile: file,
       document,
       allowCompatibilityCopy: options.allowCompatibilityCopy ?? false,
+      insertedFiles: options.insertedFiles ?? [],
+      rasterizedPages,
     },
     (response, resolve) => {
       if (response.type === 'complete') resolve(new Uint8Array(response.bytes))
     },
     onProgress,
+    // Bitmap buffers move to the worker rather than being copied.
+    rasterizedPages.map(({ png }) => png),
   )
 }
 

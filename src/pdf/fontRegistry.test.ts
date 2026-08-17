@@ -64,6 +64,12 @@ describe('createFontRegistry', () => {
 
     const devanagari = await registry.fontFor({ text: 'नमस्ते', fontFamily: 'sans', fontWeight: 400 })
     expect(devanagari.name).toMatch(/NotoSansDevanagari/)
+
+    const hebrew = await registry.fontFor({ text: 'שלום עולם', fontFamily: 'sans', fontWeight: 400 })
+    expect(hebrew.name).toMatch(/NotoSansHebrew/)
+
+    const thai = await registry.fontFor({ text: 'สวัสดีชาวโลก', fontFamily: 'sans', fontWeight: 400 })
+    expect(thai.name).toMatch(/NotoSansThai/)
   })
 
   it('measures Unicode text with the font that will actually draw it', async () => {
@@ -89,5 +95,12 @@ describe('createFontRegistry', () => {
       .rejects.toThrow(/cannot embed a font for "你好"/)
     await expect(registry.fontFor({ text: '你好', fontFamily: 'sans', fontWeight: 400 }))
       .rejects.toThrow(/Chinese/)
+  })
+
+  it('refuses text mixing scripts that no single bundled font covers', async () => {
+    const { registry } = await registryFor()
+    // One annotation resolves to one font; Arabic and Thai never share a file.
+    await expect(registry.fontFor({ text: 'مرحبا สวัสดี', fontFamily: 'sans', fontWeight: 400 }))
+      .rejects.toThrow(/cannot embed a font/)
   })
 })

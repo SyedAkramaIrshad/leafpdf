@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import { annotationId, type Annotation, type EditorAction, type EditorPage, type NormalizedPoint, type ShapeTool, type StampTool, type Tool } from '../model/editor'
+import { annotationId, type Annotation, type EditorAction, type EditorPage, type FormValue, type NormalizedPoint, type ShapeTool, type StampTool, type Tool } from '../model/editor'
 import { normalizePoint, normalizeRect } from '../model/geometry'
+import { pageRenderSource, type ExternalDocuments } from '../pdf/pageSource'
 import { isRenderCancellation, PAGE_RENDER_ERROR } from '../pdf/renderLifecycle'
 import { AnnotationLayer } from './AnnotationLayer'
+import { FormLayer } from './FormLayer'
+import { TextLayer } from './TextLayer'
 
 /** Physical-pixel ceiling for one page canvas, about 16 megapixels. */
 const PIXEL_BUDGET = 16_000_000
@@ -13,17 +16,28 @@ const STAMP_TOOLS: StampTool[] = ['check', 'cross', 'dot', 'date']
 interface PageCanvasProps {
   pdf: PDFDocumentProxy
   page: EditorPage
+  /** 1-based position of this page in the current document order. */
+  pageNumber: number
+  externalDocuments: ExternalDocuments
   annotations: Annotation[]
   activeTool: Tool
   selectedAnnotationId: string | null
   zoom: number
+  formValues: Record<string, FormValue>
   dispatch: (action: EditorAction) => void
+  /** Reports the sheet's CSS size so the page strip can size placeholders. */
+  onMeasured?: (size: { width: number; height: number }) => void
 }
 
-export function PageCanvas({ pdf, page, annotations, activeTool, selectedAnnotationId, zoom, dispatch }: PageCanvasProps) {
+export function PageCanvas({ pdf, page, pageNumber, externalDocuments, annotations, activeTool, selectedAnnotationId, zoom, formValues, dispatch, onMeasured }: PageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const surfaceRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 612, height: 792 })
+  // Read through a ref so an inline callback never re-runs the render effect.
+  const onMeasuredRef = useRef(onMeasured)
+  useEffect(() => {
+    onMeasuredRef.current = onMeasured
+  }, [onMeasured])
   const [dragStart, setDragStart] = useState<NormalizedPoint | null>(null)
   const [draftPoints, setDraftPoints] = useState<NormalizedPoint[]>([])
   const [renderError, setRenderError] = useState<string | null>(null)
@@ -34,11 +48,39 @@ export function PageCanvas({ pdf, page, annotations, activeTool, selectedAnnotat
     let renderTask: { cancel: () => void } | null = null
     const renderPage = async () => {
       try {
-        const sourcePage = await pdf.getPage(page.sourceIndex + 1)
+        const source = pageRenderSource(page, pdf, externalDocuments)
+        if (!source) {
+          if (page.kind !== 'blank') {
+            // An external page whose document registry entry is gone.
+            setRenderError(PAGE_RENDER_ERROR)
+            return
+          }
+          // A blank page has nothing to rasterize: one white sheet at its
+          // stored size, swapped when rotated onto its side.
+          const sideways = page.rotation === 90 || page.rotation === 270
+          const width = (sideways ? page.height : page.width) * 1.16 * zoom
+          const height = (sideways ? page.width : page.height) * 1.16 * zoom
+          setDimensions({ width, height })
+          onMeasuredRef.current?.({ width, height })
+          const canvas = canvasRef.current
+          const context = canvas?.getContext('2d', { alpha: false })
+          if (!canvas || !context) return
+          canvas.width = Math.max(1, Math.floor(width))
+          canvas.height = Math.max(1, Math.floor(height))
+          canvas.style.width = `${width}px`
+          canvas.style.height = `${height}px`
+          context.fillStyle = '#ffffff'
+          context.fillRect(0, 0, canvas.width, canvas.height)
+          setReducedQuality(false)
+          setRenderError(null)
+          return
+        }
+        const sourcePage = await source.pdf.getPage(source.pageNumber)
         const rotation = (sourcePage.rotate + page.rotation) % 360
         const viewport = sourcePage.getViewport({ scale: 1.16 * zoom, rotation })
         if (cancelled) return
         setDimensions({ width: viewport.width, height: viewport.height })
+        onMeasuredRef.current?.({ width: viewport.width, height: viewport.height })
         const canvas = canvasRef.current
         const context = canvas?.getContext('2d', { alpha: false })
         if (!canvas || !context) return
@@ -85,7 +127,9 @@ export function PageCanvas({ pdf, page, annotations, activeTool, selectedAnnotat
       cancelled = true
       renderTask?.cancel()
     }
-  }, [pdf, page.sourceIndex, page.rotation, zoom])
+    // `page` is in the dependencies rather than its fields: page kinds carry
+    // different fields, and a page object only changes when one of them does.
+  }, [pdf, page, externalDocuments, zoom])
 
   const pointFromEvent = (event: PointerEvent<HTMLDivElement>) => {
     const bounds = surfaceRef.current?.getBoundingClientRect()
@@ -94,7 +138,7 @@ export function PageCanvas({ pdf, page, annotations, activeTool, selectedAnnotat
   }
 
   const createSimpleAnnotation = (event: PointerEvent<HTMLDivElement>) => {
-    if (activeTool !== 'text' && activeTool !== 'highlight' && !SHAPE_TOOLS.includes(activeTool as ShapeTool) && !STAMP_TOOLS.includes(activeTool as StampTool)) return
+    if (activeTool !== 'text' && activeTool !== 'highlight' && activeTool !== 'redact' && !SHAPE_TOOLS.includes(activeTool as ShapeTool) && !STAMP_TOOLS.includes(activeTool as StampTool)) return
     const point = pointFromEvent(event)
     if (!point) return
     if (activeTool === 'text') {
@@ -135,6 +179,11 @@ export function PageCanvas({ pdf, page, annotations, activeTool, selectedAnnotat
       dispatch({
         type: 'addAnnotation',
         annotation: { id: annotationId(), pageId: page.id, kind: 'highlight', ...rect, color: '#ffd447', opacity: 0.42 },
+      })
+    } else if (activeTool === 'redact') {
+      dispatch({
+        type: 'addAnnotation',
+        annotation: { id: annotationId(), pageId: page.id, kind: 'redaction', ...rect },
       })
     } else {
       const shape = activeTool as ShapeTool
@@ -177,14 +226,15 @@ export function PageCanvas({ pdf, page, annotations, activeTool, selectedAnnotat
   }
 
   return (
-    <div className="page-mat" aria-label={`Page ${page.sourceIndex + 1} editor`}>
+    <div className="page-mat" aria-label={`Page ${pageNumber} editor`}>
       <div
         ref={surfaceRef}
         className="page-surface"
         style={{ width: dimensions.width, height: dimensions.height }}
-        onPointerDown={activeTool === 'highlight' || SHAPE_TOOLS.includes(activeTool as ShapeTool) ? (event) => setDragStart(pointFromEvent(event)) : undefined}
+        onPointerDown={activeTool === 'highlight' || activeTool === 'redact' || SHAPE_TOOLS.includes(activeTool as ShapeTool) ? (event) => setDragStart(pointFromEvent(event)) : undefined}
       >
         <canvas ref={canvasRef} aria-label="Rendered PDF page" />
+        <TextLayer pdf={pdf} page={page} externalDocuments={externalDocuments} zoom={zoom} />
         {renderError && <p className="page-render-error" role="alert">{renderError}</p>}
         {reducedQuality && !renderError && (
           <p className="page-quality-notice" role="status">Preview quality reduced for this large page</p>
@@ -200,6 +250,16 @@ export function PageCanvas({ pdf, page, annotations, activeTool, selectedAnnotat
           onDrawEnd={drawEnd}
           draftPoints={draftPoints}
           renderScale={1.16 * zoom}
+        />
+        {/* Above the annotation layer so field inputs stay clickable; the layer
+            itself is pointer-transparent, so tools keep working around fields. */}
+        <FormLayer
+          pdf={pdf}
+          page={page}
+          pageSize={dimensions}
+          activeTool={activeTool}
+          formValues={formValues}
+          dispatch={dispatch}
         />
       </div>
     </div>

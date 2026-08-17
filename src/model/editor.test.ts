@@ -265,4 +265,58 @@ describe('editorReducer', () => {
     expect(undone.present.fileName).toBe('sample.pdf')
   })
 
+  it('inserts blank pages after the requested page as one undoable step', () => {
+    let state = createEditorState('sample.pdf', 2)
+    const blank = { id: 'page-blank', kind: 'blank' as const, width: 595, height: 842, rotation: 0 as const }
+    state = editorReducer(state, { type: 'insertPages', afterPageId: 'page-1', pages: [blank] })
+    expect(state.present.pages.map(({ id }) => id)).toEqual(['page-1', 'page-blank', 'page-2'])
+    expect(state.selectedPageId).toBe('page-blank')
+    expect(state.dirty).toBe(true)
+
+    // Duplicate ids and unknown anchors are rejected outright.
+    expect(editorReducer(state, { type: 'insertPages', afterPageId: 'page-1', pages: [blank] })).toBe(state)
+    expect(editorReducer(state, { type: 'insertPages', afterPageId: 'missing', pages: [{ ...blank, id: 'page-other' }] })).toBe(state)
+
+    const undone = editorReducer(state, { type: 'undo' })
+    expect(undone.present.pages.map(({ id }) => id)).toEqual(['page-1', 'page-2'])
+  })
+
+  it('inserts external pages at the front when asked', () => {
+    let state = createEditorState('sample.pdf', 1)
+    const inserted = [0, 1].map((sourceIndex) => ({
+      id: `page-ext-${sourceIndex}`,
+      kind: 'external' as const,
+      documentId: 'inserted-1',
+      sourceIndex,
+      rotation: 0 as const,
+    }))
+    state = editorReducer(state, { type: 'insertPages', afterPageId: null, pages: inserted })
+    expect(state.present.pages.map(({ id }) => id)).toEqual(['page-ext-0', 'page-ext-1', 'page-1'])
+  })
+
+  it('records form values as undoable document edits', () => {
+    let state = createEditorState('form.pdf', 1)
+    state = editorReducer(state, { type: 'setFormValue', fieldName: 'owner.name', value: 'Syed' })
+    expect(state.present.formValues['owner.name']).toBe('Syed')
+    expect(state.dirty).toBe(true)
+    expect(state.past).toHaveLength(1)
+
+    // Same value again is a no-op, not a new history entry.
+    expect(editorReducer(state, { type: 'setFormValue', fieldName: 'owner.name', value: 'Syed' })).toBe(state)
+
+    state = editorReducer(state, { type: 'setFormValue', fieldName: 'subscribed', value: true })
+    const undone = editorReducer(state, { type: 'undo' })
+    expect(undone.present.formValues).toEqual({ 'owner.name': 'Syed' })
+  })
+
+  it('collapses a form-field typing session into one undo entry', () => {
+    let state = createEditorState('form.pdf', 1)
+    for (const value of ['S', 'Sy', 'Syed']) {
+      state = editorReducer(state, { type: 'setFormValue', fieldName: 'owner.name', value, historyGroup: 'form-owner.name' })
+    }
+    expect(state.past).toHaveLength(1)
+    const undone = editorReducer(state, { type: 'undo' })
+    expect(undone.present.formValues['owner.name']).toBeUndefined()
+  })
+
 })

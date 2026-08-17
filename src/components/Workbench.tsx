@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState, type FormEvent } from 'react'
 import type { LoadedPdf } from '../pdf/types'
 import type { SourcePdfFeatures } from '../pdf/sourceFeatures'
 import type { ExportProgress } from '../pdf/exportWorkerProtocol'
-import { formatFileSize } from '../pdf/loadPdf'
-import { annotationId, createEditorState, editorReducer, type EditorDocument, type ImageAnnotation } from '../model/editor'
+import { formatFileSize, MAX_PDF_BYTES } from '../pdf/loadPdf'
+import { searchDocument, type PageMatches } from '../pdf/textSearch'
+import { annotationId, createEditorState, editorReducer, type EditorDocument, type EditorPage, type ExternalPage, type ImageAnnotation } from '../model/editor'
 import { validatePlacedImage } from '../model/imageValidation'
 import {
   deleteSignature,
@@ -18,8 +19,8 @@ import { DiscardChangesDialog } from './DiscardChangesDialog'
 import { DocumentMarksDialog, type DocumentMarkRequest } from './DocumentMarksDialog'
 import { ExportCompatibilityDialog } from './ExportCompatibilityDialog'
 import { Inspector } from './Inspector'
-import { PageCanvas } from './PageCanvas'
 import { PageRail } from './PageRail'
+import { PageStrip } from './PageStrip'
 import { RecoveryDialog } from './RecoveryDialog'
 import { SignatureDialog } from './SignatureDialog'
 import { ToolRail } from './ToolRail'
@@ -51,22 +52,52 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
   const [recoveryOpen, setRecoveryOpen] = useState(false)
   const [recoveryDocument, setRecoveryDocument] = useState<EditorDocument | null>(null)
   const [savedSignatures, setSavedSignatures] = useState<SavedSignature[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<PageMatches[] | null>(null)
+  const [searchCursor, setSearchCursor] = useState(0)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  /** Set by explicit navigation; the page strip scrolls there and clears it. */
+  const [scrollTargetPageId, setScrollTargetPageId] = useState<string | null>(null)
+  const navigateToPage = (pageId: string) => {
+    dispatch({ type: 'selectPage', pageId })
+    setScrollTargetPageId(pageId)
+  }
+  /**
+   * PDFs inserted into this document during the session, keyed by the id their
+   * pages carry. Files are needed again at export; proxies render previews.
+   * Never persisted: recovery restores original and blank pages only.
+   */
+  const [insertedPdfs, setInsertedPdfs] = useState<Map<string, { file: File; pdf: import('pdfjs-dist').PDFDocumentProxy }>>(new Map())
+  const externalDocuments = useMemo(
+    () => new Map(Array.from(insertedPdfs, ([id, entry]) => [id, entry.pdf])),
+    [insertedPdfs],
+  )
+  const insertedPdfsRef = useRef(insertedPdfs)
+  useEffect(() => {
+    insertedPdfsRef.current = insertedPdfs
+  }, [insertedPdfs])
+  // Closing the workbench tears down every inserted document's pdf.js worker.
+  useEffect(() => () => {
+    for (const entry of insertedPdfsRef.current.values()) {
+      void entry.pdf.loadingTask.destroy().catch(() => undefined)
+    }
+  }, [])
   const recoveryKey = useMemo(
     () => sessionKey(loaded.sourceFile, loaded.documentFingerprint),
     [loaded.documentFingerprint, loaded.sourceFile],
   )
   const selectedPage = state.present.pages.find((page) => page.id === state.selectedPageId) ?? state.present.pages[0]
   const selectedAnnotation = state.present.annotations.find((annotation) => annotation.id === state.selectedAnnotationId) ?? null
-  const pageAnnotations = useMemo(
-    () => state.present.annotations.filter((annotation) => annotation.pageId === selectedPage.id),
-    [selectedPage.id, state.present.annotations],
-  )
   const modalOpen = signatureOpen || discardOpen || marksOpen || recoveryOpen || compatibilityFeatures !== null
 
   // `state` inside an async export closure is the value from that render, so the
   // current document has to be read through a ref to detect edits made meanwhile.
+  // Synced in an effect (render must stay side-effect-free); every reader runs
+  // after the commit, so the ref is never stale where it is used.
   const latestDocument = useRef(state.present)
-  latestDocument.current = state.present
+  useEffect(() => {
+    latestDocument.current = state.present
+  }, [state.present])
   const recoveryQueue = useRef(new RecoveryQueue())
 
   useEffect(() => {
@@ -75,12 +106,14 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
     void Promise.all([loadSignatures(), loadSession(recoveryKey)]).then(([signatures, recovered]) => {
       if (!active) return
       setSavedSignatures(signatures)
-      if (
-        latestDocument.current === initialDocument
-        && recovered
+      // A record is offered when every original page it references exists in
+      // the opened file. Blank pages restore as data; inserted-PDF pages are
+      // never persisted, so they cannot appear here.
+      const restorable = recovered
         && recovered.fileName === loaded.fileName
-        && recovered.pages.length === loaded.pageCount
-      ) {
+        && recovered.pages.length > 0
+        && recovered.pages.every((page) => page.kind !== 'original' || page.sourceIndex < loaded.pageCount)
+      if (latestDocument.current === initialDocument && restorable) {
         setRecoveryDocument(recovered)
         setRecoveryOpen(true)
       }
@@ -108,7 +141,12 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
       const target = event.target
       // `matches` exists only on Elements; the target can be the document or window.
       const isEditing = target instanceof Element && target.matches('input, textarea, select')
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+        // Take over the browser's find: it cannot see into the PDF's pages.
+        event.preventDefault()
+        searchInputRef.current?.focus()
+        searchInputRef.current?.select()
+      } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
         event.preventDefault()
         dispatch({ type: event.shiftKey ? 'redo' : 'undo' })
       } else if (!isEditing && (event.key === 'Delete' || event.key === 'Backspace') && state.selectedAnnotationId) {
@@ -218,8 +256,9 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
           fontWeight: 700 as const, rotation: -32, opacity: request.opacity,
         }
       }
-      const documentIndex = state.present.pages.findIndex(({ id }) => id === page.id)
-      const number = documentIndex + 1
+      // Page numbers always map over every document page in order, so the map
+      // index is the document index; no lookup is needed.
+      const number = pageIndex + 1
       const text = request.format === 'number'
         ? `${number}`
         : request.format === 'page-number'
@@ -239,6 +278,93 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
       : `Page numbers added to ${pages.length} pages.`)
   }
 
+  const insertBlankPage = async () => {
+    try {
+      // Size the new sheet like the currently selected page, so a Letter
+      // document grows Letter pages and an A4 document grows A4 pages.
+      let width = 595.28
+      let height = 841.89
+      if (selectedPage.kind === 'blank') {
+        width = selectedPage.width
+        height = selectedPage.height
+      } else {
+        const proxy = selectedPage.kind === 'original' ? loaded.document : insertedPdfs.get(selectedPage.documentId)?.pdf
+        if (proxy) {
+          const sourcePage = await proxy.getPage(selectedPage.sourceIndex + 1)
+          const viewport = sourcePage.getViewport({ scale: 1 })
+          width = viewport.width
+          height = viewport.height
+        }
+      }
+      const page: EditorPage = {
+        id: `page-${crypto.randomUUID()}`,
+        kind: 'blank',
+        rotation: 0,
+        width,
+        height,
+      }
+      dispatch({ type: 'insertPages', afterPageId: selectedPage.id, pages: [page] })
+      setScrollTargetPageId(page.id)
+      setNotice('Blank page inserted.')
+    } catch {
+      setNotice('A blank page could not be inserted.')
+    }
+  }
+
+  const insertPdf = async (file: File) => {
+    try {
+      if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+        setNotice('Choose a PDF file to insert.')
+        return
+      }
+      if (file.size > MAX_PDF_BYTES) {
+        setNotice(`LeafPDF has been tested with PDF files up to ${formatFileSize(MAX_PDF_BYTES)}.`)
+        return
+      }
+      const { getDocument } = await import('pdfjs-dist')
+      const pdf = await getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise
+      const documentId = `inserted-${crypto.randomUUID()}`
+      const pages: ExternalPage[] = Array.from({ length: pdf.numPages }, (_, index) => ({
+        id: `page-${crypto.randomUUID()}`,
+        kind: 'external',
+        documentId,
+        sourceIndex: index,
+        rotation: 0,
+      }))
+      setInsertedPdfs((current) => new Map(current).set(documentId, { file, pdf }))
+      dispatch({ type: 'insertPages', afterPageId: selectedPage.id, pages })
+      setScrollTargetPageId(pages[0].id)
+      setNotice(`Inserted ${pdf.numPages} page${pdf.numPages === 1 ? '' : 's'} from ${file.name}. `
+        + 'Bookmarks and form fields of the inserted PDF are not carried over.')
+    } catch {
+      setNotice('That PDF could not be inserted.')
+    }
+  }
+
+  const runSearch = async (event: FormEvent) => {
+    event.preventDefault()
+    try {
+      const results = await searchDocument(loaded.document, externalDocuments, state.present.pages, searchQuery)
+      setSearchResults(results)
+      setSearchCursor(0)
+      if (results.length > 0) navigateToPage(results[0].pageId)
+    } catch {
+      setNotice('The document text could not be searched.')
+    }
+  }
+
+  // Results can go stale when a page is deleted after a search; navigation
+  // simply skips pages that no longer exist.
+  const liveResults = (searchResults ?? []).filter((result) =>
+    state.present.pages.some((page) => page.id === result.pageId))
+  const stepSearch = (direction: 1 | -1) => {
+    if (liveResults.length === 0) return
+    const next = ((searchCursor + direction) % liveResults.length + liveResults.length) % liveResults.length
+    setSearchCursor(next)
+    navigateToPage(liveResults[next].pageId)
+  }
+  const totalMatches = liveResults.reduce((sum, result) => sum + result.matches, 0)
+
   const exportFile = async (allowCompatibilityCopy = false) => {
     setExporting(true)
     setExportProgress(null)
@@ -251,13 +377,24 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
       // Capture exactly what is being written. The user can keep editing while the
       // worker runs, and those later edits are not in this file.
       const exportedDocument = state.present
+      // Only the inserted PDFs this document still references travel to the worker.
+      const referencedIds = new Set(
+        exportedDocument.pages.flatMap((page) => page.kind === 'external' ? [page.documentId] : []),
+      )
+      const insertedFiles = Array.from(insertedPdfs)
+        .filter(([id]) => referencedIds.has(id))
+        .map(([id, entry]) => ({ id, file: entry.file }))
+      // Redacted pages are burned to bitmaps here on the main thread — the
+      // worker has no canvas — and the worker replaces those pages outright.
+      const { rasterizeRedactedPages } = await import('../pdf/redactionRaster')
+      const rasterizedPages = await rasterizeRedactedPages(loaded.document, externalDocuments, exportedDocument)
       let bytes: Uint8Array
       try {
         bytes = await exportInWorker(
           loaded.sourceFile,
           exportedDocument,
           (progress) => setExportProgress(progress),
-          { allowCompatibilityCopy },
+          { allowCompatibilityCopy, insertedFiles, rasterizedPages },
         )
       } catch (error) {
         if (error instanceof Error && error.name === 'CompatibilityConfirmationRequired') {
@@ -318,7 +455,13 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
         <button type="button" className="marks-button" onClick={() => setMarksOpen(true)}>
           Document marks
         </button>
-        <button type="button" className="export-button" disabled={exporting} onClick={() => void exportFile()}>
+        <button
+          type="button"
+          className="export-button"
+          disabled={exporting || loaded.features.isEncrypted}
+          title={loaded.features.isEncrypted ? 'Encrypted PDFs cannot be exported.' : undefined}
+          onClick={() => void exportFile()}
+        >
           {exporting
             ? exportProgress
               ? `Building PDF... ${exportProgress.completedPages}/${exportProgress.totalPages}`
@@ -328,6 +471,12 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
         </button>
       </header>
 
+      {loaded.features.isEncrypted && (
+        <p className="signature-warning" role="status">
+          This PDF is encrypted — even a permissions-only lock with no password counts. LeafPDF can
+          display it, but cannot decrypt it to write an edited copy, so exporting is disabled.
+        </p>
+      )}
       {loaded.features.hasDigitalSignatures && (
         <p className="signature-warning" role="status">
           Editing this PDF invalidates its existing digital signature. LeafPDF cannot re-sign a PDF,
@@ -336,7 +485,16 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
       )}
 
       <div className="workbench-grid">
-        <PageRail pdf={loaded.document} pages={state.present.pages} selectedPageId={state.selectedPageId} dispatch={dispatch} />
+        <PageRail
+          pdf={loaded.document}
+          pages={state.present.pages}
+          selectedPageId={state.selectedPageId}
+          externalDocuments={externalDocuments}
+          onInsertBlankPage={() => void insertBlankPage()}
+          onInsertPdf={(file) => void insertPdf(file)}
+          onSelectPage={navigateToPage}
+          dispatch={dispatch}
+        />
         <ToolRail activeTool={state.activeTool} onTool={(tool) => dispatch({ type: 'setTool', tool })} onImage={placeImage} onSignature={() => setSignatureOpen(true)} />
         <section className="document-stage">
           <div className="stage-ruler" aria-hidden="true">
@@ -344,6 +502,33 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
           </div>
           <div className="stage-toolbar">
             <span>PAGE {state.present.pages.findIndex((page) => page.id === selectedPage.id) + 1} / {state.present.pages.length}</span>
+            <form className="search-control" role="search" aria-label="Find text in document" onSubmit={(event) => void runSearch(event)}>
+              <input
+                ref={searchInputRef}
+                type="search"
+                placeholder="Find in document"
+                aria-label="Find text in document"
+                value={searchQuery}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value)
+                  setSearchResults(null)
+                }}
+              />
+              <button type="submit" aria-label="Search">Find</button>
+              {searchResults !== null && (
+                <span className="search-status" role="status">
+                  {liveResults.length === 0
+                    ? 'No matches'
+                    : `${totalMatches} match${totalMatches === 1 ? '' : 'es'} · page ${liveResults[Math.min(searchCursor, liveResults.length - 1)]?.pageNumber}`}
+                </span>
+              )}
+              {liveResults.length > 1 && (
+                <>
+                  <button type="button" aria-label="Previous matching page" onClick={() => stepSearch(-1)}>‹</button>
+                  <button type="button" aria-label="Next matching page" onClick={() => stepSearch(1)}>›</button>
+                </>
+              )}
+            </form>
             <span className="source-boundary" role="note">Original page protected · Added content stays editable</span>
             <button type="button" className="marks-mobile-button" onClick={() => setMarksOpen(true)}>
               Marks
@@ -354,17 +539,19 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
               <button type="button" aria-label="Zoom in" onClick={() => dispatch({ type: 'setZoom', zoom: state.zoom + 0.15 })}>+</button>
             </div>
           </div>
-          <div className="canvas-scroll">
-            <PageCanvas
-              pdf={loaded.document}
-              page={selectedPage}
-              annotations={pageAnnotations}
-              activeTool={state.activeTool}
-              selectedAnnotationId={state.selectedAnnotationId}
-              zoom={state.zoom}
-              dispatch={dispatch}
-            />
-          </div>
+          <PageStrip
+            pdf={loaded.document}
+            pages={state.present.pages}
+            externalDocuments={externalDocuments}
+            annotations={state.present.annotations}
+            activeTool={state.activeTool}
+            selectedAnnotationId={state.selectedAnnotationId}
+            zoom={state.zoom}
+            formValues={state.present.formValues}
+            scrollTargetPageId={scrollTargetPageId}
+            onScrolledToTarget={() => setScrollTargetPageId(null)}
+            dispatch={dispatch}
+          />
         </section>
         <Inspector annotation={selectedAnnotation} canPaste={state.clipboard !== null} dispatch={dispatch} />
       </div>

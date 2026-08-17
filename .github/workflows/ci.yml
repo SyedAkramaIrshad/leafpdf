@@ -18,5 +18,38 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  # The browser suite is what actually proves the product's promises — above all
+  # `never contacts another host`, the test behind "No upload. No tracking."
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: pip install reportlab pypdf
+      # Deterministic fixtures are generated, not committed; e2e opens them.
+      - run: python3 scripts/create-fixture.py
+      - run: python3 scripts/create-edge-fixtures.py
+      - run: python3 scripts/test_verify_export.py
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      # Same suite against the production build, where the CSP meta tag is active.
+      - run: npm run test:e2e
+        env:
+          LEAFPDF_E2E_SERVER: preview
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7

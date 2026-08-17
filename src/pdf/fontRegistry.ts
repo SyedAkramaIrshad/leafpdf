@@ -76,35 +76,57 @@ interface BundledFont {
   key: string
   /** Shown to the user when nothing can draw their text. */
   label: string
-  load: () => Promise<string>
+  load: () => Promise<Uint8Array>
+}
+
+/**
+ * Fetch a bundled font emitted by Vite as a same-origin asset. `?url` keeps the
+ * raw TTF bytes out of the JavaScript bundle: `?inline` base64-encoded every font,
+ * which shipped each file 33% larger and cost an `atob` decode on first use.
+ */
+async function fetchFontBytes(url: string): Promise<Uint8Array> {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`A bundled font could not be loaded (HTTP ${response.status}).`)
+  return new Uint8Array(await response.arrayBuffer())
 }
 
 /**
  * Every bundled Unicode font, in the order they are tried. Each is a separate
  * dynamic import so a plain Latin export downloads none of them, and an Arabic
- * export downloads only the Arabic file. The bytes are inlined at build time,
- * so no font is ever requested from Google or any other host at runtime.
+ * export downloads only the Arabic file. The files are emitted by the build and
+ * served from this app's own origin, so no font is ever requested from Google or
+ * any other host at runtime.
  */
 const BUNDLED_FONTS: BundledFont[] = [
   {
     key: 'noto-sans-400',
     label: 'Noto Sans',
-    load: () => import('../assets/fonts/NotoSans-Regular.ttf?inline').then((module) => module.default),
+    load: () => import('../assets/fonts/NotoSans-Regular.ttf?url').then((module) => fetchFontBytes(module.default)),
   },
   {
     key: 'noto-sans-700',
     label: 'Noto Sans Bold',
-    load: () => import('../assets/fonts/NotoSans-Bold.ttf?inline').then((module) => module.default),
+    load: () => import('../assets/fonts/NotoSans-Bold.ttf?url').then((module) => fetchFontBytes(module.default)),
   },
   {
     key: 'noto-arabic',
     label: 'Noto Sans Arabic',
-    load: () => import('../assets/fonts/NotoSansArabic-Regular.ttf?inline').then((module) => module.default),
+    load: () => import('../assets/fonts/NotoSansArabic-Regular.ttf?url').then((module) => fetchFontBytes(module.default)),
   },
   {
     key: 'noto-devanagari',
     label: 'Noto Sans Devanagari',
-    load: () => import('../assets/fonts/NotoSansDevanagari-Regular.ttf?inline').then((module) => module.default),
+    load: () => import('../assets/fonts/NotoSansDevanagari-Regular.ttf?url').then((module) => fetchFontBytes(module.default)),
+  },
+  {
+    key: 'noto-hebrew',
+    label: 'Noto Sans Hebrew',
+    load: () => import('../assets/fonts/NotoSansHebrew-Regular.ttf?url').then((module) => fetchFontBytes(module.default)),
+  },
+  {
+    key: 'noto-thai',
+    label: 'Noto Sans Thai',
+    load: () => import('../assets/fonts/NotoSansThai-Regular.ttf?url').then((module) => fetchFontBytes(module.default)),
   },
 ]
 
@@ -117,13 +139,7 @@ function bundledFont(key: string): BundledFont {
 /** Candidate order for one request: matching weight first, then script fonts. */
 function candidateKeys(weight: FontWeight): string[] {
   const weighted = weight === 700 ? ['noto-sans-700', 'noto-sans-400'] : ['noto-sans-400', 'noto-sans-700']
-  return [...weighted, 'noto-arabic', 'noto-devanagari']
-}
-
-function decodeDataUri(dataUri: string): Uint8Array {
-  const payload = dataUri.slice(dataUri.indexOf(',') + 1)
-  const binary = atob(payload)
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0))
+  return [...weighted, 'noto-arabic', 'noto-devanagari', 'noto-hebrew', 'noto-thai']
 }
 
 interface ParsedFont {
@@ -141,8 +157,7 @@ const parsedFonts = new Map<string, Promise<ParsedFont>>()
 function parseFont(key: string): Promise<ParsedFont> {
   const cached = parsedFonts.get(key)
   if (cached) return cached
-  const parsing = Promise.all([bundledFont(key).load(), loadFontkit()]).then(([dataUri, fontkit]) => {
-    const bytes = decodeDataUri(dataUri)
+  const parsing = Promise.all([bundledFont(key).load(), loadFontkit()]).then(([bytes, fontkit]) => {
     const font = fontkit.create(bytes) as { hasGlyphForCodePoint?: (codePoint: number) => boolean; characterSet?: number[] }
     if (typeof font.hasGlyphForCodePoint === 'function') {
       const has = font.hasGlyphForCodePoint.bind(font)
@@ -183,7 +198,7 @@ function isSafeForStandardFont(text: string): boolean {
 function describeUnsupported(text: string, missing: number[]): string {
   const characters = [...new Set(missing)].slice(0, 6).map((codePoint) => String.fromCodePoint(codePoint)).join(' ')
   return `LeafPDF cannot embed a font for "${text}". These characters are not in any bundled font: ${characters}. `
-    + 'Latin, Greek, Cyrillic, Arabic, and Devanagari are supported; scripts such as Chinese, Japanese, Korean, Hebrew, and Thai are not yet.'
+    + 'Latin, Greek, Cyrillic, Arabic, Devanagari, Hebrew, and Thai are supported; scripts such as Chinese, Japanese, and Korean are not yet.'
 }
 
 export async function createFontRegistry(document: PDFDocument): Promise<FontRegistry> {

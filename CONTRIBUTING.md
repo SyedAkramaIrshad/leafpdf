@@ -17,6 +17,7 @@ Node.js 22 or newer is recommended. No API keys or environment variables are req
 ## Before opening a pull request
 
 ```bash
+npm run lint
 npm test
 npm run build
 ```

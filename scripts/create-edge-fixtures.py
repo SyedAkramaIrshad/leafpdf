@@ -207,6 +207,18 @@ def build_signature_fixture(path: Path) -> None:
     _write(writer, path)
 
 
+def build_encrypted_fixture(path: Path) -> None:
+    """Permissions-only encryption: an empty user password, as most locked PDFs
+    in the wild use. Viewers open it without a prompt; the objects are still
+    genuinely encrypted, so LeafPDF must refuse to export it and say why."""
+    build_metadata_fixture(path)
+    reader = PdfReader(str(path))
+    writer = PdfWriter()
+    writer.append(reader)
+    writer.encrypt(user_password="", owner_password="leafpdf-owner")
+    _write(writer, path)
+
+
 def build_scanned_fixture(path: Path) -> None:
     """An image-only page: no selectable text, so the OCR message must appear."""
     canvas = Canvas(str(path), pagesize=A4)
@@ -262,6 +274,7 @@ FIXTURES = {
     "edge-attachment.pdf": build_attachment_fixture,
     "edge-form.pdf": build_form_fixture,
     "edge-signature-field.pdf": build_signature_fixture,
+    "edge-encrypted.pdf": build_encrypted_fixture,
     "edge-scanned.pdf": build_scanned_fixture,
     "edge-whitespace-text.pdf": build_empty_text_fixture,
     "edge-100-pages.pdf": build_large_fixture,

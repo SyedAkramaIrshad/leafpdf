@@ -12,6 +12,7 @@ const toolButtons: Array<{ tool: Tool; label: string; glyph: string }> = [
   { tool: 'select', label: 'Select', glyph: '↖' },
   { tool: 'text', label: 'Add text', glyph: 'T' },
   { tool: 'highlight', label: 'Highlight', glyph: '▰' },
+  { tool: 'redact', label: 'Redact', glyph: '█' },
   { tool: 'pen', label: 'Draw', glyph: '⌁' },
 ]
 
@@ -46,7 +47,7 @@ export function ToolRail({ activeTool, onTool, onImage, onSignature }: ToolRailP
   const navigateMenu = (event: KeyboardEvent<HTMLDivElement>, kind: 'shapes' | 'stamps') => {
     const items = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
     const index = items.indexOf(document.activeElement as HTMLButtonElement)
-    let next = index
+    let next: number
     if (event.key === 'ArrowDown' || event.key === 'ArrowRight') next = (index + 1) % items.length
     else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') next = (index - 1 + items.length) % items.length
     else if (event.key === 'Home') next = 0

@@ -75,6 +75,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .page-rail { min-height: 0; overflow: hidden; background: #ece9e0; border-right: 1px solid #bebbb2; }
 .page-rail-heading { height: 45px; display: flex; justify-content: space-between; align-items: center; padding: 0 15px; border-bottom: 1px solid var(--line); font: 700 9px/1 ui-monospace, monospace; letter-spacing: .12em; }
 .page-rail-heading strong { display: grid; place-items: center; width: 20px; height: 20px; color: white; background: var(--ink); border-radius: 50%; letter-spacing: 0; }
+.page-insert-actions { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.page-insert-actions button { flex: 1; padding: 5px 4px; font: 700 9px/1 ui-monospace, monospace; letter-spacing: .06em; color: #444c4c; background: #efece4; border: 1px solid #bdb9af; border-radius: 3px; cursor: pointer; white-space: nowrap; }
+.page-insert-actions button:hover { background: #e6e2d7; }
 .thumbnail-list { height: calc(100% - 45px); overflow-y: auto; padding: 14px 12px 50px; }
 .thumbnail-card { margin-bottom: 14px; padding: 5px; border: 1px solid transparent; }
 .thumbnail-card.is-selected { background: #dce3fb; border-color: #9cadde; }
@@ -100,7 +103,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .tool-palette button span:first-child { width: 18px; font: 700 16px/1 Georgia, serif; }
 .signature-glyph { font: italic 700 19px/1 Georgia, serif; text-decoration: underline; }
 .document-stage { position: relative; min-width: 0; min-height: 0; display: grid; grid-template-rows: 38px minmax(0, 1fr); background: #c9c6bd; }
-.stage-toolbar { z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 0 16px 0 32px; color: #5a6161; background: #e4e1d8; border-bottom: 1px solid #bdb9af; font: 700 9px/1 ui-monospace, monospace; letter-spacing: .08em; }
+.stage-toolbar { z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; padding: 4px 16px 4px 32px; color: #5a6161; background: #e4e1d8; border-bottom: 1px solid #bdb9af; font: 700 9px/1 ui-monospace, monospace; letter-spacing: .08em; }
+
+/* Find-in-document control. Results jump to the page holding the match. */
+.search-control { display: flex; align-items: center; gap: 4px; }
+.search-control input { width: 108px; min-width: 0; padding: 3px 6px; font: 500 11px/1.2 inherit; color: #182026; background: #f6f4ee; border: 1px solid #bdb9af; border-radius: 3px; }
+.search-control input:focus { outline: 2px solid var(--blue, #3157d5); outline-offset: 0; }
+.search-control button { padding: 2px 7px; color: #444c4c; background: #efece4; border: 1px solid #bdb9af; border-radius: 3px; cursor: pointer; font: inherit; }
+.search-control button:disabled { opacity: .45; cursor: default; }
+.search-status { color: #5a6161; font-weight: 500; white-space: nowrap; }
 .source-boundary { color: #65706d; font-weight: 650; letter-spacing: .02em; text-transform: none; }
 .marks-mobile-button { display: none; padding: 5px 7px; color: #35413f; background: #f6f4ed; border: 1px solid #aaa79e; border-radius: 3px; font-size: 9px; font-weight: 750; cursor: pointer; }
 .zoom-control { display: flex; align-items: center; gap: 8px; }
@@ -109,11 +120,46 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .stage-ruler { position: absolute; z-index: 1; top: 38px; left: 0; bottom: 0; width: 23px; display: flex; flex-direction: column; justify-content: space-around; background: #dad7ce; border-right: 1px solid #aaa79e; }
 .stage-ruler i { width: 7px; height: 1px; background: #8a8c87; }
 .stage-ruler i.major { width: 15px; }
-.canvas-scroll { min-height: 0; overflow: auto; padding: 34px 40px 80px 55px; }
+.canvas-scroll { min-height: 0; overflow: auto; padding: 34px 40px 80px 55px; display: flex; flex-direction: column; align-items: center; gap: 26px; }
+/* One entry per page in the continuous strip. While a page is out of range its
+   editor unmounts and this box holds its measured footprint. */
+.strip-page { display: flex; justify-content: center; }
 .page-mat { width: max-content; margin: 0 auto; padding: 14px; background: #bab7ae; box-shadow: 0 20px 38px rgba(44,46,43,.17); }
 .page-surface { position: relative; background: white; box-shadow: 0 2px 8px rgba(0,0,0,.18); touch-action: none; }
 .page-surface canvas { display: block; }
 .annotation-layer { position: absolute; z-index: 2; inset: 0; overflow: hidden; }
+/* An annotation is never a text-selection anchor: without this, dragging one
+   across the page also starts selecting the text layer underneath, and the
+   browser auto-scrolls the strip while extending that selection. */
+.annotation, .annotation *, .move-handle, .transform-controls { -webkit-user-select: none; user-select: none; }
+/* The inline editor is the exception: its own text must stay selectable. */
+.annotation .inline-text-editor { -webkit-user-select: text; user-select: text; }
+
+/* Pending redaction: solid black with a warning edge so it never reads as an
+   ordinary shape. The export burns it in and removes what is underneath. */
+.redaction-annotation .redaction-fill { position: absolute; inset: 0; display: block; background: #0c0e10; outline: 2px dashed #f26b4a; outline-offset: -2px; }
+.redaction-copy { color: #8a3222; font-weight: 600; }
+/* In select mode the layer itself steps aside so the text layer underneath can
+   take text selections; annotations and their handles remain fully interactive. */
+.annotation-layer.tool-select { pointer-events: none; }
+.annotation-layer.tool-select > * { pointer-events: auto; }
+
+/* pdf.js text layer: invisible glyph-aligned spans that make source text
+   selectable. Styles mirror what pdf.js's own viewer applies. */
+.text-layer { position: absolute; inset: 0; z-index: 1; overflow: clip; line-height: 1; text-align: initial; text-size-adjust: none; forced-color-adjust: none; transform-origin: 0 0; caret-color: CanvasText; }
+.text-layer :is(span, br) { position: absolute; color: transparent; white-space: pre; cursor: text; transform-origin: 0% 0%; }
+.text-layer ::selection { color: transparent; background: rgba(49, 87, 213, 0.32); }
+
+/* The source PDF's own fillable fields, aligned over the rendered page. The layer
+   is pointer-transparent so annotation tools keep working around the fields; a
+   non-select tool sidelines the inputs entirely so strokes can cross them. */
+.form-layer { position: absolute; z-index: 3; inset: 0; pointer-events: none; }
+.form-layer > * { position: absolute; pointer-events: auto; box-sizing: border-box; }
+.form-layer-passthrough > * { pointer-events: none; }
+.form-field-input { padding: 0 3px; font-family: inherit; color: var(--ink, #182026); background: rgba(49, 87, 213, 0.07); border: 1px solid rgba(49, 87, 213, 0.45); border-radius: 2px; }
+.form-field-input:focus { background: #fff; outline: 2px solid var(--blue, #3157d5); outline-offset: 0; }
+textarea.form-field-input { resize: none; line-height: 1.2; }
+.form-field-checkbox { margin: 0; accent-color: var(--blue, #3157d5); }
 .annotation-layer.tool-text, .annotation-layer.tool-highlight { cursor: crosshair; }
 .annotation-layer.tool-pen { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M4 20l4-1 11-11-3-3L5 16z' fill='%233157d5'/%3E%3C/svg%3E") 3 21, crosshair; }
 .page-render-error { position: absolute; z-index: 4; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: 0; padding: 10px 14px; color: white; background: #b3261e; border-radius: 3px; font-size: 12px; }

@@ -72,7 +72,12 @@ def _field_names(reader: PdfReader) -> set[str]:
     return set(fields.keys())
 
 
-def check_structure(source_path: Path, export_path: Path, compatibility_copy: bool = False) -> list[str]:
+def check_structure(
+    source_path: Path,
+    export_path: Path,
+    compatibility_copy: bool = False,
+    expect_pages: int | None = None,
+) -> list[str]:
     notes: list[str] = []
     source = PdfReader(str(source_path))
     export = PdfReader(str(export_path))
@@ -81,7 +86,12 @@ def check_structure(source_path: Path, export_path: Path, compatibility_copy: bo
     export_pages = len(export.pages)
     if export_pages < 1:
         raise Failure("the exported PDF has no pages")
-    if export_pages > source_pages:
+    if expect_pages is not None:
+        # Blank-page and PDF insertion can legitimately grow the document, but
+        # only when the operator declares the expected total explicitly.
+        if export_pages != expect_pages:
+            raise Failure(f"export has {export_pages} pages, --expect-pages demanded {expect_pages}")
+    elif export_pages > source_pages:
         raise Failure(f"export has more pages ({export_pages}) than the source ({source_pages})")
     notes.append(f"pages: source {source_pages} -> export {export_pages}")
 
@@ -96,7 +106,7 @@ def check_structure(source_path: Path, export_path: Path, compatibility_copy: bo
         raise Failure(f"expected /Producer 'LeafPDF', found {producer!r}")
     notes.append("producer: LeafPDF")
 
-    preserved_every_page = export_pages == source_pages
+    preserved_every_page = export_pages == source_pages and expect_pages is None
     if not preserved_every_page:
         notes.append("page count changed, so catalog features are not required to survive")
         return notes
@@ -145,7 +155,7 @@ def check_structure(source_path: Path, export_path: Path, compatibility_copy: bo
     return notes
 
 
-def check_render(export_path: Path, render_dir: Path) -> list[str]:
+def check_render(export_path: Path, render_dir: Path, allow_blank: set[int] | None = None) -> list[str]:
     if shutil.which("pdftoppm") is None:
         raise Failure("pdftoppm is not on PATH; add Poppler's bin directory")
 
@@ -170,12 +180,18 @@ def check_render(export_path: Path, render_dir: Path) -> list[str]:
     if empty:
         raise Failure(f"empty render files: {empty}")
 
-    blank = [path.name for path in rendered if _is_blank(path)]
+    allowed = allow_blank or set()
+    blank = [
+        path.name
+        for index, path in enumerate(rendered, start=1)
+        if index not in allowed and _is_blank(path)
+    ]
     if blank:
         raise Failure(f"pages rendered blank: {blank}")
 
     return [
-        f"rendered {len(rendered)} page(s) to {render_dir}, none blank",
+        f"rendered {len(rendered)} page(s) to {render_dir}, none blank"
+        + (f" except declared blanks {sorted(allowed)}" if allowed else ""),
     ] + [f"  {path}" for path in rendered]
 
 
@@ -216,6 +232,22 @@ def main() -> int:
     parser.add_argument("export", type=Path)
     parser.add_argument("--render-dir", type=Path, default=None)
     parser.add_argument(
+        "--allow-blank-pages",
+        type=int,
+        nargs="*",
+        default=[],
+        help="1-based page numbers that are legitimately blank (user-inserted blank pages).",
+    )
+    parser.add_argument(
+        "--expect-pages",
+        type=int,
+        default=None,
+        help=(
+            "Exact page count the export must have. Required to accept an export with "
+            "inserted pages; without it, more pages than the source is a failure."
+        ),
+    )
+    parser.add_argument(
         "--expect-compatibility-copy",
         action="store_true",
         help=(
@@ -233,8 +265,8 @@ def main() -> int:
     render_dir = args.render_dir or Path("tmp/pdfs/rendered") / args.export.stem
 
     try:
-        notes = check_structure(args.source, args.export, args.expect_compatibility_copy)
-        notes += check_render(args.export, render_dir)
+        notes = check_structure(args.source, args.export, args.expect_compatibility_copy, args.expect_pages)
+        notes += check_render(args.export, render_dir, set(args.allow_blank_pages))
     except Failure as failure:
         print(f"FAIL: {failure}", file=sys.stderr)
         return 1

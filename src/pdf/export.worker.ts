@@ -18,11 +18,17 @@ async function handle(request: ExportWorkerRequest) {
   }
 
   const { exportEditedPdf } = await import('./exportPdf')
+  const insertedDocuments = new Map<string, Uint8Array>()
+  for (const { id, file } of request.insertedFiles) {
+    insertedDocuments.set(id, new Uint8Array(await file.arrayBuffer()))
+  }
   const bytes = await exportEditedPdf(
     new Uint8Array(await request.sourceFile.arrayBuffer()),
     request.document,
     {
       allowCompatibilityCopy: request.allowCompatibilityCopy,
+      insertedDocuments,
+      rasterizedPages: new Map(request.rasterizedPages.map((raster) => [raster.pageId, raster])),
       onProgress: (completedPages, totalPages) => post({ type: 'progress', completedPages, totalPages }),
     },
   )

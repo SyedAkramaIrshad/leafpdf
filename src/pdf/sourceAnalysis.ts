@@ -1,5 +1,16 @@
-import { PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRef, type PDFContext } from 'pdf-lib'
-import type { EditorDocument } from '../model/editor'
+import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRef, type PDFContext } from 'pdf-lib'
+
+/**
+ * pdf-lib compiles to ES5, where a class extending Error loses its prototype
+ * chain: `instanceof EncryptedPDFError` is false for the very error it throws
+ * and its `name` reads plain "Error". The message anchor is the reliable part;
+ * the instanceof stays as belt and braces should pdf-lib ever fix its build.
+ */
+export function isEncryptedPdfError(error: unknown): boolean {
+  if (error instanceof EncryptedPDFError) return true
+  return error instanceof Error && error.message.includes('`PDFDocument.load` is encrypted')
+}
+import { hasRedactions, type EditorDocument } from '../model/editor'
 import { NO_SOURCE_FEATURES, type SourcePdfFeatures } from './sourceFeatures'
 
 export { describeFeatures, NO_SOURCE_FEATURES, type SourcePdfFeatures } from './sourceFeatures'
@@ -197,7 +208,14 @@ export async function analyzeSourcePdf(bytes: Uint8Array): Promise<SourcePdfFeat
   let document: PDFDocument
   try {
     document = await PDFDocument.load(bytes.slice(), { ignoreEncryption: false, updateMetadata: false })
-  } catch {
+  } catch (error) {
+    // Permissions-only encryption (an empty user password) is widespread: the
+    // file displays everywhere without a prompt, but its objects really are
+    // encrypted and pdf-lib cannot decrypt them. Detect it here so the UI can
+    // say so at open time rather than failing at export time.
+    if (isEncryptedPdfError(error)) {
+      return { ...NO_SOURCE_FEATURES, isEncrypted: true }
+    }
     return { ...NO_SOURCE_FEATURES }
   }
   return analyzeLoadedPdf(document)
@@ -210,6 +228,7 @@ export async function analyzeSourcePdf(bytes: Uint8Array): Promise<SourcePdfFeat
 export function analyzeLoadedPdf(document: PDFDocument): SourcePdfFeatures {
   const acroForm = lookupDict(document.context, document.catalog.get(PDFName.of('AcroForm')))
   return {
+    isEncrypted: false,
     hasMetadata: hasAnyMetadata(document),
     hasOutlines: hasOutlineEntries(document),
     hasAttachments: hasEmbeddedFiles(document),
@@ -220,7 +239,8 @@ export function analyzeLoadedPdf(document: PDFDocument): SourcePdfFeatures {
 }
 
 /**
- * True when the edited pages are every original page in the original order.
+ * True when the edited pages are every original page in the original order,
+ * with nothing inserted.
  *
  * The page count is part of the question. Checking only that each remaining page sits
  * at its own source index reports "unchanged" after a trailing page is deleted, which
@@ -228,7 +248,7 @@ export function analyzeLoadedPdf(document: PDFDocument): SourcePdfFeatures {
  */
 function keepsEveryPageInOrder(document: EditorDocument, sourcePageCount: number): boolean {
   return document.pages.length === sourcePageCount
-    && document.pages.every((page, index) => page.sourceIndex === index)
+    && document.pages.every((page, index) => page.kind === 'original' && page.sourceIndex === index)
 }
 
 function hasStructuralReferences(features: SourcePdfFeatures): boolean {
@@ -244,13 +264,23 @@ export function chooseExportStrategy(
   document: EditorDocument,
   sourcePageCount: number = document.pages.length,
 ): ExportStrategy {
-  // Every original page, original order: mutate the source and keep everything.
+  // Redaction replaces whole pages with rasterized copies, which only a rebuild
+  // can express safely: rebuilding copies nothing from a redacted page, so its
+  // original content cannot survive into the output by reference.
+  if (hasRedactions(document)) {
+    return hasStructuralReferences(features) ? 'requires-confirmation' : 'rebuild-safe'
+  }
+
+  // Every original page, original order, nothing added: mutate the source and
+  // keep everything.
   if (keepsEveryPageInOrder(document, sourcePageCount)) return 'preserve'
 
-  // Pages only removed, order otherwise intact. Removal can be done in place, but
-  // outlines, form fields, attachments, and signatures may reference a removed
-  // page, so a structured document needs confirmation first.
-  const sourceIndexes = document.pages.map((page) => page.sourceIndex)
+  // Original pages still in their original relative order: pages were only
+  // removed or inserted, both of which can be done in place. But outlines, form
+  // fields, attachments, signatures, and index-keyed features such as page
+  // labels may reference removed pages or shifted positions, so a structured
+  // document needs confirmation first.
+  const sourceIndexes = document.pages.flatMap((page) => page.kind === 'original' ? [page.sourceIndex] : [])
   const ascending = sourceIndexes.every((value, index) => index === 0 || value > sourceIndexes[index - 1])
   if (ascending) return hasStructuralReferences(features) ? 'requires-confirmation' : 'preserve'
 

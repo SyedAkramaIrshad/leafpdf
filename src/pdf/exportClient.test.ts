@@ -98,6 +98,7 @@ describe('exportInWorker', () => {
     expect(message.sourceFile).toBe(file)
 
     const features = {
+      isEncrypted: false,
       hasMetadata: true, hasOutlines: false, hasAttachments: false,
       hasAcroForm: false, hasDigitalSignatures: false, additionalFeatures: [],
     }
@@ -140,6 +141,7 @@ describe('exportInWorker', () => {
       message: 'This PDF needs a compatibility copy.',
       name: 'CompatibilityConfirmationRequired',
       features: {
+        isEncrypted: false,
         hasMetadata: false, hasOutlines: true, hasAttachments: false,
         hasAcroForm: false, hasDigitalSignatures: false, additionalFeatures: [],
       },

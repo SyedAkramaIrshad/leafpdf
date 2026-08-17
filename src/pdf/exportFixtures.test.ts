@@ -16,6 +16,7 @@ import { exportEditedPdf } from './exportPdf'
 const FIXTURE_DIR = 'tmp/pdfs'
 const OUTPUT_DIR = 'output/pdf'
 const fixturesPresent = existsSync(`${FIXTURE_DIR}/edge-orientation.pdf`)
+const encryptedPresent = existsSync(`${FIXTURE_DIR}/edge-encrypted.pdf`)
 
 function fixtureBytes(name: string): Uint8Array {
   return new Uint8Array(readFileSync(`${FIXTURE_DIR}/${name}`))
@@ -87,5 +88,13 @@ describe.skipIf(!fixturesPresent)('export against generated fixtures', () => {
     const state = annotateEveryPage(createEditorState('edge-whitespace-text.pdf', 1), 'BLANK')
     const output = await exportEditedPdf(bytes, state.present)
     expect((await PDFDocument.load(output)).getPageCount()).toBe(1)
+  })
+
+  it.skipIf(!encryptedPresent)('refuses an encrypted document with a human explanation', async () => {
+    const bytes = fixtureBytes('edge-encrypted.pdf')
+    const state = annotateEveryPage(createEditorState('edge-encrypted.pdf', 2), 'NOTE')
+    await expect(exportEditedPdf(bytes, state.present)).rejects.toThrow(/encrypted/)
+    // The refusal is a clear sentence, never pdf-lib's internal API hint.
+    await expect(exportEditedPdf(bytes, state.present)).rejects.not.toThrow(/ignoreEncryption/)
   })
 })

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useModalDialog } from './useModalDialog'
 
 export type MarkScope = 'current' | 'all'
 export type PageNumberFormat = 'number' | 'page-number' | 'page-of-total'
@@ -14,62 +15,23 @@ interface DocumentMarksDialogProps {
   onApply: (request: DocumentMarkRequest) => void
 }
 
-const FOCUSABLE = 'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-
 /** Generates new, editable text overlays. It never alters existing PDF content. */
-export function DocumentMarksDialog({ open, onClose, onApply }: DocumentMarksDialogProps) {
-  const dialogRef = useRef<HTMLElement>(null)
+export function DocumentMarksDialog({ open, ...handlers }: DocumentMarksDialogProps) {
+  // Mounted only while open: every open starts from a fresh watermark tab, and
+  // `useModalDialog` arms and disarms with the dialog itself.
+  if (!open) return null
+  return <DocumentMarksDialogContent {...handlers} />
+}
+
+function DocumentMarksDialogContent({ onClose, onApply }: Omit<DocumentMarksDialogProps, 'open'>) {
   const watermarkInputRef = useRef<HTMLInputElement>(null)
-  const openerRef = useRef<HTMLElement | null>(null)
-  const onCloseRef = useRef(onClose)
+  const dialogRef = useModalDialog<HTMLElement>({ onEscape: onClose, initialFocusRef: watermarkInputRef })
   const [mode, setMode] = useState<'watermark' | 'pageNumbers'>('watermark')
   const [watermarkText, setWatermarkText] = useState('CONFIDENTIAL')
   const [scope, setScope] = useState<MarkScope>('all')
   const [opacity, setOpacity] = useState(0.18)
   const [format, setFormat] = useState<PageNumberFormat>('page-number')
   const [position, setPosition] = useState<PageNumberPosition>('bottom-center')
-
-  onCloseRef.current = onClose
-
-  useEffect(() => {
-    if (!open) return
-    openerRef.current = document.activeElement as HTMLElement | null
-    setMode('watermark')
-    queueMicrotask(() => watermarkInputRef.current?.focus())
-    return () => openerRef.current?.focus()
-  }, [open])
-
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      event.stopPropagation()
-      onCloseRef.current()
-      return
-    }
-    if (event.key !== 'Tab') return
-    const dialog = dialogRef.current
-    if (!dialog) return
-    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE))
-      .filter((element) => !element.hasAttribute('disabled'))
-    if (focusable.length === 0) return
-    const first = focusable[0]
-    const last = focusable[focusable.length - 1]
-    if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault()
-      first.focus()
-    } else if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault()
-      last.focus()
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [open, handleKeyDown])
-
-  if (!open) return null
 
   const cleanWatermark = watermarkText.trim()
   const watermarkValid = cleanWatermark.length > 0 && cleanWatermark.length <= 80

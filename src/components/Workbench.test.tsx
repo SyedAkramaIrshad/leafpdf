@@ -12,7 +12,7 @@ import { SignatureDialog } from './SignatureDialog'
 import { ToolRail } from './ToolRail'
 import type { EditorPage, TextAnnotation } from '../model/editor'
 
-const editorPage: EditorPage = { id: 'page-1', sourceIndex: 0, rotation: 0 }
+const editorPage: EditorPage = { id: 'page-1', kind: 'original', sourceIndex: 0, rotation: 0 }
 
 function stubPdf(overrides: {
   getTextContent?: ReturnType<typeof vi.fn>
@@ -45,9 +45,12 @@ function renderPageCanvas(
     <PageCanvas
       pdf={pdf}
       page={editorPage}
+      pageNumber={1}
+      externalDocuments={new Map()}
       annotations={[]}
       activeTool={activeTool}
       selectedAnnotationId={null}
+      formValues={{}}
       zoom={zoom}
       dispatch={dispatch}
     />,
@@ -134,11 +137,23 @@ describe('PDF editor controls', () => {
     })
     const pages = Array.from({ length: 30 }, (_, index) => ({
       id: `page-${index + 1}`,
+      kind: 'original' as const,
       sourceIndex: index,
       rotation: 0 as const,
     }))
 
-    render(<PageRail pdf={{ getPage } as unknown as PDFDocumentProxy} pages={pages} selectedPageId="page-1" dispatch={vi.fn()} />)
+    render(
+      <PageRail
+        pdf={{ getPage } as unknown as PDFDocumentProxy}
+        pages={pages}
+        selectedPageId="page-1"
+        externalDocuments={new Map()}
+        onInsertBlankPage={vi.fn()}
+        onInsertPdf={vi.fn()}
+        onSelectPage={vi.fn()}
+        dispatch={vi.fn()}
+      />,
+    )
     await waitFor(() => expect(getPage).toHaveBeenCalledTimes(1))
     expect(getPage).toHaveBeenCalledWith(1)
     vi.unstubAllGlobals()
@@ -147,6 +162,7 @@ describe('PDF editor controls', () => {
 
 describe('ExportCompatibilityDialog', () => {
   const features = {
+    isEncrypted: false,
     hasMetadata: true,
     hasOutlines: true,
     hasAttachments: false,
@@ -361,9 +377,12 @@ describe('PageCanvas render lifecycle', () => {
         pdf={pdf}
         page={editorPage}
         annotations={[]}
+        pageNumber={1}
+        externalDocuments={new Map()}
         activeTool="select"
         selectedAnnotationId={null}
         zoom={1.5}
+        formValues={{}}
         dispatch={vi.fn()}
       />,
     )

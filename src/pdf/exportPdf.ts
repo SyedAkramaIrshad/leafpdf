@@ -1,7 +1,8 @@
-import { LineCapStyle, PDFDocument, PDFName, PDFRef, degrees, rgb, type PDFPage } from 'pdf-lib'
-import { textStyleOf, type Annotation, type EditorDocument, type EditorPage } from '../model/editor'
+import { Encodings } from '@pdf-lib/standard-fonts'
+import { LineCapStyle, PDFCheckBox, PDFDocument, PDFDropdown, PDFName, PDFRadioGroup, PDFRef, PDFTextField, degrees, rgb, type PDFPage } from 'pdf-lib'
+import { hasRedactions, textStyleOf, type Annotation, type EditorDocument, type EditorPage, type FormValue } from '../model/editor'
 import { createFontRegistry, type FontRegistry } from './fontRegistry'
-import { analyzeLoadedPdf, chooseExportStrategy, describeFeatures, type SourcePdfFeatures } from './sourceAnalysis'
+import { analyzeLoadedPdf, chooseExportStrategy, describeFeatures, isEncryptedPdfError, type SourcePdfFeatures } from './sourceAnalysis'
 
 interface Point {
   x: number
@@ -158,6 +159,19 @@ async function paintAnnotation(
     })
     return
   }
+  if (annotation.kind === 'redaction') {
+    // Only reached for blank pages, which have no source content to remove;
+    // source-backed pages with redactions are replaced by bitmaps instead.
+    page.drawRectangle({
+      x: metrics.anchor.x,
+      y: metrics.anchor.y,
+      width: metrics.drawWidth,
+      height: metrics.drawHeight,
+      color: rgb(0, 0, 0),
+      rotate: angle,
+    })
+    return
+  }
   if (annotation.kind === 'ink') {
     for (let index = 1; index < annotation.points.length; index += 1) {
       const previous = annotation.points[index - 1]
@@ -255,8 +269,34 @@ export interface ExportOptions {
    * can remove or invalidate outlines, forms, attachments, or a signature.
    */
   allowCompatibilityCopy?: boolean
+  /** Bytes of every inserted PDF the document references, keyed by document id. */
+  insertedDocuments?: Map<string, Uint8Array>
+  /** Burned-in bitmaps for redacted pages, keyed by page id. See redactionRaster. */
+  rasterizedPages?: Map<string, { width: number; height: number; png: ArrayBuffer }>
   /** Called after each page is painted, so a long export can show progress. */
   onProgress?: (completedPages: number, totalPages: number) => void
+}
+
+/**
+ * Parse each inserted PDF once, on demand. A document that only reorders its
+ * original pages never touches these bytes.
+ */
+class InsertedDocuments {
+  private readonly parsed = new Map<string, Promise<PDFDocument>>()
+
+  constructor(private readonly bytes: Map<string, Uint8Array>) {}
+
+  get(id: string): Promise<PDFDocument> {
+    const cached = this.parsed.get(id)
+    if (cached) return cached
+    const source = this.bytes.get(id)
+    if (!source) {
+      return Promise.reject(new Error('An inserted PDF is no longer available. Remove its pages and export again.'))
+    }
+    const loading = PDFDocument.load(source.slice(), { ignoreEncryption: false, updateMetadata: false })
+    this.parsed.set(id, loading)
+    return loading
+  }
 }
 
 export class CompatibilityConfirmationRequired extends Error {
@@ -289,6 +329,57 @@ async function paintPage(
 }
 
 /**
+ * Form-field appearances are regenerated with the standard Helvetica pdf-lib
+ * uses, which stores WinAnsi text only. Refusing here, by name, beats an export
+ * that silently drops what the user typed into a field.
+ */
+function fieldValueStorable(text: string): boolean {
+  return Array.from(text, (character) => character.codePointAt(0) ?? 0)
+    .every((codePoint) => Encodings.WinAnsi.canEncodeUnicodeCodePoint(codePoint))
+}
+
+/**
+ * Write the user's filled values into the source PDF's own AcroForm fields, so
+ * the exported file carries real, machine-readable field values — not pictures
+ * of text sitting over empty fields. Only reached on the preserve path: a
+ * rebuild cannot carry the form at all, which the compatibility dialog states.
+ */
+function applyFormValues(source: PDFDocument, values: Record<string, FormValue>) {
+  const entries = Object.entries(values)
+  if (entries.length === 0) return
+  // Never call getForm() on an empty entry list: pdf-lib creates a missing
+  // AcroForm dictionary on access, which would mutate a formless document.
+  const form = source.getForm()
+  const failures: string[] = []
+  for (const [name, value] of entries) {
+    try {
+      const field = form.getField(name)
+      if (field instanceof PDFTextField) {
+        const text = String(value)
+        if (!fieldValueStorable(text)) {
+          failures.push(`"${name}": this form's fonts can only store Latin text`)
+          continue
+        }
+        field.setText(text)
+      } else if (field instanceof PDFCheckBox) {
+        if (value === true) field.check()
+        else field.uncheck()
+      } else if (field instanceof PDFRadioGroup || field instanceof PDFDropdown) {
+        field.select(String(value))
+      } else {
+        failures.push(`"${name}": this field type cannot be filled`)
+      }
+    } catch (error) {
+      failures.push(`"${name}": ${error instanceof Error ? error.message : 'could not be filled'}`)
+    }
+  }
+  if (failures.length > 0) {
+    throw new Error(`Some form fields could not be filled — ${failures.join('; ')}. `
+      + 'Change those fields back, then export again.')
+  }
+}
+
+/**
  * Mutate the source document in place. Metadata, outlines, attachments, form
  * fields, and every other catalog feature stay exactly as they were because the
  * catalog is never rebuilt.
@@ -296,22 +387,47 @@ async function paintPage(
 async function exportByPreserving(
   source: PDFDocument,
   document: EditorDocument,
+  inserted: InsertedDocuments,
   onProgress?: ExportOptions['onProgress'],
 ): Promise<Uint8Array> {
+  // Belt and braces: the strategy chooser never routes a redacted document
+  // here, because mutating in place cannot remove content that other objects
+  // still reference. Failing beats silently keeping "removed" content.
+  if (hasRedactions(document)) {
+    throw new Error('Internal error: a redacted document must be exported as a rebuilt copy.')
+  }
   const fonts = await createFontRegistry(source)
-  const keptSourceIndexes = new Set(document.pages.map((page) => page.sourceIndex))
+  // Page references taken before any removal or insertion: they stay valid while
+  // the page tree changes around them, unlike indexes.
+  const originalPages = source.getPages()
+  const keptSourceIndexes = new Set(
+    document.pages.flatMap((page) => page.kind === 'original' ? [page.sourceIndex] : []),
+  )
 
+  // Remove from the highest index down so earlier indexes stay valid.
+  for (let index = originalPages.length - 1; index >= 0; index -= 1) {
+    if (!keptSourceIndexes.has(index)) source.removePage(index)
+  }
+
+  // The kept originals now sit in ascending order — the precondition of this
+  // path — so walking the document order and inserting the added pages at the
+  // running position lines everything up.
   for (const [index, editorPage] of document.pages.entries()) {
-    const page = source.getPage(editorPage.sourceIndex)
+    let page: PDFPage
+    if (editorPage.kind === 'original') {
+      page = originalPages[editorPage.sourceIndex]
+    } else if (editorPage.kind === 'blank') {
+      page = source.insertPage(index, [editorPage.width, editorPage.height])
+    } else {
+      const donor = await inserted.get(editorPage.documentId)
+      const [copied] = await source.copyPages(donor, [editorPage.sourceIndex])
+      page = source.insertPage(index, copied)
+    }
     await paintPage(source, page, editorPage, document, fonts)
     onProgress?.(index + 1, document.pages.length)
   }
 
-  // Remove from the highest index down so earlier indexes stay valid.
-  const originalCount = source.getPageCount()
-  for (let index = originalCount - 1; index >= 0; index -= 1) {
-    if (!keptSourceIndexes.has(index)) source.removePage(index)
-  }
+  applyFormValues(source, document.formValues)
 
   source.setProducer('LeafPDF')
   source.setModificationDate(new Date())
@@ -326,14 +442,48 @@ async function exportByPreserving(
 async function exportByRebuilding(
   source: PDFDocument,
   document: EditorDocument,
+  inserted: InsertedDocuments,
+  rasterized: Map<string, { width: number; height: number; png: ArrayBuffer }>,
   onProgress?: ExportOptions['onProgress'],
 ): Promise<Uint8Array> {
   const output = await PDFDocument.create()
   const fonts = await createFontRegistry(output)
 
   for (const [index, editorPage] of document.pages.entries()) {
-    const [page] = await output.copyPages(source, [editorPage.sourceIndex])
-    output.addPage(page)
+    const pageAnnotations = document.annotations.filter((annotation) => annotation.pageId === editorPage.id)
+    const redacted = pageAnnotations.some((annotation) => annotation.kind === 'redaction')
+
+    if (redacted && editorPage.kind !== 'blank') {
+      // The redacted page is never copied: the output gets a fresh page holding
+      // only the burned-in bitmap, so the covered content has no object in the
+      // exported file to be recovered from. Refusing a missing bitmap is the
+      // safety invariant — falling back to the original page would leak it.
+      const raster = rasterized.get(editorPage.id)
+      if (!raster) {
+        throw new Error('A redacted page was not rasterized, so the export was stopped before anything could leak.')
+      }
+      const image = await output.embedPng(raster.png)
+      const page = output.addPage([raster.width, raster.height])
+      page.drawImage(image, { x: 0, y: 0, width: raster.width, height: raster.height })
+      // The bitmap is already at display orientation; annotations therefore
+      // paint against an unrotated page.
+      for (const annotation of pageAnnotations) {
+        if (annotation.kind === 'redaction') continue
+        await paintAnnotation(output, page, annotation, 0, fonts)
+      }
+      onProgress?.(index + 1, document.pages.length)
+      continue
+    }
+
+    let page: PDFPage
+    if (editorPage.kind === 'blank') {
+      page = output.addPage([editorPage.width, editorPage.height])
+    } else {
+      const donor = editorPage.kind === 'original' ? source : await inserted.get(editorPage.documentId)
+      const [copied] = await output.copyPages(donor, [editorPage.sourceIndex])
+      output.addPage(copied)
+      page = copied
+    }
     await paintPage(output, page, editorPage, document, fonts)
     onProgress?.(index + 1, document.pages.length)
   }
@@ -378,7 +528,17 @@ export async function exportEditedPdf(
   //
   // `updateMetadata: false` keeps pdf-lib from stamping its own producer and
   // modification date over the source values before we decide what to keep.
-  const source = await PDFDocument.load(sourceBytes.slice(), { ignoreEncryption: false, updateMetadata: false })
+  let source: PDFDocument
+  try {
+    source = await PDFDocument.load(sourceBytes.slice(), { ignoreEncryption: false, updateMetadata: false })
+  } catch (error) {
+    if (isEncryptedPdfError(error)) {
+      // The open-time banner already said so; this backstop keeps the message
+      // human if an export is somehow attempted anyway.
+      throw new Error('This PDF is encrypted (even a permissions-only lock counts), and LeafPDF cannot decrypt it to write an edited copy.')
+    }
+    throw error
+  }
   const features = analyzeLoadedPdf(source)
   // The source page count is what makes a deletion distinguishable from an untouched
   // document; without it, deleting the last page reads as "nothing changed".
@@ -387,9 +547,10 @@ export async function exportEditedPdf(
     throw new CompatibilityConfirmationRequired(features)
   }
 
+  const inserted = new InsertedDocuments(options.insertedDocuments ?? new Map())
   return strategy === 'preserve'
-    ? exportByPreserving(source, document, options.onProgress)
-    : exportByRebuilding(source, document, options.onProgress)
+    ? exportByPreserving(source, document, inserted, options.onProgress)
+    : exportByRebuilding(source, document, inserted, options.rasterizedPages ?? new Map(), options.onProgress)
 }
 
 export { exportedFileName } from './exportNaming'

@@ -1,7 +1,30 @@
 import { describe, expect, it } from 'vitest'
-import { PDFDocument, PDFName, PDFString, degrees } from 'pdf-lib'
+import * as pako from 'pako'
+import { PDFDocument, PDFName, PDFRawStream, PDFString, degrees } from 'pdf-lib'
 import { createEditorState, editorReducer } from '../model/editor'
 import { exportEditedPdf, exportedFileName } from './exportPdf'
+
+/**
+ * True when any byte run of the PDF carries `marker`, in either of the two
+ * encodings pdf-lib emits text with: a literal string or a hex string. Content
+ * streams are FlateDecode-compressed, so every stream is inflated before the
+ * search — a raw byte scan alone cannot prove text absent.
+ */
+async function streamsContain(bytes: Uint8Array, marker: string): Promise<boolean> {
+  const document = await PDFDocument.load(bytes.slice())
+  let text = new TextDecoder('latin1').decode(bytes)
+  for (const [, object] of document.context.enumerateIndirectObjects()) {
+    if (!(object instanceof PDFRawStream)) continue
+    const raw = object.getContents()
+    try {
+      text += new TextDecoder('latin1').decode(pako.inflate(raw))
+    } catch {
+      text += new TextDecoder('latin1').decode(raw)
+    }
+  }
+  const hex = Array.from(marker, (character) => character.charCodeAt(0).toString(16).padStart(2, '0')).join('')
+  return text.includes(marker) || text.toLowerCase().includes(hex)
+}
 
 describe('exportEditedPdf', () => {
   it('exports shapes and fill symbols as real page content', async () => {
@@ -66,6 +89,258 @@ describe('exportEditedPdf', () => {
     expect(reopened.getPage(0).getSize()).toEqual({ width: 500, height: 400 })
     expect(reopened.getPage(0).getRotation().angle).toBe(90)
     expect(output.byteLength).toBeGreaterThan(sourceBytes.byteLength)
+  })
+
+  it('removes redacted page content from the exported bytes entirely', async () => {
+    const source = await PDFDocument.create()
+    source.addPage([400, 500]).drawText('CONFIDENTIAL-MARKER-XYZ')
+    source.addPage([400, 500]).drawText('SECOND-PAGE-STAYS')
+    const sourceBytes = await source.save()
+    // The marker must be provably present in the input, or absence proves nothing.
+    expect(await streamsContain(sourceBytes, 'CONFIDENTIAL-MARKER-XYZ')).toBe(true)
+
+    let state = createEditorState('secret.pdf', 2)
+    state = editorReducer(state, {
+      type: 'addAnnotation',
+      annotation: { id: 'redact-1', pageId: 'page-1', kind: 'redaction', x: 0.1, y: 0.1, width: 0.5, height: 0.2 },
+    })
+
+    // A 1x1 PNG stands in for the burned bitmap: the safety property under test
+    // is that the original page objects never reach the output, not image fidelity.
+    const png = Uint8Array.from(atob(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    ), (character) => character.charCodeAt(0)).buffer as ArrayBuffer
+
+    const output = await exportEditedPdf(sourceBytes, state.present, {
+      rasterizedPages: new Map([['page-1', { width: 400, height: 500, png }]]),
+    })
+    expect(await streamsContain(output, 'CONFIDENTIAL-MARKER-XYZ')).toBe(false)
+    expect(await streamsContain(output, 'SECOND-PAGE-STAYS')).toBe(true)
+    const reopened = await PDFDocument.load(output)
+    expect(reopened.getPageCount()).toBe(2)
+  })
+
+  it('refuses to export a redacted page whose bitmap is missing', async () => {
+    const source = await PDFDocument.create()
+    source.addPage([400, 500]).drawText('CONFIDENTIAL-MARKER-XYZ')
+    const sourceBytes = await source.save()
+
+    let state = createEditorState('secret.pdf', 1)
+    state = editorReducer(state, {
+      type: 'addAnnotation',
+      annotation: { id: 'redact-1', pageId: 'page-1', kind: 'redaction', x: 0.1, y: 0.1, width: 0.5, height: 0.2 },
+    })
+    // No rasterizedPages supplied: the export must stop, never fall back to
+    // copying the original page.
+    await expect(exportEditedPdf(sourceBytes, state.present)).rejects.toThrow(/redacted page was not rasterized/)
+  })
+
+  it('inserts blank pages in place while keeping the source catalog', async () => {
+    const source = await PDFDocument.create()
+    source.addPage([400, 500]).drawText('First')
+    source.addPage([400, 500]).drawText('Second')
+    source.setTitle('Preserve me')
+    const sourceBytes = await source.save()
+
+    let state = createEditorState('doc.pdf', 2)
+    state = editorReducer(state, {
+      type: 'insertPages',
+      afterPageId: 'page-1',
+      pages: [{ id: 'page-blank', kind: 'blank', width: 300, height: 200, rotation: 0 }],
+    })
+    state = editorReducer(state, {
+      type: 'addAnnotation',
+      annotation: {
+        id: 'text-1', pageId: 'page-blank', kind: 'text', x: 0.1, y: 0.1,
+        width: 0.6, height: 0.2, text: 'On the new page', color: '#182026', fontSize: 14,
+      },
+    })
+
+    const output = await exportEditedPdf(sourceBytes, state.present)
+    const reopened = await PDFDocument.load(output)
+    expect(reopened.getPageCount()).toBe(3)
+    expect(reopened.getPage(1).getSize()).toEqual({ width: 300, height: 200 })
+    // In-place insertion keeps the catalog, so the title survives.
+    expect(reopened.getTitle()).toBe('Preserve me')
+  })
+
+  it('merges pages copied from an inserted PDF', async () => {
+    const source = await PDFDocument.create()
+    source.addPage([400, 500])
+    const sourceBytes = await source.save()
+
+    const donor = await PDFDocument.create()
+    donor.addPage([222, 333]).drawText('Donor one')
+    donor.addPage([250, 350]).drawText('Donor two')
+    const donorBytes = await donor.save()
+
+    let state = createEditorState('doc.pdf', 1)
+    state = editorReducer(state, {
+      type: 'insertPages',
+      afterPageId: 'page-1',
+      pages: [0, 1].map((sourceIndex) => ({
+        id: `page-donor-${sourceIndex}`,
+        kind: 'external',
+        documentId: 'inserted-1',
+        sourceIndex,
+        rotation: 0,
+      })),
+    })
+
+    const output = await exportEditedPdf(sourceBytes, state.present, {
+      insertedDocuments: new Map([['inserted-1', donorBytes]]),
+    })
+    const reopened = await PDFDocument.load(output)
+    expect(reopened.getPageCount()).toBe(3)
+    expect(reopened.getPage(1).getSize()).toEqual({ width: 222, height: 333 })
+    expect(reopened.getPage(2).getSize()).toEqual({ width: 250, height: 350 })
+  })
+
+  it('exports a document whose original pages were all deleted', async () => {
+    const source = await PDFDocument.create()
+    source.addPage([400, 500]).drawText('Original to be deleted')
+    const sourceBytes = await source.save()
+
+    const donor = await PDFDocument.create()
+    donor.addPage([300, 300]).drawText('Inserted survivor')
+    const donorBytes = await donor.save()
+
+    let state = createEditorState('replaced.pdf', 1)
+    state = editorReducer(state, {
+      type: 'insertPages',
+      afterPageId: 'page-1',
+      pages: [{ id: 'page-donor', kind: 'external', documentId: 'inserted-1', sourceIndex: 0, rotation: 0 }],
+    })
+    // Two pages exist, so the last-page guard allows deleting the original.
+    state = editorReducer(state, { type: 'removePage', pageId: 'page-1' })
+    expect(state.present.pages.map(({ id }) => id)).toEqual(['page-donor'])
+
+    const output = await exportEditedPdf(sourceBytes, state.present, {
+      insertedDocuments: new Map([['inserted-1', donorBytes]]),
+    })
+    const reopened = await PDFDocument.load(output)
+    expect(reopened.getPageCount()).toBe(1)
+    expect(reopened.getPage(0).getSize()).toEqual({ width: 300, height: 300 })
+  })
+
+  it('redacts a page that carries source rotation and user rotation', async () => {
+    const source = await PDFDocument.create()
+    const page = source.addPage([400, 500])
+    page.drawText('ROTATED-SECRET-MARKER')
+    page.setRotation(degrees(90))
+    const sourceBytes = await source.save()
+    expect(await streamsContain(sourceBytes, 'ROTATED-SECRET-MARKER')).toBe(true)
+
+    let state = createEditorState('rotated.pdf', 1)
+    state = editorReducer(state, { type: 'rotatePage', pageId: 'page-1', degrees: 90 })
+    state = editorReducer(state, {
+      type: 'addAnnotation',
+      annotation: { id: 'redact-1', pageId: 'page-1', kind: 'redaction', x: 0, y: 0, width: 1, height: 1 },
+    })
+    state = editorReducer(state, {
+      type: 'addAnnotation',
+      annotation: {
+        id: 'note-1', pageId: 'page-1', kind: 'text', x: 0.1, y: 0.1,
+        width: 0.4, height: 0.1, text: 'On top of the raster', color: '#ffffff', fontSize: 12,
+      },
+    })
+
+    const png = Uint8Array.from(atob(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    ), (character) => character.charCodeAt(0)).buffer as ArrayBuffer
+    // Source /Rotate 90 + user 90 = upside down, still 400x500 in raw size; the
+    // raster is taken at display orientation, so its page is 400x500 unrotated.
+    const output = await exportEditedPdf(sourceBytes, state.present, {
+      rasterizedPages: new Map([['page-1', { width: 400, height: 500, png }]]),
+    })
+    expect(await streamsContain(output, 'ROTATED-SECRET-MARKER')).toBe(false)
+    const reopened = await PDFDocument.load(output)
+    expect(reopened.getPage(0).getRotation().angle % 360).toBe(0)
+    expect(reopened.getPage(0).getSize()).toEqual({ width: 400, height: 500 })
+  })
+
+  it('keeps an inserted page\'s own rotation and adds the user\'s on top', async () => {
+    const source = await PDFDocument.create()
+    source.addPage([400, 500])
+    const sourceBytes = await source.save()
+
+    const donor = await PDFDocument.create()
+    const donorPage = donor.addPage([300, 200])
+    donorPage.setRotation(degrees(90))
+    const donorBytes = await donor.save()
+
+    let state = createEditorState('rotations.pdf', 1)
+    state = editorReducer(state, {
+      type: 'insertPages',
+      afterPageId: 'page-1',
+      pages: [{ id: 'page-donor', kind: 'external', documentId: 'd', sourceIndex: 0, rotation: 0 }],
+    })
+    state = editorReducer(state, { type: 'rotatePage', pageId: 'page-donor', degrees: 90 })
+
+    const output = await exportEditedPdf(sourceBytes, state.present, {
+      insertedDocuments: new Map([['d', donorBytes]]),
+    })
+    const reopened = await PDFDocument.load(output)
+    expect(reopened.getPageCount()).toBe(2)
+    // Donor /Rotate 90 + user 90 must compose to 180.
+    expect(reopened.getPage(1).getRotation().angle % 360).toBe(180)
+  })
+
+  it('fails clearly when an inserted PDF is missing at export time', async () => {
+    const source = await PDFDocument.create()
+    source.addPage([400, 500])
+    const sourceBytes = await source.save()
+
+    let state = createEditorState('doc.pdf', 1)
+    state = editorReducer(state, {
+      type: 'insertPages',
+      afterPageId: 'page-1',
+      pages: [{ id: 'page-x', kind: 'external', documentId: 'gone', sourceIndex: 0, rotation: 0 }],
+    })
+    await expect(exportEditedPdf(sourceBytes, state.present)).rejects.toThrow(/no longer available/)
+  })
+
+  it('writes filled values into the real AcroForm fields', async () => {
+    const source = await PDFDocument.create()
+    const page = source.addPage([400, 500])
+    const form = source.getForm()
+    const nameField = form.createTextField('owner.name')
+    nameField.addToPage(page, { x: 40, y: 400, width: 200, height: 24 })
+    const agree = form.createCheckBox('owner.agrees')
+    agree.addToPage(page, { x: 40, y: 360, width: 18, height: 18 })
+    const colour = form.createDropdown('owner.colour')
+    colour.addOptions(['Green', 'Blue'])
+    colour.addToPage(page, { x: 40, y: 320, width: 120, height: 22 })
+    const sourceBytes = await source.save()
+
+    let state = createEditorState('form.pdf', 1)
+    state = editorReducer(state, { type: 'setFormValue', fieldName: 'owner.name', value: 'Syed Akrama' })
+    state = editorReducer(state, { type: 'setFormValue', fieldName: 'owner.agrees', value: true })
+    state = editorReducer(state, { type: 'setFormValue', fieldName: 'owner.colour', value: 'Blue' })
+
+    const output = await exportEditedPdf(sourceBytes, state.present)
+    const reopened = await PDFDocument.load(output)
+    const reopenedForm = reopened.getForm()
+    expect(reopenedForm.getTextField('owner.name').getText()).toBe('Syed Akrama')
+    expect(reopenedForm.getCheckBox('owner.agrees').isChecked()).toBe(true)
+    expect(reopenedForm.getDropdown('owner.colour').getSelected()).toEqual(['Blue'])
+  })
+
+  it('names the field when a value cannot be stored, instead of dropping it', async () => {
+    const source = await PDFDocument.create()
+    const page = source.addPage([400, 500])
+    const form = source.getForm()
+    form.createTextField('owner.name').addToPage(page, { x: 40, y: 400, width: 200, height: 24 })
+    const sourceBytes = await source.save()
+
+    let state = createEditorState('form.pdf', 1)
+    // Standard form fonts store WinAnsi only; Arabic must refuse by name, not vanish.
+    state = editorReducer(state, { type: 'setFormValue', fieldName: 'owner.name', value: 'مرحبا' })
+    await expect(exportEditedPdf(sourceBytes, state.present)).rejects.toThrow(/owner\.name/)
+
+    let missing = createEditorState('form.pdf', 1)
+    missing = editorReducer(missing, { type: 'setFormValue', fieldName: 'no.such.field', value: 'x' })
+    await expect(exportEditedPdf(sourceBytes, missing.present)).rejects.toThrow(/no\.such\.field/)
   })
 
   it('preserves source metadata when no page is reordered', async () => {

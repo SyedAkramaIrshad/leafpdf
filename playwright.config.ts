@@ -1,5 +1,13 @@
 import { defineConfig } from '@playwright/test'
 
+/**
+ * `LEAFPDF_E2E_SERVER=preview` runs the whole suite against the production
+ * build served by `vite preview` — the artifact users actually get, with the
+ * Content-Security-Policy meta tag active. The default dev server keeps local
+ * iteration fast; CI runs both.
+ */
+const preview = process.env.LEAFPDF_E2E_SERVER === 'preview'
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
@@ -17,8 +25,12 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 4173',
+    command: preview
+      ? 'npm run build && npx vite preview --host 127.0.0.1 --port 4173 --strictPort'
+      : 'npm run dev -- --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173',
-    reuseExistingServer: true,
+    // Never reuse in preview mode: a leftover dev server on the same port would
+    // silently test the wrong artifact, without the CSP.
+    reuseExistingServer: !preview,
   },
 })

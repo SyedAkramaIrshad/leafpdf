@@ -54,11 +54,16 @@ export async function deleteSignature(id: string): Promise<void> {
 
 /** Save an annotation document only; this function intentionally accepts no PDF data. */
 export async function saveSession(key: string, document: EditorDocument): Promise<void> {
-  if (!nonEmptyString(key) || !isEditorDocument(document)) {
+  if (!nonEmptyString(key) || !isRecord(document) || !Array.isArray(document.pages) || !Array.isArray(document.annotations)) {
     throw new Error('Invalid local recovery document.')
   }
-  // Pick known fields so future callers cannot accidentally include source bytes.
+  // Strip before validating: a live document may hold inserted-PDF pages, which
+  // are legitimate in memory but can never be restored from storage. Picking
+  // known fields also keeps future callers from accidentally including bytes.
   const safeDocument = persistedDocument(document)
+  if (!isEditorDocument(safeDocument)) {
+    throw new Error('Invalid local recovery document.')
+  }
   const result = await put(SESSIONS_STORE, { key, document: safeDocument })
   if (result === unavailable) throw new Error('Local browser storage is unavailable.')
 }
@@ -219,20 +224,51 @@ function isEditorDocument(value: unknown): value is EditorDocument {
   if (!isRecord(value) || !nonEmptyString(value.fileName) || !Array.isArray(value.pages) || !Array.isArray(value.annotations)) {
     return false
   }
-  if (!hasOnly(value, [], ['fileName', 'pages', 'annotations'])) return false
+  // `formValues` is optional on read so records saved before form filling
+  // existed still restore; `persistedDocument` always writes it.
+  if (!hasOnly(value, [], ['fileName', 'pages', 'annotations', 'formValues'])) return false
+  if (value.formValues !== undefined && !isFormValues(value.formValues)) return false
   if (!value.pages.every(isEditorPage) || value.pages.length === 0) return false
   const pageIds = new Set(value.pages.map((page) => page.id))
   return pageIds.size === value.pages.length && value.annotations.every((annotation) => isAnnotation(annotation, pageIds))
 }
 
+function isFormValues(value: unknown): value is Record<string, string | boolean> {
+  if (!isRecord(value)) return false
+  return Object.entries(value).every(([key, entry]) =>
+    key.length > 0 && (typeof entry === 'string' || typeof entry === 'boolean'))
+}
+
 function isEditorPage(value: unknown): value is EditorPage {
-  return isRecord(value)
-    && nonEmptyString(value.id)
-    && typeof value.sourceIndex === 'number'
-    && Number.isInteger(value.sourceIndex)
-    && value.sourceIndex >= 0
-    && (value.rotation === 0 || value.rotation === 90 || value.rotation === 180 || value.rotation === 270)
-    && Object.keys(value).every((key) => key === 'id' || key === 'sourceIndex' || key === 'rotation')
+  if (!isRecord(value) || !nonEmptyString(value.id)) return false
+  if (value.rotation !== 0 && value.rotation !== 90 && value.rotation !== 180 && value.rotation !== 270) return false
+  // Records written before page kinds existed carry no `kind`; they are
+  // original pages and are normalized on load by `normalizedPage`.
+  if (value.kind === undefined || value.kind === 'original') {
+    return typeof value.sourceIndex === 'number'
+      && Number.isInteger(value.sourceIndex)
+      && value.sourceIndex >= 0
+      && hasOnly(value, [], ['id', 'kind', 'sourceIndex', 'rotation'])
+  }
+  if (value.kind === 'blank') {
+    return positiveNumber(value.width)
+      && positiveNumber(value.height)
+      && value.width <= 20000
+      && value.height <= 20000
+      && hasOnly(value, [], ['id', 'kind', 'width', 'height', 'rotation'])
+  }
+  // External pages reference session-only files that cannot be restored, so a
+  // stored record must never contain them; `persistedDocument` strips them.
+  return false
+}
+
+/** Give legacy pages (saved before page kinds existed) their explicit kind. */
+function normalizedPage(page: EditorPage): EditorPage {
+  if (page.kind === undefined) {
+    const legacy = page as { id: string; sourceIndex: number; rotation: EditorPage['rotation'] }
+    return { id: legacy.id, kind: 'original', sourceIndex: legacy.sourceIndex, rotation: legacy.rotation }
+  }
+  return page
 }
 
 function isAnnotation(value: unknown, pageIds: Set<string>): value is Annotation {
@@ -252,6 +288,8 @@ function isAnnotation(value: unknown, pageIds: Set<string>): value is Annotation
       return nonEmptyString(value.color)
         && numberBetween(value.opacity, 0, 1)
         && hasOnly(value, annotationBaseKeys, ['kind', 'color', 'opacity'])
+    case 'redaction':
+      return hasOnly(value, annotationBaseKeys, ['kind'])
     case 'ink':
       return Array.isArray(value.points)
         && value.points.every(isNormalizedPoint)
@@ -306,10 +344,18 @@ function imageDataMatchesMime(dataUrl: unknown, mimeType: unknown): boolean {
 }
 
 function persistedDocument(document: EditorDocument): EditorDocument {
+  // Pages inserted from other PDFs reference session-only File handles that no
+  // recovery record can bring back, so they and their annotations are dropped
+  // rather than stored as pages that could never render again.
+  const pages = document.pages
+    .filter((page) => page.kind !== 'external')
+    .map(normalizedPage)
+  const pageIds = new Set(pages.map((page) => page.id))
   return clone({
     fileName: document.fileName,
-    pages: document.pages,
-    annotations: document.annotations,
+    pages,
+    annotations: document.annotations.filter((annotation) => pageIds.has(annotation.pageId)),
+    formValues: document.formValues ?? {},
   })
 }
 
