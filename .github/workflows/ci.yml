@@ -37,6 +37,8 @@ jobs:
           python-version: '3.12'
       - run: npm ci
       - run: pip install reportlab pypdf
+      # The export verifier renders every page through Poppler's pdftoppm.
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils
       # Deterministic fixtures are generated, not committed; e2e opens them.
       - run: python3 scripts/create-fixture.py
       - run: python3 scripts/create-edge-fixtures.py

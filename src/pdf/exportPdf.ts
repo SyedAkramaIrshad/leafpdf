@@ -535,7 +535,10 @@ export async function exportEditedPdf(
     if (isEncryptedPdfError(error)) {
       // The open-time banner already said so; this backstop keeps the message
       // human if an export is somehow attempted anyway.
-      throw new Error('This PDF is encrypted (even a permissions-only lock counts), and LeafPDF cannot decrypt it to write an edited copy.')
+      throw new Error(
+        'This PDF is encrypted (even a permissions-only lock counts), and LeafPDF cannot decrypt it to write an edited copy.',
+        { cause: error },
+      )
     }
     throw error
   }
