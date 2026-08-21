@@ -40,6 +40,12 @@ function normalized(value: unknown): value is number {
   return finiteNumber(value) && value >= 0 && value <= 1
 }
 
+function ownedArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength)
+  copy.set(bytes)
+  return copy.buffer
+}
+
 function bytesToBase64(bytes: Uint8Array): string {
   const chunkSize = 0x8000
   let binary = ''
@@ -63,7 +69,7 @@ function base64ToBytes(value: string): Uint8Array {
 }
 
 async function sha256(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  const digest = await crypto.subtle.digest('SHA-256', ownedArrayBuffer(bytes))
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
@@ -199,7 +205,10 @@ async function verifySource(value: unknown): Promise<{ source: LeafProjectSource
   const source = value as unknown as LeafProjectSource
   return {
     source,
-    file: new File([bytes], source.name, { type: 'application/pdf', lastModified: source.lastModified }),
+    file: new File([ownedArrayBuffer(bytes)], source.name, {
+      type: 'application/pdf',
+      lastModified: source.lastModified,
+    }),
   }
 }
 
@@ -238,6 +247,38 @@ export function serializeLeafProject(project: LeafProject): Blob {
   return new Blob([JSON.stringify(project)], { type: LEAF_PROJECT_MIME })
 }
 
+export async function hydrateLeafProject(project: LeafProject): Promise<OpenedLeafProject> {
+  validateProject(project)
+  const verified = await Promise.all(project.sources.map(verifySource))
+  const ids = new Set<string>()
+  let totalBytes = 0
+  for (const { source } of verified) {
+    assert(!ids.has(source.id), `The project source id ${source.id} is duplicated.`)
+    ids.add(source.id)
+    totalBytes += source.size
+  }
+  assert(totalBytes <= PROJECT_LIMITS.maxProjectBytes, 'The project source PDFs exceed the project size limit.')
+  const primary = verified.find(({ source }) => source.id === project.primarySourceId)
+  assert(primary, 'The project primary PDF is missing.')
+
+  const referencedExternalIds = new Set(
+    project.document.pages.flatMap((page) => page.kind === 'external' ? [page.documentId] : []),
+  )
+  for (const id of referencedExternalIds) {
+    assert(ids.has(id), `The inserted PDF source ${id} is missing from the project.`)
+  }
+
+  return {
+    project: structuredClone(project),
+    primaryFile: primary.file,
+    insertedFiles: new Map(
+      verified
+        .filter(({ source }) => source.id !== project.primarySourceId)
+        .map(({ source, file }) => [source.id, file]),
+    ),
+  }
+}
+
 export async function openLeafProject(input: Blob | ArrayBuffer | string): Promise<OpenedLeafProject> {
   const byteLength = typeof input === 'string'
     ? new TextEncoder().encode(input).byteLength
@@ -257,35 +298,7 @@ export async function openLeafProject(input: Blob | ArrayBuffer | string): Promi
     throw new Error('This LeafPDF project is not valid JSON.')
   }
   validateProject(parsed)
-
-  const verified = await Promise.all(parsed.sources.map(verifySource))
-  const ids = new Set<string>()
-  let totalBytes = 0
-  for (const { source } of verified) {
-    assert(!ids.has(source.id), `The project source id ${source.id} is duplicated.`)
-    ids.add(source.id)
-    totalBytes += source.size
-  }
-  assert(totalBytes <= PROJECT_LIMITS.maxProjectBytes, 'The project source PDFs exceed the project size limit.')
-  const primary = verified.find(({ source }) => source.id === parsed.primarySourceId)
-  assert(primary, 'The project primary PDF is missing.')
-
-  const referencedExternalIds = new Set(
-    parsed.document.pages.flatMap((page) => page.kind === 'external' ? [page.documentId] : []),
-  )
-  for (const id of referencedExternalIds) {
-    assert(ids.has(id), `The inserted PDF source ${id} is missing from the project.`)
-  }
-
-  return {
-    project: structuredClone(parsed),
-    primaryFile: primary.file,
-    insertedFiles: new Map(
-      verified
-        .filter(({ source }) => source.id !== parsed.primarySourceId)
-        .map(({ source, file }) => [source.id, file]),
-    ),
-  }
+  return hydrateLeafProject(parsed)
 }
 
 export function projectFileName(sourceName: string): string {
