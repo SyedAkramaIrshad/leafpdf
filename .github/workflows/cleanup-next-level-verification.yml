@@ -1,0 +1,42 @@
+name: Clean next-level verification machinery
+
+on:
+  push:
+    branches: [feature/next-level-workbench]
+    paths:
+      - '.github/workflows/cleanup-next-level-verification.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/next-level-workbench
+      - name: Require a green serialized report
+        run: test -f .ci/VERIFIED_GREEN
+      - name: Remove temporary files
+        run: |
+          git rm -f --ignore-unmatch \
+            .github/workflows/feature-ci.yml \
+            .github/workflows/feature-ci-probe.yml \
+            .github/workflows/apply-next-level-lifecycle.yml \
+            .github/workflows/apply-pwa-icons.yml \
+            .github/workflows/summarize-feature-ci.yml \
+            .github/workflows/mark-feature-ci.yml \
+            .github/workflows/cleanup-next-level-verification.yml \
+            scripts/apply-next-level-lifecycle.py \
+            scripts/apply-pwa-icons.py \
+            .ci/feature-ci.txt \
+            .ci/feature-ci-summary.txt \
+            .ci/VERIFIED_GREEN \
+            .ci/VERIFIED_RED
+      - name: Commit cleanup
+        run: |
+          git config user.name 'LeafPDF verification cleanup'
+          git config user.email 'actions@users.noreply.github.com'
+          git commit -m 'Remove temporary next-level verification machinery'
+          git push origin HEAD:feature/next-level-workbench
