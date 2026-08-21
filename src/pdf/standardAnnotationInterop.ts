@@ -19,7 +19,7 @@ function annotationArray(document: PDFDocument, page: PDFPage): PDFArray {
     const resolved = document.context.lookup(existing)
     if (resolved instanceof PDFArray) return resolved
   }
-  const created = document.context.obj([])
+  const created = document.context.obj([]) as PDFArray
   page.node.set(ANNOTS, created)
   return created
 }
@@ -81,6 +81,11 @@ function parsePdfDate(value: unknown): number {
   return Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second))
 }
 
+function viewportPoint(transform: number[], x: number, y: number): [number, number] {
+  const [a, b, c, d, e, f] = transform
+  return [a * x + c * y + e, b * x + d * y + f]
+}
+
 /** Import standard PDF text-note annotations into the LeafPDF review panel. */
 export async function importStandardTextComments(
   pdf: PDFDocumentProxy,
@@ -97,9 +102,10 @@ export async function importStandardTextComments(
       if (annotation.annotationType !== TEXT_ANNOTATION_TYPE) continue
       const rect = annotation.rect
       if (!Array.isArray(rect) || rect.length !== 4 || !rect.every((value) => typeof value === 'number')) continue
-      const converted = viewport.convertToViewportRectangle(rect as [number, number, number, number])
-      const left = Math.min(converted[0], converted[2])
-      const top = Math.min(converted[1], converted[3])
+      const topLeft = viewportPoint(viewport.transform, rect[0], rect[1])
+      const bottomRight = viewportPoint(viewport.transform, rect[2], rect[3])
+      const left = Math.min(topLeft[0], bottomRight[0])
+      const top = Math.min(topLeft[1], bottomRight[1])
       const createdAt = parsePdfDate(annotation.modificationDate)
       comments.push({
         id: typeof annotation.id === 'string' ? `pdf-${annotation.id}` : `pdf-${sourceIndex}-${comments.length}`,
