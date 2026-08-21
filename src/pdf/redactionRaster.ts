@@ -1,5 +1,5 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import type { EditorDocument } from '../model/editor'
+import type { EditorDocument, RedactionAnnotation } from '../model/editor'
 import { pageRenderSource, type ExternalDocuments } from './pageSource'
 import { paintRedactionMask } from './redactionMask'
 
@@ -38,7 +38,8 @@ export async function rasterizeRedactedPages(
   const results: RasterizedPage[] = []
   for (const page of document.pages) {
     const redactions = document.annotations.filter(
-      (annotation) => annotation.pageId === page.id && annotation.kind === 'redaction',
+      (annotation): annotation is RedactionAnnotation =>
+        annotation.pageId === page.id && annotation.kind === 'redaction',
     )
     // A blank page has no source content to remove; its boxes are drawn as
     // plain black rectangles by the exporter instead.
