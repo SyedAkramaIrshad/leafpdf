@@ -1,0 +1,23 @@
+tested_commit=1b433cb8a278bde356bf90eeb10e7e4dd2b78b7e
+tested_at=2026-08-21T21:15:13Z
+===== npm-ci =====
+exit_code=0
+===== lint =====
+exit_code=0
+===== unit =====
+exit_code=0
+===== build =====
+exit_code=0
+===== python-dependencies =====
+exit_code=0
+===== poppler =====
+exit_code=0
+===== fixtures =====
+exit_code=0
+===== playwright-install =====
+exit_code=0
+===== e2e-development =====
+exit_code=0
+===== e2e-production =====
+exit_code=0
+overall_exit_code=0
