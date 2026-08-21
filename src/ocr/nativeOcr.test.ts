@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { normalizeDetectedText } from './nativeOcr'
+import { describe, expect, it, vi } from 'vitest'
+import { createNativeTextDetector, normalizeDetectedText } from './nativeOcr'
 
 describe('normalizeDetectedText', () => {
   it('normalizes browser OCR boxes and drops unusable detections', () => {
@@ -20,5 +20,22 @@ describe('normalizeDetectedText', () => {
     ], 1000, 500)
 
     expect(word).toMatchObject({ x: 0.95, y: 0.98, width: 0.05, height: 0.02 })
+  })
+})
+
+describe('createNativeTextDetector', () => {
+  it('prefers the current asynchronous factory and passes a requested language', async () => {
+    const detector = { detect: vi.fn(async () => []) }
+    const create = vi.fn(async () => detector)
+    class AsyncTextDetector {
+      static create = create
+      constructor() {
+        throw new Error('The legacy constructor should not be used.')
+      }
+    }
+    vi.stubGlobal('TextDetector', AsyncTextDetector)
+
+    await expect(createNativeTextDetector('en')).resolves.toBe(detector)
+    expect(create).toHaveBeenCalledWith({ languages: ['en'] })
   })
 })
