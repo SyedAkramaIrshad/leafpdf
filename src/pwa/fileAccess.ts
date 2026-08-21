@@ -145,7 +145,9 @@ export async function requestPersistentStorage(): Promise<StorageHealth> {
   const storage = navigator.storage
   if (!storage) return { persisted: false, usage: null, quota: null }
   const persisted = storage.persist ? await storage.persist().catch(() => false) : false
-  const estimate = storage.estimate ? await storage.estimate().catch(() => ({})) : {}
+  const estimate: StorageEstimate = storage.estimate
+    ? await storage.estimate().catch(() => ({} as StorageEstimate))
+    : {}
   return {
     persisted,
     usage: typeof estimate.usage === 'number' ? estimate.usage : null,
