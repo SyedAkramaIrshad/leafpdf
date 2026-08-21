@@ -1,0 +1,34 @@
+name: Apply PWA raster icons
+
+on:
+  push:
+    branches: [feature/next-level-workbench]
+    paths:
+      - 'scripts/apply-pwa-icons.py'
+      - '.github/workflows/apply-pwa-icons.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/next-level-workbench
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python3 scripts/apply-pwa-icons.py
+      - name: Commit raster icons and manifest entries
+        run: |
+          if git diff --quiet -- public/manifest.webmanifest public/leafpdf-icon-192.png public/leafpdf-icon-512.png; then
+            echo 'PWA raster icons already applied.'
+            exit 0
+          fi
+          git config user.name 'LeafPDF PWA asset patch'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -- public/manifest.webmanifest public/leafpdf-icon-192.png public/leafpdf-icon-512.png
+          git commit -m 'Add installable PWA raster icons'
+          git push origin HEAD:feature/next-level-workbench
