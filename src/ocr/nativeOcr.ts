@@ -8,22 +8,40 @@ interface DetectedTextLike {
   boundingBox?: { x: number; y: number; width: number; height: number }
 }
 
-interface TextDetectorLike {
+export interface TextDetectorLike {
   detect(source: CanvasImageSource): Promise<DetectedTextLike[]>
 }
 
-type TextDetectorConstructor = new () => TextDetectorLike
+interface TextDetectorApi {
+  new(): TextDetectorLike
+  create?: (options?: { languages?: string[] }) => Promise<TextDetectorLike>
+}
 
 type OcrWindow = Window & typeof globalThis & {
-  TextDetector?: TextDetectorConstructor
+  TextDetector?: TextDetectorApi
 }
 
 function round(value: number): number {
   return Math.round(value * 1e6) / 1e6
 }
 
+function detectorApi(): TextDetectorApi | null {
+  const api = (window as OcrWindow).TextDetector
+  return typeof api === 'function' ? api : null
+}
+
 export function nativeOcrAvailable(): boolean {
-  return typeof (window as OcrWindow).TextDetector === 'function'
+  return detectorApi() !== null
+}
+
+export async function createNativeTextDetector(language = 'auto'): Promise<TextDetectorLike> {
+  const api = detectorApi()
+  if (!api) throw new Error('This browser does not provide its local TextDetector OCR API.')
+  if (typeof api.create === 'function') {
+    return api.create(language === 'auto' ? undefined : { languages: [language] })
+  }
+  // Older implementations expose only the synchronous constructor.
+  return new api()
 }
 
 export function normalizeDetectedText(
@@ -63,10 +81,6 @@ export async function runNativeOcr(
   page: EditorPage,
   language = 'auto',
 ): Promise<OcrPageResult> {
-  const Constructor = (window as OcrWindow).TextDetector
-  if (!Constructor) {
-    throw new Error('This browser does not provide its local TextDetector OCR API.')
-  }
   if (page.kind === 'blank') {
     return { pageId: page.id, language, provider: 'text-detector', createdAt: Date.now(), words: [] }
   }
@@ -81,7 +95,7 @@ export async function runNativeOcr(
   const context = canvas.getContext('2d', { alpha: false })
   if (!context) throw new Error('This browser could not create an OCR drawing surface.')
   await sourcePage.render({ canvas, canvasContext: context, viewport }).promise
-  const detector = new Constructor()
+  const detector = await createNativeTextDetector(language)
   const detected = await detector.detect(canvas)
   return {
     pageId: page.id,
