@@ -36,7 +36,7 @@ test('creates a sanitized copy whose metadata is no longer detected', async ({ p
   await page.getByRole('button', { name: 'Privacy' }).click()
   const privacy = page.locator('.privacy-panel')
   await expect(privacy).toBeVisible()
-  await expect(privacy.getByText('Document metadata')).toBeVisible()
+  await expect(privacy.getByText('Document metadata', { exact: true })).toBeVisible()
   await expect(privacy.getByText(/metadata is present/i)).toBeVisible()
 
   const downloadPromise = page.waitForEvent('download')
