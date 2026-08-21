@@ -1,0 +1,53 @@
+name: Deep verification
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 0'
+
+permissions:
+  contents: read
+
+jobs:
+  real-world-and-large-file:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: pip install reportlab pypdf
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - run: npx playwright install --with-deps chromium
+
+      - name: Download real-world PDFs
+        run: |
+          mkdir -p tmp/pdfs/real
+          curl --fail --location --retry 3 \
+            --output tmp/pdfs/real/fw9.pdf \
+            https://www.irs.gov/pub/irs-pdf/fw9.pdf
+          curl --fail --location --retry 3 \
+            --output tmp/pdfs/real/pdf-spec.pdf \
+            https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf
+
+      - name: Real-world suite against development server
+        run: npx playwright test real-world.spec.ts
+      - name: Real-world suite against production build and CSP
+        run: npx playwright test real-world.spec.ts
+        env:
+          LEAFPDF_E2E_SERVER: preview
+      - name: Large-file open and export
+        run: npm run test:e2e:large
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: deep-verification-traces
+          path: test-results/
+          retention-days: 7
