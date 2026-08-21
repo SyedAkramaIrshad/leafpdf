@@ -18,6 +18,10 @@ type OcrWindow = Window & typeof globalThis & {
   TextDetector?: TextDetectorConstructor
 }
 
+function round(value: number): number {
+  return Math.round(value * 1e6) / 1e6
+}
+
 export function nativeOcrAvailable(): boolean {
   return typeof (window as OcrWindow).TextDetector === 'function'
 }
@@ -32,10 +36,10 @@ export function normalizeDetectedText(
     const text = entry.rawValue?.trim()
     const box = entry.boundingBox
     if (!text || !box || box.width <= 0 || box.height <= 0) return []
-    const x = Math.max(0, Math.min(1, box.x / width))
-    const y = Math.max(0, Math.min(1, box.y / height))
-    const wordWidth = Math.max(0, Math.min(1 - x, box.width / width))
-    const wordHeight = Math.max(0, Math.min(1 - y, box.height / height))
+    const x = round(Math.max(0, Math.min(1, box.x / width)))
+    const y = round(Math.max(0, Math.min(1, box.y / height)))
+    const wordWidth = round(Math.max(0, Math.min(1 - x, box.width / width)))
+    const wordHeight = round(Math.max(0, Math.min(1 - y, box.height / height)))
     return [{
       text,
       // The browser TextDetector API does not expose calibrated confidence.
