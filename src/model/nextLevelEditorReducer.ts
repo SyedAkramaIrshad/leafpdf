@@ -59,9 +59,14 @@ function isKeyboardNudge(left: Annotation, right: Annotation): boolean {
  * resize, and rotation remain one independent undo entry per gesture.
  */
 export function nextLevelEditorReducer(state: EditorState, action: EditorAction): EditorState {
-  if (action.type === 'selectAnnotation' && action.annotationId !== state.selectedAnnotationId) {
+  if (action.type === 'selectAnnotation') {
     const selected = editorReducer(state, action)
-    return selected.historyGroupKey === null ? selected : { ...selected, historyGroupKey: null }
+    const expectedGroup = action.annotationId
+      ? `annotation-${action.annotationId}-keyboard-nudge`
+      : null
+    return selected.historyGroupKey === null || selected.historyGroupKey === expectedGroup
+      ? selected
+      : { ...selected, historyGroupKey: null }
   }
 
   if (action.type !== 'replaceAnnotation') return editorReducer(state, action)
