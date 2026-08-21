@@ -44,7 +44,7 @@ export function FileWelcome({ busy, error, onFile }: FileWelcomeProps) {
           </p>
           <div className="privacy-note">
             <span className="status-dot" aria-hidden="true" />
-            Your PDFs and editable projects stay on this device.
+            Your document stays on this device. Editable projects do too.
           </div>
         </div>
         <div
