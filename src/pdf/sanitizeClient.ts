@@ -16,10 +16,13 @@ export function sanitizeInWorker(bytes: Uint8Array, options: SanitizeOptions = {
       action()
     }
     worker.onmessage = (event: MessageEvent<SanitizeResponse>) => {
-      if (event.data.type === 'error') {
-        finish(() => reject(new Error(event.data.message)))
+      const response = event.data
+      if (response.type === 'error') {
+        const message = response.message
+        finish(() => reject(new Error(message)))
       } else {
-        finish(() => resolve(new Uint8Array(event.data.bytes)))
+        const output = response.bytes
+        finish(() => resolve(new Uint8Array(output)))
       }
     }
     worker.onerror = (event) => {
