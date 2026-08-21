@@ -1,0 +1,29 @@
+name: Summarize feature verification
+
+on:
+  push:
+    branches: [feature/next-level-workbench]
+    paths:
+      - '.github/workflows/summarize-feature-ci.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/next-level-workbench
+      - name: Extract gate outcomes
+        run: |
+          mkdir -p .ci
+          grep -E '^(tested_commit=|tested_at=|===== |exit_code=|overall_exit_code=)' .ci/feature-ci.txt > .ci/feature-ci-summary.txt
+      - name: Commit compact summary
+        run: |
+          git config user.name 'LeafPDF CI summary'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -- .ci/feature-ci-summary.txt
+          git commit -m 'Record compact feature verification summary' || exit 0
+          git push origin HEAD:feature/next-level-workbench
