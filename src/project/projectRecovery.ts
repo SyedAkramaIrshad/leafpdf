@@ -1,3 +1,8 @@
+import {
+  deleteSession,
+  resetLocalStoreForTests,
+  saveSession,
+} from '../persistence/localStore'
 import type { LeafProject } from './projectTypes'
 
 const DATABASE_NAME = 'leafpdf-project-recovery'
@@ -16,6 +21,10 @@ function indexedDbFactory(): IDBFactory | null {
   } catch {
     return null
   }
+}
+
+function legacySessionKey(projectKey: string): string {
+  return projectKey.replace(/^leafpdf-project:/, 'leafpdf:')
 }
 
 async function openDatabase(): Promise<IDBDatabase | null> {
@@ -63,6 +72,11 @@ export async function saveProjectRecovery(key: string, project: LeafProject): Pr
   } finally {
     database.close()
   }
+
+  // Keep the compact document-only record for older LeafPDF builds and existing
+  // integrations. The complete project above remains the source of truth and
+  // includes inserted PDF bytes, comments, and OCR that the legacy store cannot.
+  await saveSession(legacySessionKey(key), project.document).catch(() => undefined)
 }
 
 export async function loadProjectRecovery(key: string): Promise<LeafProject | null> {
@@ -102,15 +116,19 @@ export async function deleteProjectRecovery(key: string): Promise<void> {
   } finally {
     database.close()
   }
+  await deleteSession(legacySessionKey(key)).catch(() => undefined)
 }
 
 export async function resetProjectRecoveryForTests(): Promise<void> {
   const factory = indexedDbFactory()
   if (!factory) return
-  await new Promise<void>((resolve) => {
-    const request = factory.deleteDatabase(DATABASE_NAME)
-    request.onsuccess = () => resolve()
-    request.onerror = () => resolve()
-    request.onblocked = () => resolve()
-  })
+  await Promise.all([
+    new Promise<void>((resolve) => {
+      const request = factory.deleteDatabase(DATABASE_NAME)
+      request.onsuccess = () => resolve()
+      request.onerror = () => resolve()
+      request.onblocked = () => resolve()
+    }),
+    resetLocalStoreForTests(),
+  ])
 }
