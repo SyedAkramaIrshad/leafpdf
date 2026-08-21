@@ -3,7 +3,7 @@ import {
   type Annotation,
   type EditorAction,
   type EditorState,
-} from './editor'
+} from './editorCore'
 
 const KEYBOARD_STEPS = [0.01, 0.05]
 const EPSILON = 0.000002
