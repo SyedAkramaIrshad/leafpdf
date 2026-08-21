@@ -1,9 +1,9 @@
-tested_commit=0f4988ebd58ac063a75694c91649e78c207f99dc
-tested_at=2026-08-21T20:56:26Z
+tested_commit=7aeae224e97e52e0e8d41e249880822975a1f520
+tested_at=2026-08-21T21:05:50Z
 
 ===== npm-ci =====
 
-added 257 packages, and audited 258 packages in 5s
+added 257 packages, and audited 258 packages in 6s
 
 65 packages are looking for funding
   run `npm fund` for details
@@ -26,273 +26,48 @@ exit_code=0
 
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/leafpdf/leafpdf[39m
 
- [32m✓[39m src/pdf/sourceAnalysis.test.ts [2m([22m[2m28 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 175[2mms[22m[39m
+ [32m✓[39m src/pdf/sourceAnalysis.test.ts [2m([22m[2m28 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 176[2mms[22m[39m
 [90mstderr[2m | src/components/Workbench.test.tsx[2m > [22m[2mPageCanvas render lifecycle[2m > [22m[2mcancels the superseded render task when zoom changes
 [22m[39mWarning: Please use the `legacy` build in Node.js environments.
 
- [31m❯[39m src/components/Workbench.test.tsx [2m([22m[2m25 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 1392[2mms[22m[39m
-[31m     [31m×[31m explains the local-first empty state[39m[33m 414[2mms[22m[39m
-     [32m✓[39m exposes each annotation tool with an accessible label[32m 243[2mms[22m[39m
-     [32m✓[39m supports keyboard navigation inside tool palettes[32m 108[2mms[22m[39m
-     [32m✓[39m renders only the selected thumbnail before other pages become visible[32m 66[2mms[22m[39m
-     [32m✓[39m renders nothing until a confirmation is required[32m 3[2mms[22m[39m
-     [32m✓[39m lists every feature at risk and focuses Cancel by default[32m 29[2mms[22m[39m
-     [32m✓[39m reports both choices to the caller[32m 26[2mms[22m[39m
-     [32m✓[39m traps focus inside the modal in both directions[32m 33[2mms[22m[39m
-     [32m✓[39m closes on Escape even when a parent re-renders during the same key press[32m 27[2mms[22m[39m
-     [32m✓[39m labels the canvas and describes what the signature is not[32m 34[2mms[22m[39m
-     [32m✓[39m stays closed until unsaved edits exist[32m 2[2mms[22m[39m
-     [32m✓[39m defaults focus to continuing, and maps Escape to it[32m 30[2mms[22m[39m
-     [32m✓[39m says the original file is untouched[32m 8[2mms[22m[39m
-     [32m✓[39m traps focus inside the modal in both directions[32m 27[2mms[22m[39m
-     [32m✓[39m keeps content editing on the page instead of duplicating it in the inspector[32m 18[2mms[22m[39m
-     [32m✓[39m shows an exact font size and supports typing, buttons, and wheel changes[32m 69[2mms[22m[39m
-     [32m✓[39m formats added text with family, weight, and style controls[32m 55[2mms[22m[39m
-     [32m✓[39m exposes object clipboard and layer actions[32m 42[2mms[22m[39m
-     [32m✓[39m ends the group when the inspector unmounts[32m 9[2mms[22m[39m
-     [32m✓[39m cancels the superseded render task when zoom changes[32m 72[2mms[22m[39m
-     [32m✓[39m caps canvas pixels for an oversized page and says quality was reduced[32m 14[2mms[22m[39m
-     [32m✓[39m keeps the pixel cap absolute even for an absurdly large page[32m 21[2mms[22m[39m
-     [32m✓[39m still produces a usable canvas for a degenerate viewport[32m 10[2mms[22m[39m
-     [32m✓[39m does not claim reduced quality for a page inside the pixel budget[32m 6[2mms[22m[39m
-     [32m✓[39m reports a genuine render failure without reporting cancellations[32m 21[2mms[22m[39m
- [32m✓[39m src/pdf/exportPdf.test.ts [2m([22m[2m31 tests[22m[2m)[22m[33m 1598[2mms[22m[39m
-     [33m[2m✓[22m[39m exports Arabic, Devanagari, and Latin text without an encoding failure [33m 1166[2mms[22m[39m
- [32m✓[39m src/model/editor.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 23[2mms[22m[39m
- [32m✓[39m src/pdf/exportClient.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 27[2mms[22m[39m
- [32m✓[39m src/components/AnnotationLayer.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 730[2mms[22m[39m
-     [33m[2m✓[22m[39m previews movement continuously and commits exactly once on release [33m 487[2mms[22m[39m
- [32m✓[39m src/pdf/fontRegistry.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 746[2mms[22m[39m
-     [33m[2m✓[22m[39m falls back to upright for italic text no standard font can encode [33m 394[2mms[22m[39m
- [32m✓[39m src/model/annotationMovement.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 14[2mms[22m[39m
- [32m✓[39m src/persistence/localStore.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 32[2mms[22m[39m
- [32m✓[39m src/pdf/textAnchor.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 113[2mms[22m[39m
+ [32m✓[39m src/components/Workbench.test.tsx [2m([22m[2m25 tests[22m[2m)[22m[33m 999[2mms[22m[39m
+ [32m✓[39m src/pdf/exportPdf.test.ts [2m([22m[2m31 tests[22m[2m)[22m[33m 1290[2mms[22m[39m
+     [33m[2m✓[22m[39m exports Arabic, Devanagari, and Latin text without an encoding failure [33m 895[2mms[22m[39m
+ [32m✓[39m src/model/editor.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/pdf/exportClient.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/components/AnnotationLayer.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 535[2mms[22m[39m
+     [33m[2m✓[22m[39m previews movement continuously and commits exactly once on release [33m 330[2mms[22m[39m
+ [32m✓[39m src/pdf/fontRegistry.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 482[2mms[22m[39m
+ [32m✓[39m src/model/annotationMovement.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/persistence/localStore.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m src/pdf/textAnchor.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 93[2mms[22m[39m
  [2m[90m↓[39m[22m src/pdf/exportFixtures.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
- [32m✓[39m src/components/SignatureDialog.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 544[2mms[22m[39m
-     [33m[2m✓[22m[39m makes a typed signature into the PNG placed by the parent [33m 381[2mms[22m[39m
- [32m✓[39m src/pdf/formFields.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 16[2mms[22m[39m
- [32m✓[39m src/project/projectFormat.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 31[2mms[22m[39m
- [32m✓[39m src/model/imageValidation.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 52[2mms[22m[39m
- [32m✓[39m src/pdf/textSearch.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 16[2mms[22m[39m
- [32m✓[39m src/components/DocumentDialogs.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 549[2mms[22m[39m
- [32m✓[39m src/pdf/sanitizePdf.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 108[2mms[22m[39m
- [32m✓[39m src/pdf/redactionMask.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
- [31m❯[39m src/pdf/standardAnnotationInterop.test.ts [2m([22m[2m2 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 48[2mms[22m[39m
-     [32m✓[39m writes a real /Text annotation into the target page dictionary[32m 40[2mms[22m[39m
-[31m     [31m×[31m imports PDF.js text-note data into normalized review comments[39m[32m 5[2mms[22m[39m
+ [32m✓[39m src/components/SignatureDialog.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 508[2mms[22m[39m
+     [33m[2m✓[22m[39m makes a typed signature into the PNG placed by the parent [33m 355[2mms[22m[39m
+ [32m✓[39m src/project/projectFormat.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/pdf/formFields.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/model/imageValidation.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 69[2mms[22m[39m
+ [32m✓[39m src/pdf/textSearch.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/components/DocumentDialogs.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 516[2mms[22m[39m
+ [32m✓[39m src/pdf/sanitizePdf.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 124[2mms[22m[39m
+ [32m✓[39m src/pdf/standardAnnotationInterop.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [32m✓[39m src/pdf/redactionMask.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
  [32m✓[39m src/model/nextLevelEditorReducer.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 10[2mms[22m[39m
- [32m✓[39m src/project/projectRecovery.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m src/project/projectRecovery.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 20[2mms[22m[39m
  [2m[90m↓[39m[22m src/pdf/fixtureAnalysis.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
  [32m✓[39m src/ocr/nativeOcr.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 11[2mms[22m[39m
- [32m✓[39m src/pdf/textColor.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 10[2mms[22m[39m
- [32m✓[39m src/persistence/recoveryQueue.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/pdf/textColor.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/persistence/recoveryQueue.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
  [32m✓[39m src/compare/pdfComparison.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
- [32m✓[39m src/pdf/renderLifecycle.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
- [32m✓[39m src/model/geometry.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/model/geometry.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/pdf/renderLifecycle.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
 
-[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+[2m Test Files [22m [1m[32m27 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (29)[39m
+[2m      Tests [22m [1m[32m212 passed[39m[22m[2m | [22m[33m13 skipped[39m[90m (225)[39m
+[2m   Start at [22m 21:06:03
+[2m   Duration [22m 17.84s[2m (transform 1.59s, setup 6.89s, import 3.16s, tests 5.04s, environment 31.78s)[22m
 
-[41m[1m FAIL [22m[49m src/components/Workbench.test.tsx[2m > [22mPDF editor controls[2m > [22mexplains the local-first empty state
-[31m[1mTestingLibraryElementError[22m: Unable to find an accessible element with the role "button" and name `/choose a pdf/i`
-
-Here are the accessible roles:
-
-  main:
-
-  Name "":
-  [36m<main[31m
-    [33mclass[31m=[32m"welcome-shell"[31m
-  [36m/>[31m
-
-  --------------------------------------------------
-  banner:
-
-  Name "LeafPDF":
-  [36m<header[31m
-    [33maria-label[31m=[32m"LeafPDF"[31m
-    [33mclass[31m=[32m"welcome-brand"[31m
-  [36m/>[31m
-
-  --------------------------------------------------
-  paragraph:
-
-  Name "":
-  [36m<p[31m
-    [33mclass[31m=[32m"eyebrow"[31m
-  [36m/>[31m
-
-  Name "":
-  [36m<p[31m
-    [33mclass[31m=[32m"welcome-lead"[31m
-  [36m/>[31m
-
-  Name "":
-  [36m<p />[31m
-
-  --------------------------------------------------
-  heading:
-
-  Name "Annotate and sign PDFs.":
-  [36m<h1[31m
-    [33maria-label[31m=[32m"Annotate and sign PDFs."[31m
-  [36m/>[31m
-
-  Name "Drop a PDF or project here":
-  [36m<h2 />[31m
-
-  --------------------------------------------------
-  button:
-
-  Name "Choose PDF or project":
-  [36m<button[31m
-    [33mclass[31m=[32m"primary-button"[31m
-    [33mtype[31m=[32m"button"[31m
-  [36m/>[31m
-
-  --------------------------------------------------
-
-Ignored nodes: comments, script, style
-[36m<body>[31m
-  [36m<div>[31m
-    [36m<main[31m
-      [33mclass[31m=[32m"welcome-shell"[31m
-    [36m>[31m
-      [36m<header[31m
-        [33maria-label[31m=[32m"LeafPDF"[31m
-        [33mclass[31m=[32m"welcome-brand"[31m
-      [36m>[31m
-        [36m<span[31m
-          [33maria-hidden[31m=[32m"true"[31m
-          [33mclass[31m=[32m"brand-mark"[31m
-        [36m>[31m
-          [0mL[0m
-        [36m</span>[31m
-        [36m<span>[31m
-          [0mLeafPDF[0m
-        [36m</span>[31m
-        [36m<span[31m
-          [33mclass[31m=[32m"mvp-chip"[31m
-        [36m>[31m
-          [0mLOCAL[0m
-        [36m</span>[31m
-      [36m</header>[31m
-      [36m<section[31m
-        [33mclass[31m=[32m"welcome-grid"[31m
-      [36m>[31m
-        [36m<div[31m
-          [33mclass[31m=[32m"welcome-copy"[31m
-        [36m>[31m
-          [36m<p[31m
-            [33mclass[31m=[32m"eyebrow"[31m
-          [36m>[31m
-            [0mA private PDF project workbench[0m
-          [36m</p>[31m
-          [36m<h1[31m
-            [33maria-label[31m=[32m"Annotate and sign PDFs."[31m
-          [36m>[31m
-            [0mAnnotate.[0m
-            [36m<br />[31m
-            [0mReview. Keep.[0m
-          [36m</h1>[31m
-          [36m<p[31m
-            [33mclass[31m=[32m"welcome-lead"[31m
-          [36m>[31m
-            [0mEdit PDFs, save a portable project, review comments, inspect privacy, run local OCR, and compare documents without sending their contents to a server.[0m
-          [36m</p>[31m
-          [36m<div[31m
-            [33mclass[31m=[32m"privacy-note"[31m
-          [36m>[31m
-            [36m<span[31m
-              [33maria-hidden[31m=[32m"true"[31m
-              [33mclass[31m=[32m"status-dot"[31m
-            [36m/>[31m
-            [0mYour document stays on this device. Editable projects do too.[0m
-          [36m</div>[31m
-        [36m</div>[31m
-        [36m<div[31m
-          [33mclass[31m=[32m"drop-sheet "[31m
-        [36m>[31m
-          [36m<div[31m
-            [33maria-hidden[31m=[32m"true"[31m
-            [33mclass[31m=[32m"sheet-fold"[31m
-          [36m/>[31m
-          [36m<span[31m
-            [33mclass[31m=[32m"drop-index"[31m
-          [36m>[31m
-            [0m01 / OPEN[0m
-          [36m</span>[31m
-          [36m<div[31m
-            [33maria-hidden[31m=[32m"true"[31m
-            [33mclass[31m=[32m"drop-glyph"[31m
-          [36m>[31m
-            [0mPDF[0m
-          [36m</div>[31m
-          [36m<h2>[31m
-            [0mDrop a PDF or project here[0m
-          [36m</h2>[31m
-          [36m<p>[31m
-            [0mOpen a PDF or resume a .leafpdf project[0m
-          [36m</p>[31m
-          [36m<button[31m
-            [33mclass[31m=[32m"primary-button"[31m
-            [33mtype[31m=[32m"button"[31m
-          [36m>[31m
-            [0mChoose PDF or project[0m
-          [36m</button>[31m
-          [36m<input[31m
-            [33maccept[31m=[32m"application/pdf,application/x-leafpdf+json,.pdf,.leafpdf"[31m
-            [33mclass[31m=[32m"visually-hidden"[31m
-            [33mtype[31m=[32m"file"[31m
-          [36m/>[31m
-          [36m<span[31m
-            [33mclass[31m=[32m"file-limit"[31m
-          [36m>[31m
-            [0mPDF up to 100 MB · portable .leafpdf projects[0m
-          [36m</span>[31m
-        [36m</div>[31m
-      [36m</section>[31m
-    [36m</main>[31m
-  [36m</div>[31m
-[36m</body>[31m[39m
-[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
-[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
-[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
-[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
-[36m [2m❯[22m src/components/Workbench.test.tsx:[2m65:19[22m[39m
-    [90m 63|[39m     expect(screen.getByRole('heading', { name: /annotate and sign pdfs…
-    [90m 64|[39m     expect(screen.getByText(/stays on this device/i)).toBeInTheDocumen…
-    [90m 65|[39m     expect(screen.getByRole('button', { name: /choose a pdf/i })).toBe…
-    [90m   |[39m                   [31m^[39m
-    [90m 66|[39m   })
-    [90m 67|[39m
-
-[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
-
-[41m[1m FAIL [22m[49m src/pdf/standardAnnotationInterop.test.ts[2m > [22mstandard PDF annotation interoperability[2m > [22mimports PDF.js text-note data into normalized review comments
-[31m[1mTypeError[22m: transform is not iterable[39m
-[36m [2m❯[22m viewportPoint src/pdf/standardAnnotationInterop.ts:[2m85:30[22m[39m
-    [90m 83|[39m
-    [90m 84|[39m function viewportPoint(transform: number[], x: number, y: number): [nu…
-    [90m 85|[39m   [35mconst[39m [a[33m,[39m b[33m,[39m c[33m,[39m d[33m,[39m e[33m,[39m f] [33m=[39m transform
-    [90m   |[39m                              [31m^[39m
-    [90m 86|[39m   [35mreturn[39m [a [33m*[39m x [33m+[39m c [33m*[39m y [33m+[39m e[33m,[39m b [33m*[39m x [33m+[39m d [33m*[39m y [33m+[39m f]
-    [90m 87|[39m }
-[90m [2m❯[22m importStandardTextComments src/pdf/standardAnnotationInterop.ts:[2m105:23[22m[39m
-[90m [2m❯[22m src/pdf/standardAnnotationInterop.test.ts:[2m54:22[22m[39m
-
-[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
-
-
-[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m25 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (29)[39m
-[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m210 passed[39m[22m[2m | [22m[33m13 skipped[39m[90m (225)[39m
-[2m   Start at [22m 20:56:40
-[2m   Duration [22m 19.44s[2m (transform 1.63s, setup 7.19s, import 3.78s, tests 6.31s, environment 34.14s)[22m
-
-
-::error file=/home/runner/work/leafpdf/leafpdf/src/components/Workbench.test.tsx,title=src/components/Workbench.test.tsx > PDF editor controls > explains the local-first empty state,line=65,column=19::TestingLibraryElementError: Unable to find an accessible element with the role "button" and name `/choose a pdf/i`%0A%0AHere are the accessible roles:%0A%0A  main:%0A%0A  Name "":%0A  <main%0A    class="welcome-shell"%0A  />%0A%0A  --------------------------------------------------%0A  banner:%0A%0A  Name "LeafPDF":%0A  <header%0A    aria-label="LeafPDF"%0A    class="welcome-brand"%0A  />%0A%0A  --------------------------------------------------%0A  paragraph:%0A%0A  Name "":%0A  <p%0A    class="eyebrow"%0A  />%0A%0A  Name "":%0A  <p%0A    class="welcome-lead"%0A  />%0A%0A  Name "":%0A  <p />%0A%0A  --------------------------------------------------%0A  heading:%0A%0A  Name "Annotate and sign PDFs.":%0A  <h1%0A    aria-label="Annotate and sign PDFs."%0A  />%0A%0A  Name "Drop a PDF or project here":%0A  <h2 />%0A%0A  --------------------------------------------------%0A  button:%0A%0A  Name "Choose PDF or project":%0A  <button%0A    class="primary-button"%0A    type="button"%0A  />%0A%0A  --------------------------------------------------%0A%0AIgnored nodes: comments, script, style%0A<body>%0A  <div>%0A    <main%0A      class="welcome-shell"%0A    >%0A      <header%0A        aria-label="LeafPDF"%0A        class="welcome-brand"%0A      >%0A        <span%0A          aria-hidden="true"%0A          class="brand-mark"%0A        >%0A          L%0A        </span>%0A        <span>%0A          LeafPDF%0A        </span>%0A        <span%0A          class="mvp-chip"%0A        >%0A          LOCAL%0A        </span>%0A      </header>%0A      <section%0A        class="welcome-grid"%0A      >%0A        <div%0A          class="welcome-copy"%0A        >%0A          <p%0A            class="eyebrow"%0A          >%0A            A private PDF project workbench%0A          </p>%0A          <h1%0A            aria-label="Annotate and sign PDFs."%0A          >%0A            Annotate.%0A            <br />%0A            Review. Keep.%0A          </h1>%0A          <p%0A            class="welcome-lead"%0A          >%0A            Edit PDFs, save a portable project, review comments, inspect privacy, run local OCR, and compare documents without sending their contents to a server.%0A          </p>%0A          <div%0A            class="privacy-note"%0A          >%0A            <span%0A              aria-hidden="true"%0A              class="status-dot"%0A            />%0A            Your document stays on this device. Editable projects do too.%0A          </div>%0A        </div>%0A        <div%0A          class="drop-sheet "%0A        >%0A          <div%0A            aria-hidden="true"%0A            class="sheet-fold"%0A          />%0A          <span%0A            class="drop-index"%0A          >%0A            01 / OPEN%0A          </span>%0A          <div%0A            aria-hidden="true"%0A            class="drop-glyph"%0A          >%0A            PDF%0A          </div>%0A          <h2>%0A            Drop a PDF or project here%0A          </h2>%0A          <p>%0A            Open a PDF or resume a .leafpdf project%0A          </p>%0A          <button%0A            class="primary-button"%0A            type="button"%0A          >%0A            Choose PDF or project%0A          </button>%0A          <input%0A            accept="application/pdf,application/x-leafpdf+json,.pdf,.leafpdf"%0A            class="visually-hidden"%0A            type="file"%0A          />%0A          <span%0A            class="file-limit"%0A          >%0A            PDF up to 100 MB · portable .leafpdf projects%0A          </span>%0A        </div>%0A      </section>%0A    </main>%0A  </div>%0A</body>%0A ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19%0A ❯ src/components/Workbench.test.tsx:65:19%0A%0A
-
-::error file=/home/runner/work/leafpdf/leafpdf/src/pdf/standardAnnotationInterop.ts,title=src/pdf/standardAnnotationInterop.test.ts > standard PDF annotation interoperability > imports PDF.js text-note data into normalized review comments,line=85,column=30::TypeError: transform is not iterable%0A ❯ viewportPoint src/pdf/standardAnnotationInterop.ts:85:30%0A ❯ importStandardTextComments src/pdf/standardAnnotationInterop.ts:105:23%0A ❯ src/pdf/standardAnnotationInterop.test.ts:54:22%0A%0A
-exit_code=1
+exit_code=0
 
 ===== build =====
 
@@ -328,14 +103,14 @@ dist/assets/pdf.worker.min-CHFwMXne.mjs              1,262.39 kB
 dist/assets/index-BrK_4PnJ.css                          33.52 kB │ gzip:   8.04 kB
 dist/assets/exportNaming-DooBeWu9.js                     0.10 kB │ gzip:   0.11 kB
 dist/assets/exportClient-Dxvc2tB1.js                     1.18 kB │ gzip:   0.63 kB
-dist/assets/loadPdf-DEtDNCcg.js                          1.35 kB │ gzip:   0.77 kB
-dist/assets/redactionRaster-TykMMsjI.js                  1.39 kB │ gzip:   0.80 kB
-dist/assets/projectFormat-CwLZo_3Y.js                    8.57 kB │ gzip:   2.72 kB
-dist/assets/index-ty8fpv3m.js                          198.22 kB │ gzip:  63.00 kB
-dist/assets/pdf-CX06tUx6.js                            427.30 kB │ gzip: 127.39 kB
-dist/assets/NextLevelWorkbench-Dxjr9fQ_.js             619.12 kB │ gzip: 234.62 kB
+dist/assets/loadPdf-CqTmCjtr.js                          1.35 kB │ gzip:   0.77 kB
+dist/assets/redactionRaster-DlONzCh9.js                  1.39 kB │ gzip:   0.80 kB
+dist/assets/projectFormat-DqIbIYdl.js                    8.57 kB │ gzip:   2.72 kB
+dist/assets/index-BlevAZCA.js                          198.28 kB │ gzip:  63.02 kB
+dist/assets/pdf-NqW2uE53.js                            427.30 kB │ gzip: 127.39 kB
+dist/assets/NextLevelWorkbench-DgE1HkRE.js             619.38 kB │ gzip: 234.70 kB
 
-[32m✓ built in 699ms[39m
+[32m✓ built in 675ms[39m
 [33m[plugin builtin:vite-reporter] 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
@@ -353,10 +128,10 @@ Collecting pillow>=9.0.0 (from reportlab)
 Collecting charset-normalizer (from reportlab)
   Downloading charset_normalizer-3.5.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (45 kB)
 Downloading reportlab-5.0.1-py3-none-any.whl (2.0 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 50.6 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 126.3 MB/s  0:00:00
 Downloading pypdf-6.16.1-py3-none-any.whl (382 kB)
 Downloading pillow-12.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (6.9 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.9/6.9 MB 187.2 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.9/6.9 MB 259.3 MB/s  0:00:00
 Downloading charset_normalizer-3.5.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (248 kB)
 Installing collected packages: pypdf, pillow, charset-normalizer, reportlab
 
@@ -366,36 +141,36 @@ exit_code=0
 ===== poppler =====
 Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
 Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
-Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
-Get:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease [2548 B]
 Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
 Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
 Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
 Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
-Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [357 kB]
-Get:10 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [403 kB]
-Get:11 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages [1415 B]
-Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1227 kB]
-Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [286 kB]
-Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [181 kB]
-Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1687 kB]
-Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [337 kB]
-Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [388 kB]
-Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1483 kB]
-Get:19 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [339 kB]
-Get:20 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [12.8 kB]
-Get:21 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
-Get:22 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [5776 B]
-Get:23 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [12.6 kB]
-Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [967 kB]
-Get:25 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [205 kB]
-Get:26 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [46.4 kB]
-Get:27 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1201 kB]
-Get:28 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [240 kB]
-Get:29 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [76.2 kB]
-Get:30 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1385 kB]
-Get:31 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [320 kB]
-Fetched 11.5 MB in 1s (8152 kB/s)
+Get:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease [2548 B]
+Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [403 kB]
+Get:10 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [357 kB]
+Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1227 kB]
+Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [286 kB]
+Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [181 kB]
+Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1687 kB]
+Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [337 kB]
+Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [388 kB]
+Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1483 kB]
+Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [339 kB]
+Get:19 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [12.8 kB]
+Get:20 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+Get:21 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [5776 B]
+Get:22 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [12.6 kB]
+Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [967 kB]
+Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [205 kB]
+Get:25 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [46.4 kB]
+Get:26 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1201 kB]
+Get:27 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [240 kB]
+Get:28 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [76.2 kB]
+Get:29 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1385 kB]
+Get:30 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [320 kB]
+Get:31 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages [1415 B]
+Fetched 11.5 MB in 1s (8088 kB/s)
 Reading package lists...
 Reading package lists...
 Building dependency tree...
@@ -415,7 +190,7 @@ Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
 Get:2 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 poppler-data all 0.4.12-1 [2060 kB]
 Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libpoppler134 amd64 24.02.0-1ubuntu9.9 [1118 kB]
 Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 poppler-utils amd64 24.02.0-1ubuntu9.9 [212 kB]
-Fetched 3389 kB in 0s (33.7 MB/s)
+Fetched 3389 kB in 0s (28.3 MB/s)
 Selecting previously unselected package poppler-data.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 203124 files and directories currently installed.)
 Preparing to unpack .../poppler-data_0.4.12-1_all.deb ...
@@ -475,13 +250,13 @@ exit_code=0
 ===== playwright-install =====
 Installing dependencies...
 Switching to root user to install dependencies...
-Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
-Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
-Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
-Hit:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
-Hit:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease
-Hit:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease
-Hit:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease
+Hit:1 https://packages.microsoft.com/repos/azure-cli noble InRelease
+Hit:2 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
+Get:3 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Hit:4 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Hit:5 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease
+Hit:6 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease
+Hit:7 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease
 Hit:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease
 Reading package lists...
 Reading package lists...
@@ -558,7 +333,7 @@ Get:7 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-encodings a
 Get:8 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-utils amd64 1:7.7+6build3 [94.4 kB]
 Get:9 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 xfonts-cyrillic all 1:1.0.5+nmu1 [384 kB]
 Get:10 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-scalable all 1:1.0.3-1.3 [304 kB]
-Fetched 21.1 MB in 0s (56.4 MB/s)
+Fetched 21.1 MB in 0s (74.9 MB/s)
 Selecting previously unselected package fonts-ipafont-gothic.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 203693 files and directories currently installed.)
 Preparing to unpack .../0-fonts-ipafont-gothic_00303-21ubuntu1_all.deb ...
@@ -658,30 +433,32 @@ exit_code=0
 
 
 Running 27 tests using 1 worker
-··········FF···°·F·····°°·°
+··········FF···°·······°°·°
 
   1) e2e/editor.spec.ts:370:1 › uses the complete fill, sign, transform, layer, marks, and recovery workflow 
 
-    Error: expect(locator).toBeVisible() failed
+    Error: expect(locator).toBeHidden() failed
 
-    Locator: getByRole('dialog', { name: /Resume your previous editing session/ })
-    Expected: visible
-    Timeout: 5000ms
-    Error: element(s) not found
+    Locator:  getByRole('dialog', { name: /Resume your previous editing session/ })
+    Expected: hidden
+    Received: visible
+    Timeout:  5000ms
 
     Call log:
-      - Expect "toBeVisible" with timeout 5000ms
+      - Expect "toBeHidden" with timeout 5000ms
       - waiting for getByRole('dialog', { name: /Resume your previous editing session/ })
+        14 × locator resolved to <section role="dialog" aria-modal="true" class="recovery-dialog" aria-labelledby="recovery-title" aria-describedby="recovery-body">…</section>
+           - unexpected value "visible"
 
 
-      504 |   await page.locator('input[type="file"]').first().setInputFiles('tmp/pdfs/mvp-fixture.pdf')
-      505 |   const recovery = page.getByRole('dialog', { name: /Resume your previous editing session/ })
-    > 506 |   await expect(recovery).toBeVisible()
-          |                          ^
-      507 |   await recovery.getByRole('button', { name: 'Restore edits' }).click()
-      508 |   await expect(page.locator('.shape-annotation')).toHaveCount(4)
-      509 |   await expect.poll(() => page.getByLabel('Edit text').evaluateAll((fields) => fields.map((field) => (field as HTMLTextAreaElement).value))).toContain('INTERNAL')
-        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:506:26
+      521 |   await page.locator('input[type="file"]').first().setInputFiles('tmp/pdfs/mvp-fixture.pdf')
+      522 |   await expect(page.getByLabel('Rendered PDF page').first()).toBeVisible()
+    > 523 |   await expect(page.getByRole('dialog', { name: /Resume your previous editing session/ })).toBeHidden()
+          |                                                                                            ^
+      524 | })
+      525 |
+      526 | test('keeps document marks reachable at the 320px minimum viewport', async ({ page }) => {
+        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:523:92
 
     attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
     test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/test-failed-1.png
@@ -735,50 +512,11 @@ Running 27 tests using 1 worker
 
     ────────────────────────────────────────────────────────────────────────────────────────────────
 
-  3) e2e/next-level.spec.ts:31:1 › creates a sanitized copy whose metadata is no longer detected ───
-
-    Error: expect(locator).toBeVisible() failed
-
-    Locator: locator('.privacy-panel').getByText('Document metadata')
-    Expected: visible
-    Error: strict mode violation: locator('.privacy-panel').getByText('Document metadata') resolved to 2 elements:
-        1) <strong>Document metadata</strong> aka getByText('Document metadata', { exact: true })
-        2) <p>Title, author, subject, keywords, or related docu…</p> aka getByText('Title, author, subject, keywords, or related document metadata is present.')
-
-    Call log:
-      - Expect "toBeVisible" with timeout 5000ms
-      - waiting for locator('.privacy-panel').getByText('Document metadata')
-
-
-      37 |   const privacy = page.locator('.privacy-panel')
-      38 |   await expect(privacy).toBeVisible()
-    > 39 |   await expect(privacy.getByText('Document metadata')).toBeVisible()
-         |                                                        ^
-      40 |   await expect(privacy.getByText(/metadata is present/i)).toBeVisible()
-      41 |
-      42 |   const downloadPromise = page.waitForEvent('download')
-        at /home/runner/work/leafpdf/leafpdf/e2e/next-level.spec.ts:39:56
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    test-results/next-level-creates-a-sanit-f6dca-adata-is-no-longer-detected/test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    Error Context: test-results/next-level-creates-a-sanit-f6dca-adata-is-no-longer-detected/error-context.md
-
-    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
-    test-results/next-level-creates-a-sanit-f6dca-adata-is-no-longer-detected/trace.zip
-    Usage:
-
-        npx playwright show-trace test-results/next-level-creates-a-sanit-f6dca-adata-is-no-longer-detected/trace.zip
-
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-  3 failed
+  2 failed
     e2e/editor.spec.ts:370:1 › uses the complete fill, sign, transform, layer, marks, and recovery workflow 
     e2e/editor.spec.ts:526:1 › keeps document marks reachable at the 320px minimum viewport ────────
-    e2e/next-level.spec.ts:31:1 › creates a sanitized copy whose metadata is no longer detected ────
   4 skipped
-  20 passed (1.8m)
+  21 passed (1.9m)
 exit_code=1
 
 ===== e2e-production =====
@@ -793,30 +531,32 @@ exit_code=1
 [WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
 
 Running 27 tests using 1 worker
-··········FF···°·F·····°°·°
+··········FF···°·······°°·°
 
   1) e2e/editor.spec.ts:370:1 › uses the complete fill, sign, transform, layer, marks, and recovery workflow 
 
-    Error: expect(locator).toBeVisible() failed
+    Error: expect(locator).toBeHidden() failed
 
-    Locator: getByRole('dialog', { name: /Resume your previous editing session/ })
-    Expected: visible
-    Timeout: 5000ms
-    Error: element(s) not found
+    Locator:  getByRole('dialog', { name: /Resume your previous editing session/ })
+    Expected: hidden
+    Received: visible
+    Timeout:  5000ms
 
     Call log:
-      - Expect "toBeVisible" with timeout 5000ms
+      - Expect "toBeHidden" with timeout 5000ms
       - waiting for getByRole('dialog', { name: /Resume your previous editing session/ })
+        14 × locator resolved to <section role="dialog" aria-modal="true" class="recovery-dialog" aria-labelledby="recovery-title" aria-describedby="recovery-body">…</section>
+           - unexpected value "visible"
 
 
-      504 |   await page.locator('input[type="file"]').first().setInputFiles('tmp/pdfs/mvp-fixture.pdf')
-      505 |   const recovery = page.getByRole('dialog', { name: /Resume your previous editing session/ })
-    > 506 |   await expect(recovery).toBeVisible()
-          |                          ^
-      507 |   await recovery.getByRole('button', { name: 'Restore edits' }).click()
-      508 |   await expect(page.locator('.shape-annotation')).toHaveCount(4)
-      509 |   await expect.poll(() => page.getByLabel('Edit text').evaluateAll((fields) => fields.map((field) => (field as HTMLTextAreaElement).value))).toContain('INTERNAL')
-        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:506:26
+      521 |   await page.locator('input[type="file"]').first().setInputFiles('tmp/pdfs/mvp-fixture.pdf')
+      522 |   await expect(page.getByLabel('Rendered PDF page').first()).toBeVisible()
+    > 523 |   await expect(page.getByRole('dialog', { name: /Resume your previous editing session/ })).toBeHidden()
+          |                                                                                            ^
+      524 | })
+      525 |
+      526 | test('keeps document marks reachable at the 320px minimum viewport', async ({ page }) => {
+        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:523:92
 
     attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
     test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/test-failed-1.png
@@ -870,49 +610,10 @@ Running 27 tests using 1 worker
 
     ────────────────────────────────────────────────────────────────────────────────────────────────
 
-  3) e2e/next-level.spec.ts:31:1 › creates a sanitized copy whose metadata is no longer detected ───
-
-    Error: expect(locator).toBeVisible() failed
-
-    Locator: locator('.privacy-panel').getByText('Document metadata')
-    Expected: visible
-    Error: strict mode violation: locator('.privacy-panel').getByText('Document metadata') resolved to 2 elements:
-        1) <strong>Document metadata</strong> aka getByText('Document metadata', { exact: true })
-        2) <p>Title, author, subject, keywords, or related docu…</p> aka getByText('Title, author, subject, keywords, or related document metadata is present.')
-
-    Call log:
-      - Expect "toBeVisible" with timeout 5000ms
-      - waiting for locator('.privacy-panel').getByText('Document metadata')
-
-
-      37 |   const privacy = page.locator('.privacy-panel')
-      38 |   await expect(privacy).toBeVisible()
-    > 39 |   await expect(privacy.getByText('Document metadata')).toBeVisible()
-         |                                                        ^
-      40 |   await expect(privacy.getByText(/metadata is present/i)).toBeVisible()
-      41 |
-      42 |   const downloadPromise = page.waitForEvent('download')
-        at /home/runner/work/leafpdf/leafpdf/e2e/next-level.spec.ts:39:56
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    test-results/next-level-creates-a-sanit-f6dca-adata-is-no-longer-detected/test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    Error Context: test-results/next-level-creates-a-sanit-f6dca-adata-is-no-longer-detected/error-context.md
-
-    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
-    test-results/next-level-creates-a-sanit-f6dca-adata-is-no-longer-detected/trace.zip
-    Usage:
-
-        npx playwright show-trace test-results/next-level-creates-a-sanit-f6dca-adata-is-no-longer-detected/trace.zip
-
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-  3 failed
+  2 failed
     e2e/editor.spec.ts:370:1 › uses the complete fill, sign, transform, layer, marks, and recovery workflow 
     e2e/editor.spec.ts:526:1 › keeps document marks reachable at the 320px minimum viewport ────────
-    e2e/next-level.spec.ts:31:1 › creates a sanitized copy whose metadata is no longer detected ────
   4 skipped
-  20 passed (1.1m)
+  21 passed (1.1m)
 exit_code=1
 overall_exit_code=1
