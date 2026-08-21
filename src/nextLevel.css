@@ -28,6 +28,7 @@
 
 .next-actions button:hover { color: white; border-color: #a8b2b5; }
 .next-actions button:disabled { opacity: .5; cursor: wait; }
+.mobile-document-marks { display: none; }
 
 .next-panel {
   position: fixed;
@@ -200,6 +201,8 @@
 @media (max-width: 560px) {
   .next-level-workbench .topbar { grid-template-columns: 42px minmax(65px, 1fr) auto; padding-inline: 8px; gap: 7px; }
   .next-actions { position: fixed; z-index: 25; left: 0; right: 0; bottom: 29px; max-width: none; padding: 7px; background: #232c32; border-top: 1px solid #455057; }
+  .next-actions .desktop-document-marks { display: none; }
+  .next-actions .mobile-document-marks { display: inline-block; order: -10; }
   .next-level-workbench .workbench-grid { padding-bottom: 48px; }
   .next-level-workbench .export-button { min-width: 93px; padding-inline: 8px; }
   .next-level-workbench .stage-toolbar {
@@ -208,13 +211,7 @@
     overflow-x: auto;
     padding-left: 28px;
   }
-  .next-level-workbench .stage-toolbar > span:first-child,
-  .next-level-workbench .marks-mobile-button {
-    flex: 0 0 auto;
-  }
-  .next-level-workbench .marks-mobile-button {
-    display: inline-block;
-    order: -2;
-  }
+  .next-level-workbench .stage-toolbar > span:first-child { flex: 0 0 auto; }
+  .next-level-workbench .marks-mobile-button { display: none; }
   .next-panel { top: 64px; bottom: 76px; width: 100%; }
 }
