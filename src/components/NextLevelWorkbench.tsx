@@ -83,6 +83,8 @@ interface NextLevelWorkbenchProps {
 type InsertedPdfEntry = { file: File; pdf: PDFDocumentProxy }
 type NextPanel = 'review' | 'privacy' | 'ocr' | 'compare' | null
 
+const NUDGE_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'])
+
 function readDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -163,6 +165,7 @@ export function NextLevelWorkbench({
   const [searchResults, setSearchResults] = useState<PageMatches[] | null>(null)
   const [searchCursor, setSearchCursor] = useState(0)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const nudgeTimerRef = useRef<number | null>(null)
   const [scrollTargetPageId, setScrollTargetPageId] = useState<string | null>(null)
 
   const latestDocument = useRef(state.present)
@@ -296,6 +299,14 @@ export function NextLevelWorkbench({
     const keyboard = (event: KeyboardEvent) => {
       const target = event.target
       const isEditing = target instanceof Element && target.matches('input, textarea, select')
+      const annotationControl = target instanceof Element && target.closest('.annotation, .move-handle')
+      if (annotationControl && NUDGE_KEYS.has(event.key)) {
+        if (nudgeTimerRef.current !== null) window.clearTimeout(nudgeTimerRef.current)
+        nudgeTimerRef.current = window.setTimeout(() => {
+          dispatch({ type: 'endHistoryGroup' })
+          nudgeTimerRef.current = null
+        }, 400)
+      }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
         event.preventDefault()
         searchInputRef.current?.focus()
@@ -325,7 +336,13 @@ export function NextLevelWorkbench({
       }
     }
     window.addEventListener('keydown', keyboard)
-    return () => window.removeEventListener('keydown', keyboard)
+    return () => {
+      window.removeEventListener('keydown', keyboard)
+      if (nudgeTimerRef.current !== null) {
+        window.clearTimeout(nudgeTimerRef.current)
+        nudgeTimerRef.current = null
+      }
+    }
   }, [modalOpen, selectedPage.id, state.clipboard, state.selectedAnnotationId])
 
   useEffect(() => {
@@ -618,7 +635,10 @@ export function NextLevelWorkbench({
         signature: sourceSignature(loaded.sourceFile, insertedPdfs),
         project: structuredClone(project),
       }
-      if (latestDocument.current === documentSnapshot) setProjectSavedDocument(documentSnapshot)
+      if (latestDocument.current === documentSnapshot) {
+        setProjectSavedDocument(documentSnapshot)
+        dispatch({ type: 'markSaved', document: documentSnapshot })
+      }
       if (latestComments.current === commentsSnapshot && latestOcr.current === ocrSnapshot) setProjectOnlyDirty(false)
       if (
         latestDocument.current === documentSnapshot
@@ -772,7 +792,7 @@ export function NextLevelWorkbench({
           <button type="button" onClick={() => setActivePanel(activePanel === 'privacy' ? null : 'privacy')}>Privacy</button>
           <button type="button" onClick={() => setActivePanel(activePanel === 'ocr' ? null : 'ocr')}>OCR</button>
           <button type="button" onClick={() => setActivePanel(activePanel === 'compare' ? null : 'compare')}>Compare</button>
-          <button type="button" onClick={() => setMarksOpen(true)}>Marks</button>
+          <button type="button" aria-label="Document marks" onClick={() => setMarksOpen(true)}>Marks</button>
         </div>
         <button
           type="button"
@@ -880,8 +900,8 @@ export function NextLevelWorkbench({
 
       <footer className="statusbar">
         <span>{state.activeTool === 'select' ? 'Select, move, and resize added items' : `${state.activeTool} tool active`}</span>
-        <span>{state.present.annotations.length} item{state.present.annotations.length === 1 ? '' : 's'} · {comments.length} comment{comments.length === 1 ? '' : 's'}</span>
-        <span className="privacy-footer">Local project · No upload · No tracking</span>
+        <span>{state.present.annotations.length} item{state.present.annotations.length === 1 ? '' : 's'} added</span>
+        <span className="privacy-footer">Local project · {comments.length} comment{comments.length === 1 ? '' : 's'} · No upload · No tracking</span>
       </footer>
 
       <ReviewPanel
