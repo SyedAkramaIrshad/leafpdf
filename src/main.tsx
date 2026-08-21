@@ -11,4 +11,4 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-void registerLeafPdfServiceWorker()
+if (import.meta.env.PROD) void registerLeafPdfServiceWorker()
