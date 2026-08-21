@@ -24,10 +24,9 @@ test('saves and reopens a complete editable project with inserted PDFs and comme
   const projectPath = 'output/project/mvp-fixture.leafpdf'
   await project.saveAs(projectPath)
 
-  // A project save is safe, but the PDF export is still out of date. Confirm the
-  // close prompt, discard the browser recovery record, then reopen the portable file.
+  // A portable project contains the complete editable state, so closing after a
+  // successful project save does not need a discard prompt.
   await page.getByRole('button', { name: /Close document/ }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Discard changes' }).click()
   await expect(page.getByRole('heading', { name: 'Annotate and sign PDFs.' })).toBeVisible()
 
   await page.locator('input[type="file"]').first().setInputFiles(projectPath)
