@@ -29,7 +29,7 @@ import type { SourcePdfFeatures } from '../pdf/sourceFeatures'
 import type { LoadedPdf } from '../pdf/types'
 import {
   createLeafProject,
-  openLeafProject,
+  hydrateLeafProject,
   projectFileName,
   serializeLeafProject,
 } from '../project/projectFormat'
@@ -246,9 +246,14 @@ export function NextLevelWorkbench({
     const signature = sourceSignature(loaded.sourceFile, insertedPdfs)
     let base = projectSourceCache.current
     if (!base || base.signature !== signature) {
+      const referencedSourceIds = new Set(
+        documentSnapshot.pages.flatMap((page) => page.kind === 'external' ? [page.documentId] : []),
+      )
       const project = await createLeafProject({
         primaryFile: loaded.sourceFile,
-        insertedFiles: Array.from(insertedPdfs, ([id, entry]) => ({ id, file: entry.file })),
+        insertedFiles: Array.from(insertedPdfs)
+          .filter(([id]) => referencedSourceIds.has(id))
+          .map(([id, entry]) => ({ id, file: entry.file })),
         document: documentSnapshot,
         comments: commentsSnapshot,
         ocr: ocrSnapshot,
@@ -300,7 +305,7 @@ export function NextLevelWorkbench({
       const target = event.target
       const isEditing = target instanceof Element && target.matches('input, textarea, select')
       const annotationControl = target instanceof Element && target.closest('.annotation, .move-handle')
-      if (annotationControl && NUDGE_KEYS.has(event.key)) {
+      if (!isEditing && annotationControl && NUDGE_KEYS.has(event.key)) {
         if (nudgeTimerRef.current !== null) window.clearTimeout(nudgeTimerRef.current)
         nudgeTimerRef.current = window.setTimeout(() => {
           dispatch({ type: 'endHistoryGroup' })
@@ -604,6 +609,10 @@ export function NextLevelWorkbench({
       }
       setCompatibilityFeatures(null)
       dispatch({ type: 'markSaved', document: documentSnapshot })
+      if (latestDocument.current === documentSnapshot && !projectOnlyDirty) {
+        setProjectSavedDocument(documentSnapshot)
+        await recoveryQueue.current.clear(recoveryKey)
+      }
       setNotice(
         latestDocument.current === documentSnapshot
           ? `Exported ${fileName}${commentsSnapshot.length ? ' with standard PDF comments' : ''}.`
@@ -727,24 +736,30 @@ export function NextLevelWorkbench({
   const compareWith = async (file: File) => {
     setComparing(true)
     setNotice(null)
-    let pdf: PDFDocumentProxy | null = null
+    let comparisonPdf: PDFDocumentProxy | null = null
+    let currentPdf: PDFDocumentProxy | null = null
     try {
       const { getDocument } = await import('pdfjs-dist')
-      pdf = await getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise
-      setComparison(await comparePdfText(loaded.document, pdf))
+      comparisonPdf = await getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise
+      if (!loaded.features.isEncrypted) {
+        const currentBytes = await buildEditedBytes(state.present, true, false, comments)
+        currentPdf = await getDocument({ data: new Uint8Array(currentBytes) }).promise
+      }
+      setComparison(await comparePdfText(currentPdf ?? loaded.document, comparisonPdf))
       setComparisonName(file.name)
     } catch (error) {
       setNotice(error instanceof Error ? `Comparison failed: ${error.message}` : 'Comparison failed.')
     } finally {
       setComparing(false)
-      if (pdf) void pdf.loadingTask.destroy().catch(() => undefined)
+      if (comparisonPdf) void comparisonPdf.loadingTask.destroy().catch(() => undefined)
+      if (currentPdf) void currentPdf.loadingTask.destroy().catch(() => undefined)
     }
   }
 
   const restoreRecovery = async () => {
     if (!recoveryProject) return
     try {
-      const opened = await openLeafProject(JSON.stringify(recoveryProject))
+      const opened = await hydrateLeafProject(recoveryProject)
       const restoredInserted = await loadInsertedPdfMap(opened.insertedFiles)
       for (const entry of insertedPdfsRef.current.values()) void entry.pdf.loadingTask.destroy().catch(() => undefined)
       setInsertedPdfs(restoredInserted)
