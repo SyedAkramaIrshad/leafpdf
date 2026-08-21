@@ -19,6 +19,14 @@ export async function sanitizePdfBytes(
     ignoreEncryption: false,
     updateMetadata: false,
   })
+
+  // Widgets are page annotations. Removing `/Annots` without flattening first
+  // would erase visible values from filled forms. Flatten only when an AcroForm
+  // actually exists; calling `getForm()` on a formless PDF creates one.
+  if (source.catalog.get(PDFName.of('AcroForm')) !== undefined) {
+    source.getForm().flatten()
+  }
+
   const output = await PDFDocument.create()
   const sourcePages = source.getPages()
   const copiedPages = await output.copyPages(source, sourcePages.map((_, index) => index))
