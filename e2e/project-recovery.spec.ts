@@ -60,7 +60,7 @@ test('recovers inserted PDFs, page order, and review comments after a reload', a
   await page.locator('input[type="file"]').first().setInputFiles('tmp/pdfs/mvp-fixture.pdf')
   const recovery = page.getByRole('dialog', { name: 'Resume your previous LeafPDF project?' })
   await expect(recovery).toBeVisible()
-  await recovery.getByRole('button', { name: 'Restore complete project' }).click()
+  await recovery.getByRole('button', { name: 'Restore edits' }).click()
 
   await expect(page.getByText('4 pages')).toBeVisible()
   await page.getByRole('button', { name: /^Review/ }).click()
