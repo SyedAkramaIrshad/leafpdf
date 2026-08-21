@@ -43,14 +43,14 @@ function RecoveryDialogContent({ onRestore, onDiscard, onClose }: Omit<RecoveryD
             review comments, and local OCR results.
           </p>
           <p className="dialog-note">
-            Recovery exists only in this browser. Clearing site data, using a private window, or
-            switching devices can remove it. Save a .leafpdf project for a portable copy.
+            Recovery is stored only on this device and browser. Clearing site data, using a private
+            window, or switching devices can remove it. Save a .leafpdf project for a portable copy.
           </p>
         </div>
         <div className="dialog-actions">
           <button type="button" className="text-button" onClick={onClose}>Not now</button>
           <button type="button" className="danger-button" onClick={onDiscard}>Discard recovery</button>
-          <button type="button" ref={restoreRef} className="primary-button" onClick={onRestore}>Restore complete project</button>
+          <button type="button" ref={restoreRef} className="primary-button" onClick={onRestore}>Restore edits</button>
         </div>
       </section>
     </div>
