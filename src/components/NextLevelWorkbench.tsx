@@ -609,8 +609,11 @@ export function NextLevelWorkbench({
       }
       setCompatibilityFeatures(null)
       dispatch({ type: 'markSaved', document: documentSnapshot })
-      if (latestDocument.current === documentSnapshot && !projectOnlyDirty) {
+      const projectOnlyStateSaved = latestComments.current === commentsSnapshot
+        && latestOcr.current.length === 0
+      if (latestDocument.current === documentSnapshot && projectOnlyStateSaved) {
         setProjectSavedDocument(documentSnapshot)
+        setProjectOnlyDirty(false)
         await recoveryQueue.current.clear(recoveryKey)
       }
       setNotice(
@@ -802,12 +805,13 @@ export function NextLevelWorkbench({
           <button type="button" disabled={state.future.length === 0} onClick={() => dispatch({ type: 'redo' })} aria-label="Redo">↷</button>
         </div>
         <div className="next-actions" aria-label="Project and review tools">
+          <button type="button" className="mobile-document-marks" aria-label="Marks" onClick={() => setMarksOpen(true)}>Marks</button>
           <button type="button" onClick={() => void saveProject()} disabled={savingProject}>{savingProject ? 'Saving…' : 'Save project'}</button>
           <button type="button" onClick={() => setActivePanel(activePanel === 'review' ? null : 'review')}>Review{comments.length ? ` ${comments.length}` : ''}</button>
           <button type="button" onClick={() => setActivePanel(activePanel === 'privacy' ? null : 'privacy')}>Privacy</button>
           <button type="button" onClick={() => setActivePanel(activePanel === 'ocr' ? null : 'ocr')}>OCR</button>
           <button type="button" onClick={() => setActivePanel(activePanel === 'compare' ? null : 'compare')}>Compare</button>
-          <button type="button" aria-label="Document marks" onClick={() => setMarksOpen(true)}>Marks</button>
+          <button type="button" className="desktop-document-marks" aria-label="Document marks" onClick={() => setMarksOpen(true)}>Marks</button>
         </div>
         <button
           type="button"
