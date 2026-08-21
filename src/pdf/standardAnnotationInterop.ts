@@ -12,6 +12,8 @@ import type { ReviewComment } from '../project/projectTypes'
 const TEXT_ANNOTATION_TYPE = 1
 const ANNOTS = PDFName.of('Annots')
 
+type PdfRectangle = [number, number, number, number]
+
 function annotationArray(document: PDFDocument, page: PDFPage): PDFArray {
   const existing = page.node.get(ANNOTS)
   if (existing instanceof PDFArray) return existing
@@ -86,6 +88,26 @@ function viewportPoint(transform: number[], x: number, y: number): [number, numb
   return [a * x + c * y + e, b * x + d * y + f]
 }
 
+function viewportRectangle(
+  viewport: unknown,
+  rectangle: PdfRectangle,
+): PdfRectangle {
+  const compatible = viewport as {
+    transform?: number[]
+    convertToViewportRectangle?: (rect: PdfRectangle) => number[]
+  }
+  if (typeof compatible.convertToViewportRectangle === 'function') {
+    const converted = compatible.convertToViewportRectangle(rectangle)
+    if (converted.length === 4 && converted.every(Number.isFinite)) {
+      return converted as PdfRectangle
+    }
+  }
+  if (!compatible.transform || compatible.transform.length < 6) return rectangle
+  const topLeft = viewportPoint(compatible.transform, rectangle[0], rectangle[1])
+  const bottomRight = viewportPoint(compatible.transform, rectangle[2], rectangle[3])
+  return [topLeft[0], topLeft[1], bottomRight[0], bottomRight[1]]
+}
+
 /** Import standard PDF text-note annotations into the LeafPDF review panel. */
 export async function importStandardTextComments(
   pdf: PDFDocumentProxy,
@@ -102,10 +124,9 @@ export async function importStandardTextComments(
       if (annotation.annotationType !== TEXT_ANNOTATION_TYPE) continue
       const rect = annotation.rect
       if (!Array.isArray(rect) || rect.length !== 4 || !rect.every((value) => typeof value === 'number')) continue
-      const topLeft = viewportPoint(viewport.transform, rect[0], rect[1])
-      const bottomRight = viewportPoint(viewport.transform, rect[2], rect[3])
-      const left = Math.min(topLeft[0], bottomRight[0])
-      const top = Math.min(topLeft[1], bottomRight[1])
+      const converted = viewportRectangle(viewport, rect as PdfRectangle)
+      const left = Math.min(converted[0], converted[2])
+      const top = Math.min(converted[1], converted[3])
       const createdAt = parsePdfDate(annotation.modificationDate)
       comments.push({
         id: typeof annotation.id === 'string' ? `pdf-${annotation.id}` : `pdf-${sourceIndex}-${comments.length}`,
