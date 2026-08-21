@@ -40,6 +40,8 @@ type FileWindow = Window & typeof globalThis & {
   launchQueue?: LaunchQueueLike
 }
 
+type StandaloneNavigator = Navigator & { standalone?: boolean }
+
 const DOCUMENT_TYPES: FilePickerAcceptType[] = [
   {
     description: 'PDF or LeafPDF project',
@@ -50,12 +52,18 @@ const DOCUMENT_TYPES: FilePickerAcceptType[] = [
   },
 ]
 
+export function runningAsInstalledApp(): boolean {
+  return window.matchMedia?.('(display-mode: standalone)').matches === true
+    || (navigator as StandaloneNavigator).standalone === true
+}
+
 export function supportsNativeOpen(): boolean {
   return typeof (window as FileWindow).showOpenFilePicker === 'function'
 }
 
 export function supportsNativeSave(): boolean {
-  return typeof (window as FileWindow).showSaveFilePicker === 'function'
+  return runningAsInstalledApp()
+    && typeof (window as FileWindow).showSaveFilePicker === 'function'
 }
 
 export async function chooseLocalDocument(): Promise<File | null> {
@@ -88,7 +96,7 @@ export async function saveLocalBlob(
   suggestedName: string,
   type: FilePickerAcceptType,
 ): Promise<'native' | 'download' | 'cancelled'> {
-  const picker = (window as FileWindow).showSaveFilePicker
+  const picker = supportsNativeSave() ? (window as FileWindow).showSaveFilePicker : undefined
   if (!picker) {
     fallbackDownload(blob, suggestedName)
     return 'download'
