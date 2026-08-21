@@ -1,0 +1,33 @@
+name: Mark feature verification result
+
+on:
+  push:
+    branches: [feature/next-level-workbench]
+    paths:
+      - '.github/workflows/mark-feature-ci.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  mark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/next-level-workbench
+      - name: Convert the committed report into a marker
+        run: |
+          rm -f .ci/VERIFIED_GREEN .ci/VERIFIED_RED
+          if grep -qx 'overall_exit_code=0' .ci/feature-ci.txt; then
+            printf 'All serialized verification gates passed.\n' > .ci/VERIFIED_GREEN
+          else
+            printf 'At least one serialized verification gate failed.\n' > .ci/VERIFIED_RED
+          fi
+      - name: Commit marker
+        run: |
+          git config user.name 'LeafPDF CI marker'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A -- .ci/VERIFIED_GREEN .ci/VERIFIED_RED
+          git commit -m 'Mark feature verification result' || exit 0
+          git push origin HEAD:feature/next-level-workbench
