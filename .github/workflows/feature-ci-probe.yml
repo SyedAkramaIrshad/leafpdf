@@ -6,6 +6,10 @@ on:
     paths-ignore:
       - '.ci/**'
 
+concurrency:
+  group: leafpdf-next-level-verification
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -32,6 +36,9 @@ jobs:
           mkdir -p .ci
           report=.ci/feature-ci.txt
           : > "$report"
+          echo "tested_commit=$(git rev-parse HEAD)" >> "$report"
+          echo "tested_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$report"
+          echo >> "$report"
           overall=0
 
           run_gate() {
