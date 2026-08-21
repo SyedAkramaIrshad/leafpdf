@@ -10,18 +10,34 @@
   "theme_color": "#182026",
   "icons": [
     {
+      "src": "/leafpdf-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/leafpdf-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
       "src": "/leafpdf-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "file_handlers": [
     {
       "action": "/",
       "accept": {
-        "application/pdf": [".pdf"],
-        "application/x-leafpdf+json": [".leafpdf"]
+        "application/pdf": [
+          ".pdf"
+        ],
+        "application/x-leafpdf+json": [
+          ".leafpdf"
+        ]
       }
     }
   ],
