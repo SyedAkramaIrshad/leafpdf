@@ -20,7 +20,7 @@ async function sensitiveFixture(): Promise<Uint8Array> {
   })
   const existing = page.node.get(PDFName.of('Annots'))
   const resolved = existing instanceof PDFRef ? document.context.lookup(existing) : existing
-  const annots = resolved instanceof PDFArray ? resolved : document.context.obj([])
+  const annots = (resolved instanceof PDFArray ? resolved : document.context.obj([])) as PDFArray
   if (!(resolved instanceof PDFArray)) page.node.set(PDFName.of('Annots'), annots)
   annots.push(document.context.register(note))
   return document.save()
@@ -28,7 +28,10 @@ async function sensitiveFixture(): Promise<Uint8Array> {
 
 describe('sanitizePdfBytes', () => {
   it('rebuilds pages while dropping metadata, forms, attachments, and annotations', async () => {
-    const sanitized = await PDFDocument.load(await sanitizePdfBytes(await sensitiveFixture()))
+    const sanitized = await PDFDocument.load(
+      await sanitizePdfBytes(await sensitiveFixture()),
+      { updateMetadata: false },
+    )
 
     expect(sanitized.getPageCount()).toBe(1)
     expect(sanitized.getTitle()).toBeUndefined()
@@ -41,10 +44,10 @@ describe('sanitizePdfBytes', () => {
   })
 
   it('copies ordinary metadata only when explicitly requested', async () => {
-    const sanitized = await PDFDocument.load(await sanitizePdfBytes(
-      await sensitiveFixture(),
-      { keepDocumentMetadata: true },
-    ))
+    const sanitized = await PDFDocument.load(
+      await sanitizePdfBytes(await sensitiveFixture(), { keepDocumentMetadata: true }),
+      { updateMetadata: false },
+    )
 
     expect(sanitized.getTitle()).toBe('Confidential title')
     expect(sanitized.getAuthor()).toBe('Sensitive author')
