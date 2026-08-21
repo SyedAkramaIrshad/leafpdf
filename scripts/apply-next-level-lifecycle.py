@@ -48,6 +48,19 @@ replacements = [
       setNotice(""",
     ),
     (
+        """      if (latestDocument.current === documentSnapshot && !projectOnlyDirty) {
+        setProjectSavedDocument(documentSnapshot)
+        await recoveryQueue.current.clear(recoveryKey)
+      }""",
+        """      const projectOnlyStateSaved = latestComments.current === commentsSnapshot
+        && latestOcr.current.length === 0
+      if (latestDocument.current === documentSnapshot && projectOnlyStateSaved) {
+        setProjectSavedDocument(documentSnapshot)
+        setProjectOnlyDirty(false)
+        await recoveryQueue.current.clear(recoveryKey)
+      }""",
+    ),
+    (
         "const opened = await openLeafProject(JSON.stringify(recoveryProject))",
         "const opened = await hydrateLeafProject(recoveryProject)",
     ),
@@ -90,6 +103,17 @@ replacements = [
       if (currentPdf) void currentPdf.loadingTask.destroy().catch(() => undefined)
     }
   }""",
+    ),
+    (
+        """        <div className="next-actions" aria-label="Project and review tools">
+          <button type="button" onClick={() => void saveProject()} disabled={savingProject}>""",
+        """        <div className="next-actions" aria-label="Project and review tools">
+          <button type="button" className="mobile-document-marks" aria-label="Marks" onClick={() => setMarksOpen(true)}>Marks</button>
+          <button type="button" onClick={() => void saveProject()} disabled={savingProject}>""",
+    ),
+    (
+        """          <button type="button" aria-label="Document marks" onClick={() => setMarksOpen(true)}>Marks</button>""",
+        """          <button type="button" className="desktop-document-marks" aria-label="Document marks" onClick={() => setMarksOpen(true)}>Marks</button>""",
     ),
 ]
 
