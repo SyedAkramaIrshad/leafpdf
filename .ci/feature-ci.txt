@@ -1,9 +1,9 @@
-tested_commit=1b433cb8a278bde356bf90eeb10e7e4dd2b78b7e
-tested_at=2026-08-21T21:15:13Z
+tested_commit=c4a5b6fe228ed009b5dc264c8f6a1eb7fa1bc691
+tested_at=2026-08-21T21:24:21Z
 
 ===== npm-ci =====
 
-added 257 packages, and audited 258 packages in 4s
+added 257 packages, and audited 258 packages in 5s
 
 65 packages are looking for funding
   run `npm fund` for details
@@ -26,44 +26,45 @@ exit_code=0
 
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/leafpdf/leafpdf[39m
 
- [32m✓[39m src/pdf/sourceAnalysis.test.ts [2m([22m[2m28 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 136[2mms[22m[39m
+ [32m✓[39m src/pdf/sourceAnalysis.test.ts [2m([22m[2m28 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 187[2mms[22m[39m
 [90mstderr[2m | src/components/Workbench.test.tsx[2m > [22m[2mPageCanvas render lifecycle[2m > [22m[2mcancels the superseded render task when zoom changes
 [22m[39mWarning: Please use the `legacy` build in Node.js environments.
 
- [32m✓[39m src/components/Workbench.test.tsx [2m([22m[2m25 tests[22m[2m)[22m[33m 745[2mms[22m[39m
- [32m✓[39m src/pdf/exportPdf.test.ts [2m([22m[2m31 tests[22m[2m)[22m[33m 979[2mms[22m[39m
-     [33m[2m✓[22m[39m exports Arabic, Devanagari, and Latin text without an encoding failure [33m 677[2mms[22m[39m
- [32m✓[39m src/model/editor.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 15[2mms[22m[39m
- [32m✓[39m src/pdf/exportClient.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 16[2mms[22m[39m
- [32m✓[39m src/components/AnnotationLayer.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 390[2mms[22m[39m
- [32m✓[39m src/pdf/fontRegistry.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 409[2mms[22m[39m
- [32m✓[39m src/model/annotationMovement.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 11[2mms[22m[39m
- [32m✓[39m src/persistence/localStore.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 27[2mms[22m[39m
- [32m✓[39m src/pdf/textAnchor.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 85[2mms[22m[39m
+ [32m✓[39m src/components/Workbench.test.tsx [2m([22m[2m25 tests[22m[2m)[22m[33m 1074[2mms[22m[39m
+ [32m✓[39m src/pdf/exportPdf.test.ts [2m([22m[2m31 tests[22m[2m)[22m[33m 1487[2mms[22m[39m
+     [33m[2m✓[22m[39m exports Arabic, Devanagari, and Latin text without an encoding failure [33m 1123[2mms[22m[39m
+ [32m✓[39m src/model/editor.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m src/pdf/exportClient.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m src/components/AnnotationLayer.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 471[2mms[22m[39m
+ [32m✓[39m src/pdf/fontRegistry.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 583[2mms[22m[39m
+ [32m✓[39m src/model/annotationMovement.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/persistence/localStore.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m src/pdf/textAnchor.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 83[2mms[22m[39m
  [2m[90m↓[39m[22m src/pdf/exportFixtures.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
- [32m✓[39m src/components/SignatureDialog.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 279[2mms[22m[39m
- [32m✓[39m src/project/projectFormat.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 15[2mms[22m[39m
- [32m✓[39m src/pdf/formFields.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
- [32m✓[39m src/model/imageValidation.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 46[2mms[22m[39m
- [32m✓[39m src/pdf/textSearch.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
- [32m✓[39m src/components/DocumentDialogs.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 332[2mms[22m[39m
- [32m✓[39m src/pdf/sanitizePdf.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 102[2mms[22m[39m
- [32m✓[39m src/pdf/redactionMask.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/components/SignatureDialog.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 441[2mms[22m[39m
+     [33m[2m✓[22m[39m makes a typed signature into the PNG placed by the parent [33m 306[2mms[22m[39m
+ [32m✓[39m src/project/projectFormat.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m src/pdf/formFields.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/model/imageValidation.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m src/pdf/textSearch.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/components/DocumentDialogs.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 461[2mms[22m[39m
+ [32m✓[39m src/pdf/sanitizePdf.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 120[2mms[22m[39m
  [32m✓[39m src/pdf/standardAnnotationInterop.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 37[2mms[22m[39m
- [32m✓[39m src/model/nextLevelEditorReducer.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
- [32m✓[39m src/project/projectRecovery.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/pdf/redactionMask.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/model/nextLevelEditorReducer.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/project/projectRecovery.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 22[2mms[22m[39m
  [2m[90m↓[39m[22m src/pdf/fixtureAnalysis.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
- [32m✓[39m src/ocr/nativeOcr.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
- [32m✓[39m src/pdf/textColor.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
- [32m✓[39m src/persistence/recoveryQueue.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
- [32m✓[39m src/compare/pdfComparison.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 8[2mms[22m[39m
- [32m✓[39m src/model/geometry.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 3[2mms[22m[39m
- [32m✓[39m src/pdf/renderLifecycle.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/ocr/nativeOcr.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/persistence/recoveryQueue.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/pdf/textColor.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/compare/pdfComparison.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/pdf/renderLifecycle.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/model/geometry.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
 
 [2m Test Files [22m [1m[32m27 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (29)[39m
 [2m      Tests [22m [1m[32m212 passed[39m[22m[2m | [22m[33m13 skipped[39m[90m (225)[39m
-[2m   Start at [22m 21:15:22
-[2m   Duration [22m 13.00s[2m (transform 1.41s, setup 4.78s, import 2.63s, tests 3.70s, environment 22.50s)[22m
+[2m   Start at [22m 21:24:33
+[2m   Duration [22m 17.70s[2m (transform 1.79s, setup 6.71s, import 3.29s, tests 5.22s, environment 31.26s)[22m
 
 exit_code=0
 
@@ -108,7 +109,7 @@ dist/assets/index-CMBi8O2f.js                          198.28 kB │ gzip:  63.0
 dist/assets/pdf-Bn-TKLul.js                            427.30 kB │ gzip: 127.39 kB
 dist/assets/NextLevelWorkbench-zHB-VDqM.js             619.59 kB │ gzip: 234.74 kB
 
-[32m✓ built in 541ms[39m
+[32m✓ built in 634ms[39m
 [33m[plugin builtin:vite-reporter] 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
@@ -126,10 +127,10 @@ Collecting pillow>=9.0.0 (from reportlab)
 Collecting charset-normalizer (from reportlab)
   Downloading charset_normalizer-3.5.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (45 kB)
 Downloading reportlab-5.0.1-py3-none-any.whl (2.0 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 9.9 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 122.8 MB/s  0:00:00
 Downloading pypdf-6.16.1-py3-none-any.whl (382 kB)
 Downloading pillow-12.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (6.9 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.9/6.9 MB 50.3 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.9/6.9 MB 192.0 MB/s  0:00:00
 Downloading charset_normalizer-3.5.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (248 kB)
 Installing collected packages: pypdf, pillow, charset-normalizer, reportlab
 
@@ -138,8 +139,8 @@ exit_code=0
 
 ===== poppler =====
 Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
-Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
 Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
 Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
 Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
 Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
@@ -168,7 +169,7 @@ Get:28 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Comp
 Get:29 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1385 kB]
 Get:30 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [320 kB]
 Get:31 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages [1415 B]
-Fetched 11.5 MB in 1s (8847 kB/s)
+Fetched 11.5 MB in 2s (6505 kB/s)
 Reading package lists...
 Reading package lists...
 Building dependency tree...
@@ -188,7 +189,7 @@ Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
 Get:2 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 poppler-data all 0.4.12-1 [2060 kB]
 Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libpoppler134 amd64 24.02.0-1ubuntu9.9 [1118 kB]
 Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 poppler-utils amd64 24.02.0-1ubuntu9.9 [212 kB]
-Fetched 3389 kB in 0s (11.7 MB/s)
+Fetched 3389 kB in 0s (33.2 MB/s)
 Selecting previously unselected package poppler-data.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 203124 files and directories currently installed.)
 Preparing to unpack .../poppler-data_0.4.12-1_all.deb ...
@@ -249,11 +250,11 @@ exit_code=0
 Installing dependencies...
 Switching to root user to install dependencies...
 Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
-Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
 Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Hit:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
 Hit:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease
 Hit:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease
-Hit:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
 Hit:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease
 Hit:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease
 Reading package lists...
@@ -331,7 +332,7 @@ Get:7 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-encodings a
 Get:8 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-utils amd64 1:7.7+6build3 [94.4 kB]
 Get:9 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 xfonts-cyrillic all 1:1.0.5+nmu1 [384 kB]
 Get:10 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-scalable all 1:1.0.3-1.3 [304 kB]
-Fetched 21.1 MB in 1s (32.2 MB/s)
+Fetched 21.1 MB in 0s (85.8 MB/s)
 Selecting previously unselected package fonts-ipafont-gothic.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 203693 files and directories currently installed.)
 Preparing to unpack .../0-fonts-ipafont-gothic_00303-21ubuntu1_all.deb ...
@@ -433,7 +434,7 @@ exit_code=0
 Running 27 tests using 1 worker
 ···············°·······°°·°
   4 skipped
-  23 passed (1.5m)
+  23 passed (1.8m)
 exit_code=0
 
 ===== e2e-production =====
@@ -450,6 +451,6 @@ exit_code=0
 Running 27 tests using 1 worker
 ···············°·······°°·°
   4 skipped
-  23 passed (53.6s)
+  23 passed (1.0m)
 exit_code=0
 overall_exit_code=0
