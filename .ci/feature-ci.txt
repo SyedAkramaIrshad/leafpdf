@@ -1,0 +1,1301 @@
+===== npm-ci =====
+
+added 257 packages, and audited 258 packages in 5s
+
+65 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+exit_code=0
+
+===== lint =====
+
+> leafpdf@0.1.0 lint
+> eslint .
+
+exit_code=0
+
+===== unit =====
+
+> leafpdf@0.1.0 test
+> vitest run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/leafpdf/leafpdf[39m
+
+ [32m✓[39m src/pdf/sourceAnalysis.test.ts [2m([22m[2m28 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 184[2mms[22m[39m
+[90mstderr[2m | src/components/Workbench.test.tsx[2m > [22m[2mPageCanvas render lifecycle[2m > [22m[2mcancels the superseded render task when zoom changes
+[22m[39mWarning: Please use the `legacy` build in Node.js environments.
+
+ [31m❯[39m src/components/Workbench.test.tsx [2m([22m[2m25 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 958[2mms[22m[39m
+[31m     [31m×[31m explains the local-first empty state[39m[32m 259[2mms[22m[39m
+     [32m✓[39m exposes each annotation tool with an accessible label[32m 203[2mms[22m[39m
+     [32m✓[39m supports keyboard navigation inside tool palettes[32m 93[2mms[22m[39m
+     [32m✓[39m renders only the selected thumbnail before other pages become visible[32m 49[2mms[22m[39m
+     [32m✓[39m renders nothing until a confirmation is required[32m 2[2mms[22m[39m
+     [32m✓[39m lists every feature at risk and focuses Cancel by default[32m 26[2mms[22m[39m
+     [32m✓[39m reports both choices to the caller[32m 12[2mms[22m[39m
+     [32m✓[39m traps focus inside the modal in both directions[32m 16[2mms[22m[39m
+     [32m✓[39m closes on Escape even when a parent re-renders during the same key press[32m 21[2mms[22m[39m
+     [32m✓[39m labels the canvas and describes what the signature is not[32m 11[2mms[22m[39m
+     [32m✓[39m stays closed until unsaved edits exist[32m 2[2mms[22m[39m
+     [32m✓[39m defaults focus to continuing, and maps Escape to it[32m 11[2mms[22m[39m
+     [32m✓[39m says the original file is untouched[32m 4[2mms[22m[39m
+     [32m✓[39m traps focus inside the modal in both directions[32m 17[2mms[22m[39m
+     [32m✓[39m keeps content editing on the page instead of duplicating it in the inspector[32m 18[2mms[22m[39m
+     [32m✓[39m shows an exact font size and supports typing, buttons, and wheel changes[32m 32[2mms[22m[39m
+     [32m✓[39m formats added text with family, weight, and style controls[32m 43[2mms[22m[39m
+     [32m✓[39m exposes object clipboard and layer actions[32m 38[2mms[22m[39m
+     [32m✓[39m ends the group when the inspector unmounts[32m 8[2mms[22m[39m
+     [32m✓[39m cancels the superseded render task when zoom changes[32m 41[2mms[22m[39m
+     [32m✓[39m caps canvas pixels for an oversized page and says quality was reduced[32m 9[2mms[22m[39m
+     [32m✓[39m keeps the pixel cap absolute even for an absurdly large page[32m 14[2mms[22m[39m
+     [32m✓[39m still produces a usable canvas for a degenerate viewport[32m 6[2mms[22m[39m
+     [32m✓[39m does not claim reduced quality for a page inside the pixel budget[32m 4[2mms[22m[39m
+     [32m✓[39m reports a genuine render failure without reporting cancellations[32m 15[2mms[22m[39m
+ [32m✓[39m src/pdf/exportPdf.test.ts [2m([22m[2m31 tests[22m[2m)[22m[33m 1405[2mms[22m[39m
+     [33m[2m✓[22m[39m exports Arabic, Devanagari, and Latin text without an encoding failure [33m 944[2mms[22m[39m
+ [32m✓[39m src/model/editor.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m src/pdf/exportClient.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m src/components/AnnotationLayer.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 470[2mms[22m[39m
+ [32m✓[39m src/pdf/fontRegistry.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 458[2mms[22m[39m
+ [32m✓[39m src/model/annotationMovement.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/persistence/localStore.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m src/pdf/textAnchor.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 132[2mms[22m[39m
+ [2m[90m↓[39m[22m src/pdf/exportFixtures.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [32m✓[39m src/components/SignatureDialog.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 413[2mms[22m[39m
+ [32m✓[39m src/project/projectFormat.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m src/pdf/formFields.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/model/imageValidation.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m src/pdf/textSearch.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [31m❯[39m src/components/DocumentDialogs.test.tsx [2m([22m[2m5 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 501[2mms[22m[39m
+[31m     [31m×[31m explains local browser limits and requires an explicit restore or discard[39m[32m 262[2mms[22m[39m
+[31m     [31m×[31m wires explicit recovery choices[39m[32m 65[2mms[22m[39m
+     [32m✓[39m returns a validated watermark request with scope and opacity[32m 96[2mms[22m[39m
+     [32m✓[39m does not submit an empty watermark and returns page-number format and position[32m 64[2mms[22m[39m
+     [32m✓[39m closes safely with Escape[32m 13[2mms[22m[39m
+ [32m✓[39m src/pdf/standardAnnotationInterop.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [31m❯[39m src/pdf/redactionMask.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 20[2mms[22m[39m
+     [32m✓[39m expands an unrotated mask beyond every intended edge[32m 4[2mms[22m[39m
+     [32m✓[39m rotates around the same top-left pivot as the editor preview[32m 1[2mms[22m[39m
+[31m     [31m×[31m never allows a negative padding value to shrink the protected area[39m[32m 12[2mms[22m[39m
+     [32m✓[39m restores the canvas transform even when painting fails[32m 2[2mms[22m[39m
+ [31m❯[39m src/pdf/sanitizePdf.test.ts [2m([22m[2m2 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 108[2mms[22m[39m
+[31m     [31m×[31m rebuilds pages while dropping metadata, forms, attachments, and annotations[39m[32m 77[2mms[22m[39m
+     [32m✓[39m copies ordinary metadata only when explicitly requested[32m 29[2mms[22m[39m
+ [31m❯[39m src/model/nextLevelEditorReducer.test.ts [2m([22m[2m3 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 16[2mms[22m[39m
+     [32m✓[39m collapses consecutive 1% and 5% keyboard nudges into one undo entry[32m 7[2mms[22m[39m
+     [32m✓[39m keeps a pointer-like translation as its own history entry[32m 1[2mms[22m[39m
+[31m     [31m×[31m ends a keyboard group when selection moves to another object[39m[32m 6[2mms[22m[39m
+ [32m✓[39m src/project/projectRecovery.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m src/pdf/textColor.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [2m[90m↓[39m[22m src/pdf/fixtureAnalysis.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+ [32m✓[39m src/persistence/recoveryQueue.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/compare/pdfComparison.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [31m❯[39m src/ocr/nativeOcr.test.ts [2m([22m[2m2 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 15[2mms[22m[39m
+     [32m✓[39m normalizes browser OCR boxes and drops unusable detections[32m 3[2mms[22m[39m
+[31m     [31m×[31m clamps boxes that extend outside the rendered page[39m[32m 10[2mms[22m[39m
+ [32m✓[39m src/model/geometry.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/pdf/renderLifecycle.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 7 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/components/DocumentDialogs.test.tsx[2m > [22mRecoveryDialog[2m > [22mexplains local browser limits and requires an explicit restore or discard
+[31m[1mTestingLibraryElementError[22m: Unable to find an element with the text: /only on this device and browser/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"dialog-backdrop"[31m
+      [33mrole[31m=[32m"presentation"[31m
+    [36m>[31m
+      [36m<section[31m
+        [33maria-describedby[31m=[32m"recovery-body"[31m
+        [33maria-labelledby[31m=[32m"recovery-title"[31m
+        [33maria-modal[31m=[32m"true"[31m
+        [33mclass[31m=[32m"recovery-dialog"[31m
+        [33mrole[31m=[32m"dialog"[31m
+      [36m>[31m
+        [36m<span[31m
+          [33mclass[31m=[32m"inspector-label"[31m
+        [36m>[31m
+          [0mCOMPLETE LOCAL RECOVERY[0m
+        [36m</span>[31m
+        [36m<h2[31m
+          [33mid[31m=[32m"recovery-title"[31m
+        [36m>[31m
+          [0mResume your previous LeafPDF project?[0m
+        [36m</h2>[31m
+        [36m<div[31m
+          [33mid[31m=[32m"recovery-body"[31m
+        [36m>[31m
+          [36m<p>[31m
+            [0mLeafPDF saved the same complete representation used by a portable .leafpdf project: the primary PDF, inserted PDFs, page order, form values, editable annotations, review comments, and local OCR results.[0m
+          [36m</p>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"dialog-note"[31m
+          [36m>[31m
+            [0mRecovery exists only in this browser. Clearing site data, using a private window, or switching devices can remove it. Save a .leafpdf project for a portable copy.[0m
+          [36m</p>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"dialog-actions"[31m
+        [36m>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"text-button"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mNot now[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"danger-button"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mDiscard recovery[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"primary-button"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mRestore complete project[0m
+          [36m</button>[31m
+        [36m</div>[31m
+      [36m</section>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/components/DocumentDialogs.test.tsx:[2m14:19[22m[39m
+    [90m 12|[39m
+    [90m 13|[39m     expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', '…
+    [90m 14|[39m     expect(screen.getByText(/only on this device and browser/i)).toBeI…
+    [90m   |[39m                   [31m^[39m
+    [90m 15|[39m     expect(screen.getByRole('button', { name: 'Restore edits' })).toHa…
+    [90m 16|[39m     fireEvent[33m.[39m[34mkeyDown[39m(window[33m,[39m { key[33m:[39m [32m'Escape'[39m })
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/components/DocumentDialogs.test.tsx[2m > [22mRecoveryDialog[2m > [22mwires explicit recovery choices
+[31m[1mTestingLibraryElementError[22m: Unable to find an accessible element with the role "button" and name "Restore edits"
+
+Here are the accessible roles:
+
+  presentation:
+
+  Name "":
+  [36m<div[31m
+    [33mclass[31m=[32m"dialog-backdrop"[31m
+    [33mrole[31m=[32m"presentation"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+  dialog:
+
+  Name "Resume your previous LeafPDF project?":
+  [36m<section[31m
+    [33maria-describedby[31m=[32m"recovery-body"[31m
+    [33maria-labelledby[31m=[32m"recovery-title"[31m
+    [33maria-modal[31m=[32m"true"[31m
+    [33mclass[31m=[32m"recovery-dialog"[31m
+    [33mrole[31m=[32m"dialog"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+  heading:
+
+  Name "Resume your previous LeafPDF project?":
+  [36m<h2[31m
+    [33mid[31m=[32m"recovery-title"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p />[31m
+
+  Name "":
+  [36m<p[31m
+    [33mclass[31m=[32m"dialog-note"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+  button:
+
+  Name "Not now":
+  [36m<button[31m
+    [33mclass[31m=[32m"text-button"[31m
+    [33mtype[31m=[32m"button"[31m
+  [36m/>[31m
+
+  Name "Discard recovery":
+  [36m<button[31m
+    [33mclass[31m=[32m"danger-button"[31m
+    [33mtype[31m=[32m"button"[31m
+  [36m/>[31m
+
+  Name "Restore complete project":
+  [36m<button[31m
+    [33mclass[31m=[32m"primary-button"[31m
+    [33mtype[31m=[32m"button"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"dialog-backdrop"[31m
+      [33mrole[31m=[32m"presentation"[31m
+    [36m>[31m
+      [36m<section[31m
+        [33maria-describedby[31m=[32m"recovery-body"[31m
+        [33maria-labelledby[31m=[32m"recovery-title"[31m
+        [33maria-modal[31m=[32m"true"[31m
+        [33mclass[31m=[32m"recovery-dialog"[31m
+        [33mrole[31m=[32m"dialog"[31m
+      [36m>[31m
+        [36m<span[31m
+          [33mclass[31m=[32m"inspector-label"[31m
+        [36m>[31m
+          [0mCOMPLETE LOCAL RECOVERY[0m
+        [36m</span>[31m
+        [36m<h2[31m
+          [33mid[31m=[32m"recovery-title"[31m
+        [36m>[31m
+          [0mResume your previous LeafPDF project?[0m
+        [36m</h2>[31m
+        [36m<div[31m
+          [33mid[31m=[32m"recovery-body"[31m
+        [36m>[31m
+          [36m<p>[31m
+            [0mLeafPDF saved the same complete representation used by a portable .leafpdf project: the primary PDF, inserted PDFs, page order, form values, editable annotations, review comments, and local OCR results.[0m
+          [36m</p>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"dialog-note"[31m
+          [36m>[31m
+            [0mRecovery exists only in this browser. Clearing site data, using a private window, or switching devices can remove it. Save a .leafpdf project for a portable copy.[0m
+          [36m</p>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"dialog-actions"[31m
+        [36m>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"text-button"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mNot now[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"danger-button"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mDiscard recovery[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"primary-button"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mRestore complete project[0m
+          [36m</button>[31m
+        [36m</div>[31m
+      [36m</section>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/components/DocumentDialogs.test.tsx:[2m26:28[22m[39m
+    [90m 24|[39m     [35mconst[39m onDiscard [33m=[39m vi[33m.[39m[34mfn[39m()
+    [90m 25|[39m     render(<RecoveryDialog open onRestore={onRestore} onDiscard={onDis…
+    [90m 26|[39m     fireEvent.click(screen.getByRole('button', { name: 'Restore edits'…
+    [90m   |[39m                            [31m^[39m
+    [90m 27|[39m     fireEvent.click(screen.getByRole('button', { name: 'Discard recove…
+    [90m 28|[39m     [34mexpect[39m(onRestore)[33m.[39m[34mtoHaveBeenCalledOnce[39m()
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/components/Workbench.test.tsx[2m > [22mPDF editor controls[2m > [22mexplains the local-first empty state
+[31m[1mTestingLibraryElementError[22m: Unable to find an element with the text: /stays on this device/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<main[31m
+      [33mclass[31m=[32m"welcome-shell"[31m
+    [36m>[31m
+      [36m<header[31m
+        [33maria-label[31m=[32m"LeafPDF"[31m
+        [33mclass[31m=[32m"welcome-brand"[31m
+      [36m>[31m
+        [36m<span[31m
+          [33maria-hidden[31m=[32m"true"[31m
+          [33mclass[31m=[32m"brand-mark"[31m
+        [36m>[31m
+          [0mL[0m
+        [36m</span>[31m
+        [36m<span>[31m
+          [0mLeafPDF[0m
+        [36m</span>[31m
+        [36m<span[31m
+          [33mclass[31m=[32m"mvp-chip"[31m
+        [36m>[31m
+          [0mLOCAL[0m
+        [36m</span>[31m
+      [36m</header>[31m
+      [36m<section[31m
+        [33mclass[31m=[32m"welcome-grid"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"welcome-copy"[31m
+        [36m>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"eyebrow"[31m
+          [36m>[31m
+            [0mA private PDF project workbench[0m
+          [36m</p>[31m
+          [36m<h1[31m
+            [33maria-label[31m=[32m"Annotate and sign PDFs."[31m
+          [36m>[31m
+            [0mAnnotate.[0m
+            [36m<br />[31m
+            [0mReview. Keep.[0m
+          [36m</h1>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"welcome-lead"[31m
+          [36m>[31m
+            [0mEdit PDFs, save a portable project, review comments, inspect privacy, run local OCR, and compare documents without sending their contents to a server.[0m
+          [36m</p>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"privacy-note"[31m
+          [36m>[31m
+            [36m<span[31m
+              [33maria-hidden[31m=[32m"true"[31m
+              [33mclass[31m=[32m"status-dot"[31m
+            [36m/>[31m
+            [0mYour PDFs and editable projects stay on this device.[0m
+          [36m</div>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"drop-sheet "[31m
+        [36m>[31m
+          [36m<div[31m
+            [33maria-hidden[31m=[32m"true"[31m
+            [33mclass[31m=[32m"sheet-fold"[31m
+          [36m/>[31m
+          [36m<span[31m
+            [33mclass[31m=[32m"drop-index"[31m
+          [36m>[31m
+            [0m01 / OPEN[0m
+          [36m</span>[31m
+          [36m<div[31m
+            [33maria-hidden[31m=[32m"true"[31m
+            [33mclass[31m=[32m"drop-glyph"[31m
+          [36m>[31m
+            [0mPDF[0m
+          [36m</div>[31m
+          [36m<h2>[31m
+            [0mDrop a PDF or project here[0m
+          [36m</h2>[31m
+          [36m<p>[31m
+            [0mOpen a PDF or resume a .leafpdf project[0m
+          [36m</p>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"primary-button"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mChoose PDF or project[0m
+          [36m</button>[31m
+          [36m<input[31m
+            [33maccept[31m=[32m"application/pdf,application/x-leafpdf+json,.pdf,.leafpdf"[31m
+            [33mclass[31m=[32m"visually-hidden"[31m
+            [33mtype[31m=[32m"file"[31m
+          [36m/>[31m
+          [36m<span[31m
+            [33mclass[31m=[32m"file-limit"[31m
+          [36m>[31m
+            [0mPDF up to 100 MB · portable .leafpdf projects[0m
+          [36m</span>[31m
+        [36m</div>[31m
+      [36m</section>[31m
+    [36m</main>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/components/Workbench.test.tsx:[2m64:19[22m[39m
+    [90m 62|[39m     [34mrender[39m([33m<[39m[33mFileWelcome[39m [33mbusy[39m[33m=[39m[33m{[39m[35mfalse[39m[33m}[39m [33merror[39m[33m=[39m[33m{[39m[35mnull[39m[33m}[39m [33monFile[39m[33m=[39m[33m{[39mvi[33m.[39m[34mfn[39m()[33m}[39m [33m/[39m[33m>[39m)
+    [90m 63|[39m     expect(screen.getByRole('heading', { name: /annotate and sign pdfs…
+    [90m 64|[39m     expect(screen.getByText(/stays on this device/i)).toBeInTheDocumen…
+    [90m   |[39m                   [31m^[39m
+    [90m 65|[39m     expect(screen.getByRole('button', { name: /choose a pdf/i })).toBe…
+    [90m 66|[39m   })
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/model/nextLevelEditorReducer.test.ts[2m > [22mnextLevelEditorReducer[2m > [22mends a keyboard group when selection moves to another object
+[31m[1mAssertionError[22m: expected 'annotation-text-1-keyboard-nudge' to be null[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+"annotation-text-1-keyboard-nudge"
+
+[36m [2m❯[22m src/model/nextLevelEditorReducer.test.ts:[2m57:35[22m[39m
+    [90m 55|[39m
+    [90m 56|[39m     state = nextLevelEditorReducer(state, { type: 'selectAnnotation', …
+    [90m 57|[39m     [34mexpect[39m(state[33m.[39mhistoryGroupKey)[33m.[39m[34mtoBeNull[39m()
+    [90m   |[39m                                   [31m^[39m
+    [90m 58|[39m   })
+    [90m 59|[39m })
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/ocr/nativeOcr.test.ts[2m > [22mnormalizeDetectedText[2m > [22mclamps boxes that extend outside the rendered page
+[31m[1mAssertionError[22m: expected { text: 'edge', confidence: 0.5, …(4) } to match object { x: 0.95, y: 0.98, width: 0.05, …(1) }
+(2 matching properties omitted from actual)[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "height": 0.02,[39m
+[32m-   "width": 0.05,[39m
+[31m+   "height": 0.020000000000000018,[39m
+[31m+   "width": 0.050000000000000044,[39m
+[2m    "x": 0.95,[22m
+[2m    "y": 0.98,[22m
+[2m  }[22m
+
+[36m [2m❯[22m src/ocr/nativeOcr.test.ts:[2m22:18[22m[39m
+    [90m 20|[39m     ][33m,[39m [34m1000[39m[33m,[39m [34m500[39m)
+    [90m 21|[39m
+    [90m 22|[39m     expect(word).toMatchObject({ x: 0.95, y: 0.98, width: 0.05, height…
+    [90m   |[39m                  [31m^[39m
+    [90m 23|[39m   })
+    [90m 24|[39m })
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/pdf/redactionMask.test.ts[2m > [22mpaintRedactionMask[2m > [22mnever allows a negative padding value to shrink the protected area
+[31m[1mAssertionError[22m: expected { name: 'fillRect', …(1) } to deeply equal { name: 'fillRect', …(1) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[2m    "args": [[22m
+[32m-     0,[39m
+[32m-     0,[39m
+[31m+     -0,[39m
+[31m+     -0,[39m
+[2m      300,[22m
+[2m      80,[22m
+[2m    ],[22m
+[2m    "name": "fillRect",[22m
+[2m  }[22m
+
+[36m [2m❯[22m src/pdf/redactionMask.test.ts:[2m71:22[22m[39m
+    [90m 69|[39m     [34mpaintRedactionMask[39m(context[33m,[39m [34mredaction[39m([34m30[39m)[33m,[39m [34m1000[39m[33m,[39m [34m800[39m[33m,[39m [33m-[39m[34m10[39m)
+    [90m 70|[39m
+    [90m 71|[39m     expect(calls[3]).toEqual({ name: 'fillRect', args: [0, 0, 300, 80]…
+    [90m   |[39m                      [31m^[39m
+    [90m 72|[39m   })
+    [90m 73|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/pdf/sanitizePdf.test.ts[2m > [22msanitizePdfBytes[2m > [22mrebuilds pages while dropping metadata, forms, attachments, and annotations
+[31m[1mAssertionError[22m: expected 'pdf-lib (https://github.com/Hopding/p…' to be 'LeafPDF sanitized copy' // Object.is equality[39m
+
+Expected: [32m"LeafPDF sanitized copy"[39m
+Received: [31m"pdf-lib (https://github.com/Hopding/pdf-lib)"[39m
+
+[36m [2m❯[22m src/pdf/sanitizePdf.test.ts:[2m40:37[22m[39m
+    [90m 38|[39m     expect(sanitized.catalog.get(PDFName.of('Metadata'))).toBeUndefine…
+    [90m 39|[39m     expect(sanitized.getPages()[0].node.get(PDFName.of('Annots'))).toB…
+    [90m 40|[39m     [34mexpect[39m(sanitized[33m.[39m[34mgetProducer[39m())[33m.[39m[34mtoBe[39m([32m'LeafPDF sanitized copy'[39m)
+    [90m   |[39m                                     [31m^[39m
+    [90m 41|[39m   })
+    [90m 42|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m21 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (29)[39m
+[2m      Tests [22m [1m[31m7 failed[39m[22m[2m | [22m[1m[32m204 passed[39m[22m[2m | [22m[33m13 skipped[39m[90m (224)[39m
+[2m   Start at [22m 20:22:12
+[2m   Duration [22m 18.07s[2m (transform 1.71s, setup 6.70s, import 3.43s, tests 4.95s, environment 31.58s)[22m
+
+
+::error file=/home/runner/work/leafpdf/leafpdf/src/components/DocumentDialogs.test.tsx,title=src/components/DocumentDialogs.test.tsx > RecoveryDialog > explains local browser limits and requires an explicit restore or discard,line=14,column=19::TestingLibraryElementError: Unable to find an element with the text: /only on this device and browser/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.%0A%0AIgnored nodes: comments, script, style%0A<body>%0A  <div>%0A    <div%0A      class="dialog-backdrop"%0A      role="presentation"%0A    >%0A      <section%0A        aria-describedby="recovery-body"%0A        aria-labelledby="recovery-title"%0A        aria-modal="true"%0A        class="recovery-dialog"%0A        role="dialog"%0A      >%0A        <span%0A          class="inspector-label"%0A        >%0A          COMPLETE LOCAL RECOVERY%0A        </span>%0A        <h2%0A          id="recovery-title"%0A        >%0A          Resume your previous LeafPDF project?%0A        </h2>%0A        <div%0A          id="recovery-body"%0A        >%0A          <p>%0A            LeafPDF saved the same complete representation used by a portable .leafpdf project: the primary PDF, inserted PDFs, page order, form values, editable annotations, review comments, and local OCR results.%0A          </p>%0A          <p%0A            class="dialog-note"%0A          >%0A            Recovery exists only in this browser. Clearing site data, using a private window, or switching devices can remove it. Save a .leafpdf project for a portable copy.%0A          </p>%0A        </div>%0A        <div%0A          class="dialog-actions"%0A        >%0A          <button%0A            class="text-button"%0A            type="button"%0A          >%0A            Not now%0A          </button>%0A          <button%0A            class="danger-button"%0A            type="button"%0A          >%0A            Discard recovery%0A          </button>%0A          <button%0A            class="primary-button"%0A            type="button"%0A          >%0A            Restore complete project%0A          </button>%0A        </div>%0A      </section>%0A    </div>%0A  </div>%0A</body>%0A ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19%0A ❯ src/components/DocumentDialogs.test.tsx:14:19%0A%0A
+
+::error file=/home/runner/work/leafpdf/leafpdf/src/components/DocumentDialogs.test.tsx,title=src/components/DocumentDialogs.test.tsx > RecoveryDialog > wires explicit recovery choices,line=26,column=28::TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Restore edits"%0A%0AHere are the accessible roles:%0A%0A  presentation:%0A%0A  Name "":%0A  <div%0A    class="dialog-backdrop"%0A    role="presentation"%0A  />%0A%0A  --------------------------------------------------%0A  dialog:%0A%0A  Name "Resume your previous LeafPDF project?":%0A  <section%0A    aria-describedby="recovery-body"%0A    aria-labelledby="recovery-title"%0A    aria-modal="true"%0A    class="recovery-dialog"%0A    role="dialog"%0A  />%0A%0A  --------------------------------------------------%0A  heading:%0A%0A  Name "Resume your previous LeafPDF project?":%0A  <h2%0A    id="recovery-title"%0A  />%0A%0A  --------------------------------------------------%0A  paragraph:%0A%0A  Name "":%0A  <p />%0A%0A  Name "":%0A  <p%0A    class="dialog-note"%0A  />%0A%0A  --------------------------------------------------%0A  button:%0A%0A  Name "Not now":%0A  <button%0A    class="text-button"%0A    type="button"%0A  />%0A%0A  Name "Discard recovery":%0A  <button%0A    class="danger-button"%0A    type="button"%0A  />%0A%0A  Name "Restore complete project":%0A  <button%0A    class="primary-button"%0A    type="button"%0A  />%0A%0A  --------------------------------------------------%0A%0AIgnored nodes: comments, script, style%0A<body>%0A  <div>%0A    <div%0A      class="dialog-backdrop"%0A      role="presentation"%0A    >%0A      <section%0A        aria-describedby="recovery-body"%0A        aria-labelledby="recovery-title"%0A        aria-modal="true"%0A        class="recovery-dialog"%0A        role="dialog"%0A      >%0A        <span%0A          class="inspector-label"%0A        >%0A          COMPLETE LOCAL RECOVERY%0A        </span>%0A        <h2%0A          id="recovery-title"%0A        >%0A          Resume your previous LeafPDF project?%0A        </h2>%0A        <div%0A          id="recovery-body"%0A        >%0A          <p>%0A            LeafPDF saved the same complete representation used by a portable .leafpdf project: the primary PDF, inserted PDFs, page order, form values, editable annotations, review comments, and local OCR results.%0A          </p>%0A          <p%0A            class="dialog-note"%0A          >%0A            Recovery exists only in this browser. Clearing site data, using a private window, or switching devices can remove it. Save a .leafpdf project for a portable copy.%0A          </p>%0A        </div>%0A        <div%0A          class="dialog-actions"%0A        >%0A          <button%0A            class="text-button"%0A            type="button"%0A          >%0A            Not now%0A          </button>%0A          <button%0A            class="danger-button"%0A            type="button"%0A          >%0A            Discard recovery%0A          </button>%0A          <button%0A            class="primary-button"%0A            type="button"%0A          >%0A            Restore complete project%0A          </button>%0A        </div>%0A      </section>%0A    </div>%0A  </div>%0A</body>%0A ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19%0A ❯ src/components/DocumentDialogs.test.tsx:26:28%0A%0A
+
+::error file=/home/runner/work/leafpdf/leafpdf/src/components/Workbench.test.tsx,title=src/components/Workbench.test.tsx > PDF editor controls > explains the local-first empty state,line=64,column=19::TestingLibraryElementError: Unable to find an element with the text: /stays on this device/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.%0A%0AIgnored nodes: comments, script, style%0A<body>%0A  <div>%0A    <main%0A      class="welcome-shell"%0A    >%0A      <header%0A        aria-label="LeafPDF"%0A        class="welcome-brand"%0A      >%0A        <span%0A          aria-hidden="true"%0A          class="brand-mark"%0A        >%0A          L%0A        </span>%0A        <span>%0A          LeafPDF%0A        </span>%0A        <span%0A          class="mvp-chip"%0A        >%0A          LOCAL%0A        </span>%0A      </header>%0A      <section%0A        class="welcome-grid"%0A      >%0A        <div%0A          class="welcome-copy"%0A        >%0A          <p%0A            class="eyebrow"%0A          >%0A            A private PDF project workbench%0A          </p>%0A          <h1%0A            aria-label="Annotate and sign PDFs."%0A          >%0A            Annotate.%0A            <br />%0A            Review. Keep.%0A          </h1>%0A          <p%0A            class="welcome-lead"%0A          >%0A            Edit PDFs, save a portable project, review comments, inspect privacy, run local OCR, and compare documents without sending their contents to a server.%0A          </p>%0A          <div%0A            class="privacy-note"%0A          >%0A            <span%0A              aria-hidden="true"%0A              class="status-dot"%0A            />%0A            Your PDFs and editable projects stay on this device.%0A          </div>%0A        </div>%0A        <div%0A          class="drop-sheet "%0A        >%0A          <div%0A            aria-hidden="true"%0A            class="sheet-fold"%0A          />%0A          <span%0A            class="drop-index"%0A          >%0A            01 / OPEN%0A          </span>%0A          <div%0A            aria-hidden="true"%0A            class="drop-glyph"%0A          >%0A            PDF%0A          </div>%0A          <h2>%0A            Drop a PDF or project here%0A          </h2>%0A          <p>%0A            Open a PDF or resume a .leafpdf project%0A          </p>%0A          <button%0A            class="primary-button"%0A            type="button"%0A          >%0A            Choose PDF or project%0A          </button>%0A          <input%0A            accept="application/pdf,application/x-leafpdf+json,.pdf,.leafpdf"%0A            class="visually-hidden"%0A            type="file"%0A          />%0A          <span%0A            class="file-limit"%0A          >%0A            PDF up to 100 MB · portable .leafpdf projects%0A          </span>%0A        </div>%0A      </section>%0A    </main>%0A  </div>%0A</body>%0A ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19%0A ❯ src/components/Workbench.test.tsx:64:19%0A%0A
+
+::error file=/home/runner/work/leafpdf/leafpdf/src/model/nextLevelEditorReducer.test.ts,title=src/model/nextLevelEditorReducer.test.ts > nextLevelEditorReducer > ends a keyboard group when selection moves to another object,line=57,column=35::AssertionError: expected 'annotation-text-1-keyboard-nudge' to be null%0A%0A- Expected:%0Anull%0A%0A+ Received:%0A"annotation-text-1-keyboard-nudge"%0A%0A ❯ src/model/nextLevelEditorReducer.test.ts:57:35%0A%0A
+
+::error file=/home/runner/work/leafpdf/leafpdf/src/ocr/nativeOcr.test.ts,title=src/ocr/nativeOcr.test.ts > normalizeDetectedText > clamps boxes that extend outside the rendered page,line=22,column=18::AssertionError: expected { text: 'edge', confidence: 0.5, …(4) } to match object { x: 0.95, y: 0.98, width: 0.05, …(1) }%0A(2 matching properties omitted from actual)%0A%0A- Expected%0A+ Received%0A%0A  {%0A-   "height": 0.02,%0A-   "width": 0.05,%0A+   "height": 0.020000000000000018,%0A+   "width": 0.050000000000000044,%0A    "x": 0.95,%0A    "y": 0.98,%0A  }%0A%0A ❯ src/ocr/nativeOcr.test.ts:22:18%0A%0A
+
+::error file=/home/runner/work/leafpdf/leafpdf/src/pdf/redactionMask.test.ts,title=src/pdf/redactionMask.test.ts > paintRedactionMask > never allows a negative padding value to shrink the protected area,line=71,column=22::AssertionError: expected { name: 'fillRect', …(1) } to deeply equal { name: 'fillRect', …(1) }%0A%0A- Expected%0A+ Received%0A%0A  {%0A    "args": [%0A-     0,%0A-     0,%0A+     -0,%0A+     -0,%0A      300,%0A      80,%0A    ],%0A    "name": "fillRect",%0A  }%0A%0A ❯ src/pdf/redactionMask.test.ts:71:22%0A%0A
+
+::error file=/home/runner/work/leafpdf/leafpdf/src/pdf/sanitizePdf.test.ts,title=src/pdf/sanitizePdf.test.ts > sanitizePdfBytes > rebuilds pages while dropping metadata%2C forms%2C attachments%2C and annotations,line=40,column=37::AssertionError: expected 'pdf-lib (https://github.com/Hopding/p…' to be 'LeafPDF sanitized copy' // Object.is equality%0A%0AExpected: "LeafPDF sanitized copy"%0AReceived: "pdf-lib (https://github.com/Hopding/pdf-lib)"%0A%0A ❯ src/pdf/sanitizePdf.test.ts:40:37%0A%0A
+exit_code=1
+
+===== build =====
+
+> leafpdf@0.1.0 build
+> tsc -b && vite build
+
+src/pdf/redactionRaster.ts(68,35): error TS2345: Argument of type 'Annotation' is not assignable to parameter of type 'RedactionAnnotation'.
+  Type 'TextAnnotation' is not assignable to type 'RedactionAnnotation'.
+    Types of property 'kind' are incompatible.
+      Type '"text"' is not assignable to type '"redaction"'.
+src/pdf/sanitizeClient.ts(20,50): error TS2339: Property 'message' does not exist on type 'SanitizeResponse'.
+  Property 'message' does not exist on type '{ type: "complete"; bytes: ArrayBuffer; }'.
+src/pdf/sanitizeClient.ts(22,56): error TS2339: Property 'bytes' does not exist on type 'SanitizeResponse'.
+  Property 'bytes' does not exist on type '{ type: "error"; message: string; }'.
+src/pdf/standardAnnotationInterop.ts(100,34): error TS2339: Property 'convertToViewportRectangle' does not exist on type 'PageViewport'.
+src/project/projectFormat.ts(66,56): error TS2345: Argument of type 'Uint8Array<ArrayBufferLike>' is not assignable to parameter of type 'BufferSource'.
+  Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'ArrayBufferView<ArrayBuffer>'.
+    Types of property 'buffer' are incompatible.
+      Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+        Type 'SharedArrayBuffer' is not assignable to type 'ArrayBuffer'.
+          Types of property '[Symbol.toStringTag]' are incompatible.
+            Type '"SharedArrayBuffer"' is not assignable to type '"ArrayBuffer"'.
+src/project/projectFormat.ts(202,21): error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
+  Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'ArrayBufferView<ArrayBuffer>'.
+    Types of property 'buffer' are incompatible.
+      Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+        Type 'SharedArrayBuffer' is not assignable to type 'ArrayBuffer'.
+          Types of property '[Symbol.toStringTag]' are incompatible.
+            Type '"SharedArrayBuffer"' is not assignable to type '"ArrayBuffer"'.
+src/pdf/standardAnnotationInterop.ts(100,34): error TS2339: Property 'convertToViewportRectangle' does not exist on type 'PageViewport'.
+src/project/projectFormat.ts(66,56): error TS2345: Argument of type 'Uint8Array<ArrayBufferLike>' is not assignable to parameter of type 'BufferSource'.
+  Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'ArrayBufferView<ArrayBuffer>'.
+    Types of property 'buffer' are incompatible.
+      Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+        Type 'SharedArrayBuffer' is not assignable to type 'ArrayBuffer'.
+          Types of property '[Symbol.toStringTag]' are incompatible.
+            Type '"SharedArrayBuffer"' is not assignable to type '"ArrayBuffer"'.
+src/project/projectFormat.ts(202,21): error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
+  Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'ArrayBufferView<ArrayBuffer>'.
+    Types of property 'buffer' are incompatible.
+      Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+        Type 'SharedArrayBuffer' is not assignable to type 'ArrayBuffer'.
+          Types of property '[Symbol.toStringTag]' are incompatible.
+            Type '"SharedArrayBuffer"' is not assignable to type '"ArrayBuffer"'.
+exit_code=2
+
+===== python-dependencies =====
+Collecting reportlab
+  Downloading reportlab-5.0.1-py3-none-any.whl.metadata (1.6 kB)
+Collecting pypdf
+  Downloading pypdf-6.16.1-py3-none-any.whl.metadata (7.5 kB)
+Collecting pillow>=9.0.0 (from reportlab)
+  Downloading pillow-12.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (9.1 kB)
+Collecting charset-normalizer (from reportlab)
+  Downloading charset_normalizer-3.5.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (45 kB)
+Downloading reportlab-5.0.1-py3-none-any.whl (2.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 22.5 MB/s  0:00:00
+Downloading pypdf-6.16.1-py3-none-any.whl (382 kB)
+Downloading pillow-12.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (6.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.9/6.9 MB 84.2 MB/s  0:00:00
+Downloading charset_normalizer-3.5.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (248 kB)
+Installing collected packages: pypdf, pillow, charset-normalizer, reportlab
+
+Successfully installed charset-normalizer-3.5.1 pillow-12.3.0 pypdf-6.16.1 reportlab-5.0.1
+exit_code=0
+
+===== poppler =====
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Get:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease [2548 B]
+Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [403 kB]
+Get:10 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [357 kB]
+Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1227 kB]
+Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [286 kB]
+Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [181 kB]
+Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1687 kB]
+Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [337 kB]
+Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [388 kB]
+Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1483 kB]
+Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [339 kB]
+Get:19 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [12.8 kB]
+Get:20 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+Get:21 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [5776 B]
+Get:22 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [12.6 kB]
+Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [967 kB]
+Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [205 kB]
+Get:25 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [46.4 kB]
+Get:26 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1201 kB]
+Get:27 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [240 kB]
+Get:28 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [76.2 kB]
+Get:29 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1385 kB]
+Get:30 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [320 kB]
+Get:31 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages [1415 B]
+Fetched 11.5 MB in 1s (8837 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  libpoppler134 poppler-data
+Suggested packages:
+  ghostscript fonts-japanese-mincho | fonts-ipafont-mincho
+  fonts-japanese-gothic | fonts-ipafont-gothic fonts-arphic-ukai
+  fonts-arphic-uming fonts-nanum
+The following NEW packages will be installed:
+  libpoppler134 poppler-data poppler-utils
+0 upgraded, 3 newly installed, 0 to remove and 28 not upgraded.
+Need to get 3389 kB of archives.
+After this operation, 17.8 MB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Get:2 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 poppler-data all 0.4.12-1 [2060 kB]
+Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libpoppler134 amd64 24.02.0-1ubuntu9.9 [1118 kB]
+Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 poppler-utils amd64 24.02.0-1ubuntu9.9 [212 kB]
+Fetched 3389 kB in 0s (7717 kB/s)
+Selecting previously unselected package poppler-data.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 203124 files and directories currently installed.)
+Preparing to unpack .../poppler-data_0.4.12-1_all.deb ...
+Unpacking poppler-data (0.4.12-1) ...
+Selecting previously unselected package libpoppler134:amd64.
+Preparing to unpack .../libpoppler134_24.02.0-1ubuntu9.9_amd64.deb ...
+Unpacking libpoppler134:amd64 (24.02.0-1ubuntu9.9) ...
+Selecting previously unselected package poppler-utils.
+Preparing to unpack .../poppler-utils_24.02.0-1ubuntu9.9_amd64.deb ...
+Unpacking poppler-utils (24.02.0-1ubuntu9.9) ...
+Setting up libpoppler134:amd64 (24.02.0-1ubuntu9.9) ...
+Setting up poppler-data (0.4.12-1) ...
+Setting up poppler-utils (24.02.0-1ubuntu9.9) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.8) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+Processing triggers for fontconfig (2.15.0-1.1ubuntu2) ...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+exit_code=0
+
+===== fixtures =====
+tmp/pdfs/edge-orientation.pdf (5.3 KB)
+tmp/pdfs/edge-unicode.pdf (1.6 KB)
+tmp/pdfs/edge-styles.pdf (28.0 KB)
+tmp/pdfs/edge-metadata.pdf (2.4 KB)
+tmp/pdfs/edge-outlines.pdf (2.6 KB)
+tmp/pdfs/edge-attachment.pdf (2.5 KB)
+tmp/pdfs/edge-form.pdf (2.4 KB)
+tmp/pdfs/edge-signature-field.pdf (2.4 KB)
+tmp/pdfs/edge-encrypted.pdf (2.6 KB)
+tmp/pdfs/edge-scanned.pdf (1.4 KB)
+tmp/pdfs/edge-whitespace-text.pdf (1.3 KB)
+tmp/pdfs/edge-100-pages.pdf (68.7 KB)
+blank-page detection:
+  [ok] a blank page is rejected: exit 1 (expected 1)
+  [ok] a page with one short line is accepted: exit 0 (expected 0)
+structural checks:
+  [ok] a foreign /Producer is rejected: exit 1 (expected 1)
+  [ok] dropped metadata is rejected: exit 1 (expected 1)
+  [ok] more pages than the source is rejected: exit 1 (expected 1)
+  [ok] a missing file is reported: exit 2 (expected 2)
+compatibility-copy contract:
+  [ok] dropped metadata still fails as a compatibility copy: exit 1 (expected 1)
+
+PASS: verify_export.py rejects every deliberately broken export
+exit_code=0
+
+===== playwright-install =====
+Installing dependencies...
+Switching to root user to install dependencies...
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Hit:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
+Hit:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease
+Hit:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease
+Hit:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease
+Hit:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+libasound2t64 is already the newest version (1.2.11-1ubuntu0.3).
+libasound2t64 set to manually installed.
+libatk-bridge2.0-0t64 is already the newest version (2.52.0-1build1).
+libatk-bridge2.0-0t64 set to manually installed.
+libatk1.0-0t64 is already the newest version (2.52.0-1build1).
+libatk1.0-0t64 set to manually installed.
+libatspi2.0-0t64 is already the newest version (2.52.0-1build1).
+libatspi2.0-0t64 set to manually installed.
+libcairo2 is already the newest version (1.18.0-3build1).
+libcairo2 set to manually installed.
+libcups2t64 is already the newest version (2.4.7-1.2ubuntu7.14).
+libcups2t64 set to manually installed.
+libdbus-1-3 is already the newest version (1.14.10-4ubuntu4.1).
+libdbus-1-3 set to manually installed.
+libdrm2 is already the newest version (2.4.125-1ubuntu0.1~24.04.2).
+libdrm2 set to manually installed.
+libgbm1 is already the newest version (25.2.8-0ubuntu0.24.04.2).
+libgbm1 set to manually installed.
+libglib2.0-0t64 is already the newest version (2.80.0-6ubuntu3.8).
+libglib2.0-0t64 set to manually installed.
+libnspr4 is already the newest version (2:4.35-1.1build1).
+libnspr4 set to manually installed.
+libnss3 is already the newest version (2:3.98-1ubuntu0.2).
+libnss3 set to manually installed.
+libpango-1.0-0 is already the newest version (1.52.1+ds-1build1).
+libpango-1.0-0 set to manually installed.
+libx11-6 is already the newest version (2:1.8.7-1build1).
+libx11-6 set to manually installed.
+libxcb1 is already the newest version (1.15-1ubuntu2).
+libxcb1 set to manually installed.
+libxcomposite1 is already the newest version (1:0.4.5-1build3).
+libxcomposite1 set to manually installed.
+libxdamage1 is already the newest version (1:1.1.6-1build1).
+libxdamage1 set to manually installed.
+libxext6 is already the newest version (2:1.3.4-1build2).
+libxext6 set to manually installed.
+libxfixes3 is already the newest version (1:6.0.0-2build1).
+libxfixes3 set to manually installed.
+libxkbcommon0 is already the newest version (1.6.0-1build1).
+libxkbcommon0 set to manually installed.
+libxrandr2 is already the newest version (2:1.5.2-2build1).
+libxrandr2 set to manually installed.
+xvfb is already the newest version (2:21.1.12-1ubuntu1.6).
+fonts-noto-color-emoji is already the newest version (2.047-0ubuntu0.24.04.1).
+libfontconfig1 is already the newest version (2.15.0-1.1ubuntu2).
+libfontconfig1 set to manually installed.
+libfreetype6 is already the newest version (2.13.2+dfsg-1ubuntu0.1).
+libfreetype6 set to manually installed.
+fonts-liberation is already the newest version (1:2.1.5-3).
+fonts-liberation set to manually installed.
+The following additional packages will be installed:
+  xfonts-encodings xfonts-utils
+Recommended packages:
+  fonts-ipafont-mincho fonts-tlwg-loma
+The following NEW packages will be installed:
+  fonts-freefont-ttf fonts-ipafont-gothic fonts-tlwg-loma-otf fonts-unifont
+  fonts-wqy-zenhei xfonts-cyrillic xfonts-encodings xfonts-scalable
+  xfonts-utils
+0 upgraded, 9 newly installed, 0 to remove and 28 not upgraded.
+Need to get 21.1 MB of archives.
+After this operation, 79.5 MB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Get:2 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-ipafont-gothic all 00303-21ubuntu1 [3513 kB]
+Get:3 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 fonts-freefont-ttf all 20211204+svn4273-2 [5641 kB]
+Get:4 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-tlwg-loma-otf all 1:0.7.3-1 [107 kB]
+Get:5 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-unifont all 1:15.1.01-1build1 [2993 kB]
+Get:6 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-wqy-zenhei all 0.9.45-8 [7472 kB]
+Get:7 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-encodings all 1:1.0.5-0ubuntu2 [578 kB]
+Get:8 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-utils amd64 1:7.7+6build3 [94.4 kB]
+Get:9 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 xfonts-cyrillic all 1:1.0.5+nmu1 [384 kB]
+Get:10 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-scalable all 1:1.0.3-1.3 [304 kB]
+Fetched 21.1 MB in 1s (24.4 MB/s)
+Selecting previously unselected package fonts-ipafont-gothic.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 203693 files and directories currently installed.)
+Preparing to unpack .../0-fonts-ipafont-gothic_00303-21ubuntu1_all.deb ...
+Unpacking fonts-ipafont-gothic (00303-21ubuntu1) ...
+Selecting previously unselected package fonts-freefont-ttf.
+Preparing to unpack .../1-fonts-freefont-ttf_20211204+svn4273-2_all.deb ...
+Unpacking fonts-freefont-ttf (20211204+svn4273-2) ...
+Selecting previously unselected package fonts-tlwg-loma-otf.
+Preparing to unpack .../2-fonts-tlwg-loma-otf_1%3a0.7.3-1_all.deb ...
+Unpacking fonts-tlwg-loma-otf (1:0.7.3-1) ...
+Selecting previously unselected package fonts-unifont.
+Preparing to unpack .../3-fonts-unifont_1%3a15.1.01-1build1_all.deb ...
+Unpacking fonts-unifont (1:15.1.01-1build1) ...
+Selecting previously unselected package fonts-wqy-zenhei.
+Preparing to unpack .../4-fonts-wqy-zenhei_0.9.45-8_all.deb ...
+Unpacking fonts-wqy-zenhei (0.9.45-8) ...
+Selecting previously unselected package xfonts-encodings.
+Preparing to unpack .../5-xfonts-encodings_1%3a1.0.5-0ubuntu2_all.deb ...
+Unpacking xfonts-encodings (1:1.0.5-0ubuntu2) ...
+Selecting previously unselected package xfonts-utils.
+Preparing to unpack .../6-xfonts-utils_1%3a7.7+6build3_amd64.deb ...
+Unpacking xfonts-utils (1:7.7+6build3) ...
+Selecting previously unselected package xfonts-cyrillic.
+Preparing to unpack .../7-xfonts-cyrillic_1%3a1.0.5+nmu1_all.deb ...
+Unpacking xfonts-cyrillic (1:1.0.5+nmu1) ...
+Selecting previously unselected package xfonts-scalable.
+Preparing to unpack .../8-xfonts-scalable_1%3a1.0.3-1.3_all.deb ...
+Unpacking xfonts-scalable (1:1.0.3-1.3) ...
+Setting up fonts-wqy-zenhei (0.9.45-8) ...
+Setting up fonts-freefont-ttf (20211204+svn4273-2) ...
+Setting up fonts-tlwg-loma-otf (1:0.7.3-1) ...
+Setting up xfonts-encodings (1:1.0.5-0ubuntu2) ...
+Setting up fonts-ipafont-gothic (00303-21ubuntu1) ...
+update-alternatives: using /usr/share/fonts/opentype/ipafont-gothic/ipag.ttf to provide /usr/share/fonts/truetype/fonts-japanese-gothic.ttf (fonts-japanese-gothic.ttf) in auto mode
+Setting up fonts-unifont (1:15.1.01-1build1) ...
+Setting up xfonts-utils (1:7.7+6build3) ...
+Setting up xfonts-cyrillic (1:1.0.5+nmu1) ...
+Setting up xfonts-scalable (1:1.0.3-1.3) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+Processing triggers for fontconfig (2.15.0-1.1ubuntu2) ...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+Downloading Chrome for Testing 151.0.7922.34 (playwright chromium v1234) from https://cdn.playwright.dev/builds/cft/151.0.7922.34/linux64/chrome-linux64.zip
+|                                                                                |   0% of 184.3 MiB
+|■■■■■■■■                                                                        |  10% of 184.3 MiB
+|■■■■■■■■■■■■■■■■                                                                |  20% of 184.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 184.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 184.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 184.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 184.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 184.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 184.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 184.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 184.3 MiB
+Chrome for Testing 151.0.7922.34 (playwright chromium v1234) downloaded to /home/runner/.cache/ms-playwright/chromium-1234
+Downloading FFmpeg (playwright ffmpeg v1011) from https://cdn.playwright.dev/dbazure/download/playwright/builds/ffmpeg/1011/ffmpeg-linux.zip
+|                                                                                |   0% of 2.3 MiB
+|■■■■■■■■                                                                        |  10% of 2.3 MiB
+|■■■■■■■■■■■■■■■■                                                                |  20% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 2.3 MiB
+FFmpeg (playwright ffmpeg v1011) downloaded to /home/runner/.cache/ms-playwright/ffmpeg-1011
+Downloading Chrome Headless Shell 151.0.7922.34 (playwright chromium-headless-shell v1234) from https://cdn.playwright.dev/builds/cft/151.0.7922.34/linux64/chrome-headless-shell-linux64.zip
+|                                                                                |   0% of 114.7 MiB
+|■■■■■■■■                                                                        |  10% of 114.7 MiB
+|■■■■■■■■■■■■■■■■                                                                |  20% of 114.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 114.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 114.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 114.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 114.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 114.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 114.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 114.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 114.7 MiB
+Chrome Headless Shell 151.0.7922.34 (playwright chromium-headless-shell v1234) downloaded to /home/runner/.cache/ms-playwright/chromium_headless_shell-1234
+exit_code=0
+
+===== e2e-development =====
+
+> leafpdf@0.1.0 test:e2e
+> playwright test
+
+
+Running 23 tests using 1 worker
+TT··TTTT··FF·T·°·T·°°F°
+
+  1) e2e/editor.spec.ts:4:1 › edits inline, annotates, and exports a PDF ───────────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.waitForEvent: Test timeout of 30000ms exceeded.
+    =========================== logs ===========================
+    waiting for event "download"
+    ============================================================
+
+       97 |   await expect(page.getByText('5 items added')).toBeVisible()
+       98 |
+    >  99 |   const downloadPromise = page.waitForEvent('download')
+          |                                ^
+      100 |   await page.getByRole('button', { name: /Export PDF/ }).click()
+      101 |   const download = await downloadPromise
+      102 |   expect(download.suggestedFilename()).toBe('mvp-fixture-edited.pdf')
+        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:99:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/editor-edits-inline-annotates-and-exports-a-PDF/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/editor-edits-inline-annotates-and-exports-a-PDF/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/editor-edits-inline-annotates-and-exports-a-PDF/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/editor-edits-inline-annotates-and-exports-a-PDF/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) e2e/editor.spec.ts:107:1 › requires confirmation before rebuilding a PDF that has form fields ─
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.waitForEvent: Test timeout of 30000ms exceeded.
+    =========================== logs ===========================
+    waiting for event "download"
+    ============================================================
+
+      124 |
+      125 |   // Accepting exports the disclosed compatibility copy.
+    > 126 |   const downloadPromise = page.waitForEvent('download')
+          |                                ^
+      127 |   await page.getByRole('button', { name: /Export PDF/ }).click()
+      128 |   await page.getByRole('dialog').getByRole('button', { name: 'Export compatibility copy' }).click()
+      129 |   const download = await downloadPromise
+        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:126:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/editor-requires-confirmati-30584--a-PDF-that-has-form-fields/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/editor-requires-confirmati-30584--a-PDF-that-has-form-fields/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/editor-requires-confirmati-30584--a-PDF-that-has-form-fields/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/editor-requires-confirmati-30584--a-PDF-that-has-form-fields/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) e2e/editor.spec.ts:178:1 › fills a real form field whose value survives into the exported PDF ─
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.waitForEvent: Test timeout of 30000ms exceeded.
+    =========================== logs ===========================
+    waiting for event "download"
+    ============================================================
+
+      187 |
+      188 |   // No page operation happened, so this is the preserving path: no dialog.
+    > 189 |   const downloadPromise = page.waitForEvent('download')
+          |                                ^
+      190 |   await page.getByRole('button', { name: /Export PDF/ }).click()
+      191 |   const download = await downloadPromise
+      192 |   mkdirSync('output/pdf', { recursive: true })
+        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:189:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/editor-fills-a-real-form-f-850f4-vives-into-the-exported-PDF/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/editor-fills-a-real-form-f-850f4-vives-into-the-exported-PDF/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/editor-fills-a-real-form-f-850f4-vives-into-the-exported-PDF/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/editor-fills-a-real-form-f-850f4-vives-into-the-exported-PDF/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) e2e/editor.spec.ts:205:1 › inserts a blank page, merges another PDF, and exports all of it ────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.waitForEvent: Test timeout of 30000ms exceeded.
+    =========================== logs ===========================
+    waiting for event "download"
+    ============================================================
+
+      220 |
+      221 |   // The source has no catalog features, so this export runs without a dialog.
+    > 222 |   const downloadPromise = page.waitForEvent('download')
+          |                                ^
+      223 |   await page.getByRole('button', { name: /Export PDF/ }).click()
+      224 |   const download = await downloadPromise
+      225 |   mkdirSync('output/pdf', { recursive: true })
+        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:222:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/editor-inserts-a-blank-pag-7b555-r-PDF-and-exports-all-of-it/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/editor-inserts-a-blank-pag-7b555-r-PDF-and-exports-all-of-it/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/editor-inserts-a-blank-pag-7b555-r-PDF-and-exports-all-of-it/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/editor-inserts-a-blank-pag-7b555-r-PDF-and-exports-all-of-it/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) e2e/editor.spec.ts:236:1 › redacts a page so its text is gone from the exported file ──────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.waitForEvent: Test timeout of 30000ms exceeded.
+    =========================== logs ===========================
+    waiting for event "download"
+    ============================================================
+
+      257 |
+      258 |   // The fixture has no catalog features, so the rebuild needs no confirmation.
+    > 259 |   const downloadPromise = page.waitForEvent('download')
+          |                                ^
+      260 |   await page.getByRole('button', { name: /Export PDF/ }).click()
+      261 |   const download = await downloadPromise
+      262 |   mkdirSync('output/pdf', { recursive: true })
+        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:259:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/editor-redacts-a-page-so-i-7bad2-gone-from-the-exported-file/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/editor-redacts-a-page-so-i-7bad2-gone-from-the-exported-file/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/editor-redacts-a-page-so-i-7bad2-gone-from-the-exported-file/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/editor-redacts-a-page-so-i-7bad2-gone-from-the-exported-file/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) e2e/editor.spec.ts:282:1 › never contacts another host while opening, editing, and exporting ──
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.waitForEvent: Test timeout of 30000ms exceeded.
+    =========================== logs ===========================
+    waiting for event "download"
+    ============================================================
+
+      304 |   await page.getByLabel('Edit text').fill('مرحبا')
+      305 |
+    > 306 |   const downloadPromise = page.waitForEvent('download')
+          |                                ^
+      307 |   await page.getByRole('button', { name: /Export PDF/ }).click()
+      308 |   await downloadPromise
+      309 |
+        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:306:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/editor-never-contacts-anot-34452-ening-editing-and-exporting/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/editor-never-contacts-anot-34452-ening-editing-and-exporting/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/editor-never-contacts-anot-34452-ening-editing-and-exporting/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/editor-never-contacts-anot-34452-ening-editing-and-exporting/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) e2e/editor.spec.ts:370:1 › uses the complete fill, sign, transform, layer, marks, and recovery workflow 
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected value: "INTERNAL"
+    Received array: []
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      498 |       database.close()
+      499 |     }
+    > 500 |   })).toContain('INTERNAL')
+          |       ^
+      501 |   page.once('dialog', (dialog) => void dialog.accept())
+      502 |   await page.reload()
+      503 |   await expect(page.getByRole('heading', { name: 'Annotate and sign PDFs.' })).toBeVisible()
+        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:500:7
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) e2e/editor.spec.ts:526:1 › keeps document marks reachable at the 320px minimum viewport ───────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('button', { name: 'Marks' })
+    Expected: visible
+    Error: strict mode violation: getByRole('button', { name: 'Marks' }) resolved to 2 elements:
+        1) <button type="button" aria-label="Document marks">Marks</button> aka getByRole('button', { name: 'Document marks' })
+        2) <button type="button" class="marks-mobile-button">Marks</button> aka getByRole('button', { name: 'Marks', exact: true })
+
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for getByRole('button', { name: 'Marks' })
+
+
+      530 |   await expect(page.getByLabel('Rendered PDF page').first()).toBeVisible()
+      531 |   const marks = page.getByRole('button', { name: 'Marks' })
+    > 532 |   await expect(marks).toBeVisible()
+          |                       ^
+      533 |   await marks.click()
+      534 |   await expect(page.getByRole('dialog', { name: 'Add marks to this PDF' })).toBeVisible()
+      535 |   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
+        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:532:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/editor-keeps-document-mark-59cdb--the-320px-minimum-viewport/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/editor-keeps-document-mark-59cdb--the-320px-minimum-viewport/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/editor-keeps-document-mark-59cdb--the-320px-minimum-viewport/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/editor-keeps-document-mark-59cdb--the-320px-minimum-viewport/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) e2e/editor.spec.ts:577:1 › keeps the main thread responsive while exporting a 100-page PDF ────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.waitForEvent: Test timeout of 30000ms exceeded.
+    =========================== logs ===========================
+    waiting for event "download"
+    ============================================================
+
+      619 |   })
+      620 |
+    > 621 |   const downloadPromise = page.waitForEvent('download')
+          |                                ^
+      622 |   const startedAt = Date.now()
+      623 |   await page.getByRole('button', { name: /Export PDF/ }).click()
+      624 |   const download = await downloadPromise
+        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:621:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/editor-keeps-the-main-thre-c9d04-le-exporting-a-100-page-PDF/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/editor-keeps-the-main-thre-c9d04-le-exporting-a-100-page-PDF/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/editor-keeps-the-main-thre-c9d04-le-exporting-a-100-page-PDF/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/editor-keeps-the-main-thre-c9d04-le-exporting-a-100-page-PDF/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) e2e/project-workflow.spec.ts:4:1 › saves and reopens a complete editable project with inserted PDFs and comments 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.waitForEvent: Test timeout of 30000ms exceeded.
+    =========================== logs ===========================
+    waiting for event "download"
+    ============================================================
+
+      17 |   await expect(page.getByText('Portable review comment')).toBeVisible()
+      18 |
+    > 19 |   const projectDownload = page.waitForEvent('download')
+         |                                ^
+      20 |   await page.getByRole('button', { name: 'Save project' }).click()
+      21 |   const project = await projectDownload
+      22 |   expect(project.suggestedFilename()).toBe('mvp-fixture.leafpdf')
+        at /home/runner/work/leafpdf/leafpdf/e2e/project-workflow.spec.ts:19:32
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/project-workflow-saves-and-b49d1--inserted-PDFs-and-comments/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/project-workflow-saves-and-b49d1--inserted-PDFs-and-comments/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/project-workflow-saves-and-b49d1--inserted-PDFs-and-comments/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/project-workflow-saves-and-b49d1--inserted-PDFs-and-comments/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) e2e/redaction-rotation.spec.ts:4:1 › burns a rotated redaction into the same pixels shown by the editor 
+
+    Error: expect(received).toBeLessThan(expected)
+
+    Expected: < 100
+    Received:   104.487
+
+      48 |   const angle = Number(match[1])
+      49 |   expect(angle).toBeGreaterThan(80)
+    > 50 |   expect(angle).toBeLessThan(100)
+         |                 ^
+      51 |
+      52 |   const radians = angle * Math.PI / 180
+      53 |   const localCenterX = width / 2
+        at /home/runner/work/leafpdf/leafpdf/e2e/redaction-rotation.spec.ts:50:17
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/redaction-rotation-burns-a-e8ca7--pixels-shown-by-the-editor/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/redaction-rotation-burns-a-e8ca7--pixels-shown-by-the-editor/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/redaction-rotation-burns-a-e8ca7--pixels-shown-by-the-editor/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/redaction-rotation-burns-a-e8ca7--pixels-shown-by-the-editor/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11 failed
+    e2e/editor.spec.ts:4:1 › edits inline, annotates, and exports a PDF ────────────────────────────
+    e2e/editor.spec.ts:107:1 › requires confirmation before rebuilding a PDF that has form fields ──
+    e2e/editor.spec.ts:178:1 › fills a real form field whose value survives into the exported PDF ──
+    e2e/editor.spec.ts:205:1 › inserts a blank page, merges another PDF, and exports all of it ─────
+    e2e/editor.spec.ts:236:1 › redacts a page so its text is gone from the exported file ───────────
+    e2e/editor.spec.ts:282:1 › never contacts another host while opening, editing, and exporting ───
+    e2e/editor.spec.ts:370:1 › uses the complete fill, sign, transform, layer, marks, and recovery workflow 
+    e2e/editor.spec.ts:526:1 › keeps document marks reachable at the 320px minimum viewport ────────
+    e2e/editor.spec.ts:577:1 › keeps the main thread responsive while exporting a 100-page PDF ─────
+    e2e/project-workflow.spec.ts:4:1 › saves and reopens a complete editable project with inserted PDFs and comments 
+    e2e/redaction-rotation.spec.ts:4:1 › burns a rotated redaction into the same pixels shown by the editor 
+  4 skipped
+  8 passed (4.9m)
+exit_code=1
+
+===== e2e-production =====
+
+> leafpdf@0.1.0 test:e2e
+> playwright test
+
+
+Error: Process from config.webServer was not able to start. Exit code: 1
+
+
+exit_code=1
+overall_exit_code=1
