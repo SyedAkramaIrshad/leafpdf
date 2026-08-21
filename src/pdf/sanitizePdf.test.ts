@@ -1,4 +1,4 @@
-import { PDFDocument, PDFHexString, PDFName } from 'pdf-lib'
+import { PDFArray, PDFDocument, PDFHexString, PDFName, PDFRef } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 import { sanitizePdfBytes } from './sanitizePdf'
 
@@ -18,10 +18,11 @@ async function sensitiveFixture(): Promise<Uint8Array> {
     Rect: [100, 100, 124, 124],
     Contents: PDFHexString.fromText('Private comment'),
   })
-  const annots = page.node.lookup(PDFName.of('Annots'))
-  const array = annots && 'push' in annots ? annots : document.context.obj([])
-  if (!annots) page.node.set(PDFName.of('Annots'), array)
-  ;(array as { push: (value: unknown) => void }).push(document.context.register(note))
+  const existing = page.node.get(PDFName.of('Annots'))
+  const resolved = existing instanceof PDFRef ? document.context.lookup(existing) : existing
+  const annots = resolved instanceof PDFArray ? resolved : document.context.obj([])
+  if (!(resolved instanceof PDFArray)) page.node.set(PDFName.of('Annots'), annots)
+  annots.push(document.context.register(note))
   return document.save()
 }
 
