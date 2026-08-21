@@ -1,9 +1,9 @@
-tested_commit=7aeae224e97e52e0e8d41e249880822975a1f520
-tested_at=2026-08-21T21:05:50Z
+tested_commit=1b433cb8a278bde356bf90eeb10e7e4dd2b78b7e
+tested_at=2026-08-21T21:15:13Z
 
 ===== npm-ci =====
 
-added 257 packages, and audited 258 packages in 6s
+added 257 packages, and audited 258 packages in 4s
 
 65 packages are looking for funding
   run `npm fund` for details
@@ -26,46 +26,44 @@ exit_code=0
 
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/leafpdf/leafpdf[39m
 
- [32m✓[39m src/pdf/sourceAnalysis.test.ts [2m([22m[2m28 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 176[2mms[22m[39m
+ [32m✓[39m src/pdf/sourceAnalysis.test.ts [2m([22m[2m28 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 136[2mms[22m[39m
 [90mstderr[2m | src/components/Workbench.test.tsx[2m > [22m[2mPageCanvas render lifecycle[2m > [22m[2mcancels the superseded render task when zoom changes
 [22m[39mWarning: Please use the `legacy` build in Node.js environments.
 
- [32m✓[39m src/components/Workbench.test.tsx [2m([22m[2m25 tests[22m[2m)[22m[33m 999[2mms[22m[39m
- [32m✓[39m src/pdf/exportPdf.test.ts [2m([22m[2m31 tests[22m[2m)[22m[33m 1290[2mms[22m[39m
-     [33m[2m✓[22m[39m exports Arabic, Devanagari, and Latin text without an encoding failure [33m 895[2mms[22m[39m
- [32m✓[39m src/model/editor.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 16[2mms[22m[39m
- [32m✓[39m src/pdf/exportClient.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 19[2mms[22m[39m
- [32m✓[39m src/components/AnnotationLayer.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 535[2mms[22m[39m
-     [33m[2m✓[22m[39m previews movement continuously and commits exactly once on release [33m 330[2mms[22m[39m
- [32m✓[39m src/pdf/fontRegistry.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 482[2mms[22m[39m
- [32m✓[39m src/model/annotationMovement.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 16[2mms[22m[39m
- [32m✓[39m src/persistence/localStore.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 33[2mms[22m[39m
- [32m✓[39m src/pdf/textAnchor.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 93[2mms[22m[39m
+ [32m✓[39m src/components/Workbench.test.tsx [2m([22m[2m25 tests[22m[2m)[22m[33m 745[2mms[22m[39m
+ [32m✓[39m src/pdf/exportPdf.test.ts [2m([22m[2m31 tests[22m[2m)[22m[33m 979[2mms[22m[39m
+     [33m[2m✓[22m[39m exports Arabic, Devanagari, and Latin text without an encoding failure [33m 677[2mms[22m[39m
+ [32m✓[39m src/model/editor.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/pdf/exportClient.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/components/AnnotationLayer.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 390[2mms[22m[39m
+ [32m✓[39m src/pdf/fontRegistry.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 409[2mms[22m[39m
+ [32m✓[39m src/model/annotationMovement.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/persistence/localStore.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m src/pdf/textAnchor.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 85[2mms[22m[39m
  [2m[90m↓[39m[22m src/pdf/exportFixtures.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
- [32m✓[39m src/components/SignatureDialog.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 508[2mms[22m[39m
-     [33m[2m✓[22m[39m makes a typed signature into the PNG placed by the parent [33m 355[2mms[22m[39m
- [32m✓[39m src/project/projectFormat.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 19[2mms[22m[39m
- [32m✓[39m src/pdf/formFields.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
- [32m✓[39m src/model/imageValidation.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 69[2mms[22m[39m
- [32m✓[39m src/pdf/textSearch.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
- [32m✓[39m src/components/DocumentDialogs.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 516[2mms[22m[39m
- [32m✓[39m src/pdf/sanitizePdf.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 124[2mms[22m[39m
- [32m✓[39m src/pdf/standardAnnotationInterop.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 49[2mms[22m[39m
- [32m✓[39m src/pdf/redactionMask.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
- [32m✓[39m src/model/nextLevelEditorReducer.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 10[2mms[22m[39m
- [32m✓[39m src/project/projectRecovery.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m src/components/SignatureDialog.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 279[2mms[22m[39m
+ [32m✓[39m src/project/projectFormat.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/pdf/formFields.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/model/imageValidation.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m src/pdf/textSearch.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/components/DocumentDialogs.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 332[2mms[22m[39m
+ [32m✓[39m src/pdf/sanitizePdf.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 102[2mms[22m[39m
+ [32m✓[39m src/pdf/redactionMask.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/pdf/standardAnnotationInterop.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m src/model/nextLevelEditorReducer.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/project/projectRecovery.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 19[2mms[22m[39m
  [2m[90m↓[39m[22m src/pdf/fixtureAnalysis.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
- [32m✓[39m src/ocr/nativeOcr.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/ocr/nativeOcr.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
  [32m✓[39m src/pdf/textColor.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
- [32m✓[39m src/persistence/recoveryQueue.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
- [32m✓[39m src/compare/pdfComparison.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
- [32m✓[39m src/model/geometry.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
- [32m✓[39m src/pdf/renderLifecycle.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/persistence/recoveryQueue.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/compare/pdfComparison.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/model/geometry.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/pdf/renderLifecycle.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 3[2mms[22m[39m
 
 [2m Test Files [22m [1m[32m27 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (29)[39m
 [2m      Tests [22m [1m[32m212 passed[39m[22m[2m | [22m[33m13 skipped[39m[90m (225)[39m
-[2m   Start at [22m 21:06:03
-[2m   Duration [22m 17.84s[2m (transform 1.59s, setup 6.89s, import 3.16s, tests 5.04s, environment 31.78s)[22m
+[2m   Start at [22m 21:15:22
+[2m   Duration [22m 13.00s[2m (transform 1.41s, setup 4.78s, import 2.63s, tests 3.70s, environment 22.50s)[22m
 
 exit_code=0
 
@@ -100,17 +98,17 @@ dist/assets/NotoSans-Regular-BRSqef3-.ttf              621.57 kB
 dist/assets/NotoSans-Bold-BzLoLA2-.ttf                 631.48 kB
 dist/assets/fontkit.es-b3E2VHi3.js                     756.41 kB
 dist/assets/pdf.worker.min-CHFwMXne.mjs              1,262.39 kB
-dist/assets/index-BrK_4PnJ.css                          33.52 kB │ gzip:   8.04 kB
+dist/assets/index-BCoRHKW2.css                          33.61 kB │ gzip:   8.06 kB
 dist/assets/exportNaming-DooBeWu9.js                     0.10 kB │ gzip:   0.11 kB
 dist/assets/exportClient-Dxvc2tB1.js                     1.18 kB │ gzip:   0.63 kB
-dist/assets/loadPdf-CqTmCjtr.js                          1.35 kB │ gzip:   0.77 kB
-dist/assets/redactionRaster-DlONzCh9.js                  1.39 kB │ gzip:   0.80 kB
-dist/assets/projectFormat-DqIbIYdl.js                    8.57 kB │ gzip:   2.72 kB
-dist/assets/index-BlevAZCA.js                          198.28 kB │ gzip:  63.02 kB
-dist/assets/pdf-NqW2uE53.js                            427.30 kB │ gzip: 127.39 kB
-dist/assets/NextLevelWorkbench-DgE1HkRE.js             619.38 kB │ gzip: 234.70 kB
+dist/assets/loadPdf-B6ZLysB8.js                          1.35 kB │ gzip:   0.77 kB
+dist/assets/redactionRaster-D7JekLRp.js                  1.39 kB │ gzip:   0.80 kB
+dist/assets/projectFormat-DKXPw1Y8.js                    8.57 kB │ gzip:   2.72 kB
+dist/assets/index-CMBi8O2f.js                          198.28 kB │ gzip:  63.02 kB
+dist/assets/pdf-Bn-TKLul.js                            427.30 kB │ gzip: 127.39 kB
+dist/assets/NextLevelWorkbench-zHB-VDqM.js             619.59 kB │ gzip: 234.74 kB
 
-[32m✓ built in 675ms[39m
+[32m✓ built in 541ms[39m
 [33m[plugin builtin:vite-reporter] 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
@@ -128,10 +126,10 @@ Collecting pillow>=9.0.0 (from reportlab)
 Collecting charset-normalizer (from reportlab)
   Downloading charset_normalizer-3.5.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (45 kB)
 Downloading reportlab-5.0.1-py3-none-any.whl (2.0 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 126.3 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 9.9 MB/s  0:00:00
 Downloading pypdf-6.16.1-py3-none-any.whl (382 kB)
 Downloading pillow-12.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (6.9 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.9/6.9 MB 259.3 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.9/6.9 MB 50.3 MB/s  0:00:00
 Downloading charset_normalizer-3.5.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (248 kB)
 Installing collected packages: pypdf, pillow, charset-normalizer, reportlab
 
@@ -147,8 +145,8 @@ Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
 Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
 Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
 Get:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease [2548 B]
-Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [403 kB]
-Get:10 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [357 kB]
+Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [357 kB]
+Get:10 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [403 kB]
 Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1227 kB]
 Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [286 kB]
 Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [181 kB]
@@ -170,7 +168,7 @@ Get:28 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Comp
 Get:29 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1385 kB]
 Get:30 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [320 kB]
 Get:31 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages [1415 B]
-Fetched 11.5 MB in 1s (8088 kB/s)
+Fetched 11.5 MB in 1s (8847 kB/s)
 Reading package lists...
 Reading package lists...
 Building dependency tree...
@@ -190,7 +188,7 @@ Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
 Get:2 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 poppler-data all 0.4.12-1 [2060 kB]
 Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libpoppler134 amd64 24.02.0-1ubuntu9.9 [1118 kB]
 Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 poppler-utils amd64 24.02.0-1ubuntu9.9 [212 kB]
-Fetched 3389 kB in 0s (28.3 MB/s)
+Fetched 3389 kB in 0s (11.7 MB/s)
 Selecting previously unselected package poppler-data.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 203124 files and directories currently installed.)
 Preparing to unpack .../poppler-data_0.4.12-1_all.deb ...
@@ -250,13 +248,13 @@ exit_code=0
 ===== playwright-install =====
 Installing dependencies...
 Switching to root user to install dependencies...
-Hit:1 https://packages.microsoft.com/repos/azure-cli noble InRelease
-Hit:2 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
-Get:3 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
-Hit:4 http://azure.archive.ubuntu.com/ubuntu noble InRelease
-Hit:5 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease
-Hit:6 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease
-Hit:7 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+Hit:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease
+Hit:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease
+Hit:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
+Hit:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease
 Hit:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease
 Reading package lists...
 Reading package lists...
@@ -333,7 +331,7 @@ Get:7 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-encodings a
 Get:8 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-utils amd64 1:7.7+6build3 [94.4 kB]
 Get:9 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 xfonts-cyrillic all 1:1.0.5+nmu1 [384 kB]
 Get:10 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-scalable all 1:1.0.3-1.3 [304 kB]
-Fetched 21.1 MB in 0s (74.9 MB/s)
+Fetched 21.1 MB in 1s (32.2 MB/s)
 Selecting previously unselected package fonts-ipafont-gothic.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 203693 files and directories currently installed.)
 Preparing to unpack .../0-fonts-ipafont-gothic_00303-21ubuntu1_all.deb ...
@@ -433,91 +431,10 @@ exit_code=0
 
 
 Running 27 tests using 1 worker
-··········FF···°·······°°·°
-
-  1) e2e/editor.spec.ts:370:1 › uses the complete fill, sign, transform, layer, marks, and recovery workflow 
-
-    Error: expect(locator).toBeHidden() failed
-
-    Locator:  getByRole('dialog', { name: /Resume your previous editing session/ })
-    Expected: hidden
-    Received: visible
-    Timeout:  5000ms
-
-    Call log:
-      - Expect "toBeHidden" with timeout 5000ms
-      - waiting for getByRole('dialog', { name: /Resume your previous editing session/ })
-        14 × locator resolved to <section role="dialog" aria-modal="true" class="recovery-dialog" aria-labelledby="recovery-title" aria-describedby="recovery-body">…</section>
-           - unexpected value "visible"
-
-
-      521 |   await page.locator('input[type="file"]').first().setInputFiles('tmp/pdfs/mvp-fixture.pdf')
-      522 |   await expect(page.getByLabel('Rendered PDF page').first()).toBeVisible()
-    > 523 |   await expect(page.getByRole('dialog', { name: /Resume your previous editing session/ })).toBeHidden()
-          |                                                                                            ^
-      524 | })
-      525 |
-      526 | test('keeps document marks reachable at the 320px minimum viewport', async ({ page }) => {
-        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:523:92
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    Error Context: test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/error-context.md
-
-    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
-    test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/trace.zip
-    Usage:
-
-        npx playwright show-trace test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/trace.zip
-
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-  2) e2e/editor.spec.ts:526:1 › keeps document marks reachable at the 320px minimum viewport ───────
-
-    Error: expect(locator).toBeVisible() failed
-
-    Locator: getByRole('button', { name: 'Marks' })
-    Expected: visible
-    Error: strict mode violation: getByRole('button', { name: 'Marks' }) resolved to 2 elements:
-        1) <button type="button" aria-label="Document marks">Marks</button> aka getByRole('button', { name: 'Document marks' })
-        2) <button type="button" class="marks-mobile-button">Marks</button> aka getByRole('button', { name: 'Marks', exact: true })
-
-    Call log:
-      - Expect "toBeVisible" with timeout 5000ms
-      - waiting for getByRole('button', { name: 'Marks' })
-
-
-      530 |   await expect(page.getByLabel('Rendered PDF page').first()).toBeVisible()
-      531 |   const marks = page.getByRole('button', { name: 'Marks' })
-    > 532 |   await expect(marks).toBeVisible()
-          |                       ^
-      533 |   await marks.click()
-      534 |   await expect(page.getByRole('dialog', { name: 'Add marks to this PDF' })).toBeVisible()
-      535 |   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
-        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:532:23
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    test-results/editor-keeps-document-mark-59cdb--the-320px-minimum-viewport/test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    Error Context: test-results/editor-keeps-document-mark-59cdb--the-320px-minimum-viewport/error-context.md
-
-    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
-    test-results/editor-keeps-document-mark-59cdb--the-320px-minimum-viewport/trace.zip
-    Usage:
-
-        npx playwright show-trace test-results/editor-keeps-document-mark-59cdb--the-320px-minimum-viewport/trace.zip
-
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-  2 failed
-    e2e/editor.spec.ts:370:1 › uses the complete fill, sign, transform, layer, marks, and recovery workflow 
-    e2e/editor.spec.ts:526:1 › keeps document marks reachable at the 320px minimum viewport ────────
+···············°·······°°·°
   4 skipped
-  21 passed (1.9m)
-exit_code=1
+  23 passed (1.5m)
+exit_code=0
 
 ===== e2e-production =====
 
@@ -531,89 +448,8 @@ exit_code=1
 [WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
 
 Running 27 tests using 1 worker
-··········FF···°·······°°·°
-
-  1) e2e/editor.spec.ts:370:1 › uses the complete fill, sign, transform, layer, marks, and recovery workflow 
-
-    Error: expect(locator).toBeHidden() failed
-
-    Locator:  getByRole('dialog', { name: /Resume your previous editing session/ })
-    Expected: hidden
-    Received: visible
-    Timeout:  5000ms
-
-    Call log:
-      - Expect "toBeHidden" with timeout 5000ms
-      - waiting for getByRole('dialog', { name: /Resume your previous editing session/ })
-        14 × locator resolved to <section role="dialog" aria-modal="true" class="recovery-dialog" aria-labelledby="recovery-title" aria-describedby="recovery-body">…</section>
-           - unexpected value "visible"
-
-
-      521 |   await page.locator('input[type="file"]').first().setInputFiles('tmp/pdfs/mvp-fixture.pdf')
-      522 |   await expect(page.getByLabel('Rendered PDF page').first()).toBeVisible()
-    > 523 |   await expect(page.getByRole('dialog', { name: /Resume your previous editing session/ })).toBeHidden()
-          |                                                                                            ^
-      524 | })
-      525 |
-      526 | test('keeps document marks reachable at the 320px minimum viewport', async ({ page }) => {
-        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:523:92
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    Error Context: test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/error-context.md
-
-    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
-    test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/trace.zip
-    Usage:
-
-        npx playwright show-trace test-results/editor-uses-the-complete-f-47fba-marks-and-recovery-workflow/trace.zip
-
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-  2) e2e/editor.spec.ts:526:1 › keeps document marks reachable at the 320px minimum viewport ───────
-
-    Error: expect(locator).toBeVisible() failed
-
-    Locator: getByRole('button', { name: 'Marks' })
-    Expected: visible
-    Error: strict mode violation: getByRole('button', { name: 'Marks' }) resolved to 2 elements:
-        1) <button type="button" aria-label="Document marks">Marks</button> aka getByRole('button', { name: 'Document marks' })
-        2) <button type="button" class="marks-mobile-button">Marks</button> aka getByRole('button', { name: 'Marks', exact: true })
-
-    Call log:
-      - Expect "toBeVisible" with timeout 5000ms
-      - waiting for getByRole('button', { name: 'Marks' })
-
-
-      530 |   await expect(page.getByLabel('Rendered PDF page').first()).toBeVisible()
-      531 |   const marks = page.getByRole('button', { name: 'Marks' })
-    > 532 |   await expect(marks).toBeVisible()
-          |                       ^
-      533 |   await marks.click()
-      534 |   await expect(page.getByRole('dialog', { name: 'Add marks to this PDF' })).toBeVisible()
-      535 |   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
-        at /home/runner/work/leafpdf/leafpdf/e2e/editor.spec.ts:532:23
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    test-results/editor-keeps-document-mark-59cdb--the-320px-minimum-viewport/test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    Error Context: test-results/editor-keeps-document-mark-59cdb--the-320px-minimum-viewport/error-context.md
-
-    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
-    test-results/editor-keeps-document-mark-59cdb--the-320px-minimum-viewport/trace.zip
-    Usage:
-
-        npx playwright show-trace test-results/editor-keeps-document-mark-59cdb--the-320px-minimum-viewport/trace.zip
-
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-  2 failed
-    e2e/editor.spec.ts:370:1 › uses the complete fill, sign, transform, layer, marks, and recovery workflow 
-    e2e/editor.spec.ts:526:1 › keeps document marks reachable at the 320px minimum viewport ────────
+···············°·······°°·°
   4 skipped
-  21 passed (1.1m)
-exit_code=1
-overall_exit_code=1
+  23 passed (53.6s)
+exit_code=0
+overall_exit_code=0
