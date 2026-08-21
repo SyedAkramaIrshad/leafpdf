@@ -38,14 +38,15 @@ export function paintRedactionMask(
   const width = redaction.width * canvasWidth
   const height = redaction.height * canvasHeight
   const padding = Math.max(0, paddingPixels)
+  const start = padding === 0 ? 0 : -padding
 
   context.save()
   try {
     context.translate(x, y)
     context.rotate(((redaction.rotation ?? 0) * Math.PI) / 180)
     context.fillRect(
-      -padding,
-      -padding,
+      start,
+      start,
       width + padding * 2,
       height + padding * 2,
     )
