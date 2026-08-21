@@ -63,6 +63,7 @@ export function FileWelcome({ busy, error, onFile }: FileWelcomeProps) {
             type="button"
             className="primary-button"
             disabled={busy}
+            aria-label={busy ? 'Opening a PDF or project' : 'Choose a PDF'}
             onClick={() => supportsNativeOpen() ? void chooseNative() : inputRef.current?.click()}
           >
             {busy ? 'Reading project' : 'Choose PDF or project'}
