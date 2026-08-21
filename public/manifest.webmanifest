@@ -1,0 +1,31 @@
+{
+  "name": "LeafPDF",
+  "short_name": "LeafPDF",
+  "description": "A private, local-first PDF workbench.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f6f0",
+  "theme_color": "#182026",
+  "icons": [
+    {
+      "src": "/leafpdf-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "application/pdf": [".pdf"],
+        "application/x-leafpdf+json": [".leafpdf"]
+      }
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  }
+}
