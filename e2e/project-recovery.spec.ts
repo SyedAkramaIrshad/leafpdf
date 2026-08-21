@@ -58,7 +58,7 @@ test('recovers inserted PDFs, page order, and review comments after a reload', a
   await expect(page.getByRole('heading', { name: 'Annotate and sign PDFs.' })).toBeVisible()
 
   await page.locator('input[type="file"]').first().setInputFiles('tmp/pdfs/mvp-fixture.pdf')
-  const recovery = page.getByRole('dialog', { name: 'Resume your previous LeafPDF project?' })
+  const recovery = page.getByRole('dialog', { name: 'Resume your previous editing session?' })
   await expect(recovery).toBeVisible()
   await recovery.getByRole('button', { name: 'Restore edits' }).click()
 
