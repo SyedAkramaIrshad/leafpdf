@@ -35,7 +35,7 @@ function RecoveryDialogContent({ onRestore, onDiscard, onClose }: Omit<RecoveryD
         aria-describedby="recovery-body"
       >
         <span className="inspector-label">COMPLETE LOCAL RECOVERY</span>
-        <h2 id="recovery-title">Resume your previous LeafPDF project?</h2>
+        <h2 id="recovery-title">Resume your previous editing session?</h2>
         <div id="recovery-body">
           <p>
             LeafPDF saved the same complete representation used by a portable .leafpdf project:
