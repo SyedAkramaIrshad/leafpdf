@@ -1,0 +1,34 @@
+name: Apply next-level lifecycle patch
+
+on:
+  push:
+    branches: [feature/next-level-workbench]
+    paths:
+      - 'scripts/apply-next-level-lifecycle.py'
+      - '.github/workflows/apply-next-level-lifecycle.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/next-level-workbench
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python3 scripts/apply-next-level-lifecycle.py
+      - name: Commit the generated source edit
+        run: |
+          if git diff --quiet -- src/components/NextLevelWorkbench.tsx; then
+            echo 'Lifecycle patch already applied.'
+            exit 0
+          fi
+          git config user.name 'LeafPDF lifecycle patch'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -- src/components/NextLevelWorkbench.tsx
+          git commit -m 'Finalize project export and comparison lifecycle'
+          git push origin HEAD:feature/next-level-workbench
