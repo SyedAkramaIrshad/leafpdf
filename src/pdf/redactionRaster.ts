@@ -1,6 +1,7 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import type { EditorDocument } from '../model/editor'
+import type { EditorDocument, RedactionAnnotation } from '../model/editor'
 import { pageRenderSource, type ExternalDocuments } from './pageSource'
+import { paintRedactionMask } from './redactionMask'
 
 /**
  * Device pixels per PDF point when burning a redaction, i.e. 144 DPI. High
@@ -37,7 +38,8 @@ export async function rasterizeRedactedPages(
   const results: RasterizedPage[] = []
   for (const page of document.pages) {
     const redactions = document.annotations.filter(
-      (annotation) => annotation.pageId === page.id && annotation.kind === 'redaction',
+      (annotation): annotation is RedactionAnnotation =>
+        annotation.pageId === page.id && annotation.kind === 'redaction',
     )
     // A blank page has no source content to remove; its boxes are drawn as
     // plain black rectangles by the exporter instead.
@@ -62,13 +64,9 @@ export async function rasterizeRedactedPages(
 
     context.fillStyle = '#000000'
     for (const redaction of redactions) {
-      // Snap outward by a pixel on every side so antialiased fringes of the
-      // covered content cannot survive along the box edge.
-      const x = Math.floor(redaction.x * canvas.width) - 1
-      const y = Math.floor(redaction.y * canvas.height) - 1
-      const width = Math.ceil(redaction.width * canvas.width) + 2
-      const height = Math.ceil(redaction.height * canvas.height) + 2
-      context.fillRect(x, y, width, height)
+      // Match the preview's top-left rotation transform. The helper expands the
+      // local rectangle before rotating so antialiasing cannot expose an edge.
+      paintRedactionMask(context, redaction, canvas.width, canvas.height)
     }
 
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))

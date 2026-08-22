@@ -10,18 +10,16 @@ interface RecoveryDialogProps {
 }
 
 /**
- * Offers an intentionally conservative choice when a browser-local editing session
+ * Offers an intentionally conservative choice when a browser-local editing project
  * is found. Closing or pressing Escape keeps the recovery record intact.
  */
 export function RecoveryDialog({ open, ...handlers }: RecoveryDialogProps) {
-  // Mounted only while open so `useModalDialog` arms and disarms with the dialog.
   if (!open) return null
   return <RecoveryDialogContent {...handlers} />
 }
 
 function RecoveryDialogContent({ onRestore, onDiscard, onClose }: Omit<RecoveryDialogProps, 'open'>) {
   const restoreRef = useRef<HTMLButtonElement>(null)
-  // Escape never discards a recovery record or applies it unexpectedly.
   const dialogRef = useModalDialog<HTMLElement>({ onEscape: onClose, initialFocusRef: restoreRef })
 
   return (
@@ -36,16 +34,17 @@ function RecoveryDialogContent({ onRestore, onDiscard, onClose }: Omit<RecoveryD
         aria-labelledby="recovery-title"
         aria-describedby="recovery-body"
       >
-        <span className="inspector-label">LOCAL RECOVERY</span>
+        <span className="inspector-label">COMPLETE LOCAL RECOVERY</span>
         <h2 id="recovery-title">Resume your previous editing session?</h2>
         <div id="recovery-body">
           <p>
-            LeafPDF found annotations saved locally by this browser for this PDF. Restoring brings
-            those edits back into the workspace; it never changes your original file.
+            LeafPDF saved the same complete representation used by a portable .leafpdf project:
+            the primary PDF, inserted PDFs, page order, form values, editable annotations,
+            review comments, and local OCR results.
           </p>
           <p className="dialog-note">
-            Recovery is stored only on this device and browser. Clearing browser site data, using a
-            private window, or opening the PDF on another device can remove it.
+            Recovery is stored only on this device and browser. Clearing site data, using a private
+            window, or switching devices can remove it. Save a .leafpdf project for a portable copy.
           </p>
         </div>
         <div className="dialog-actions">

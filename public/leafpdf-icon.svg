@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LeafPDF">
+  <rect width="512" height="512" rx="96" fill="#f8f6f0"/>
+  <path d="M116 72h208l72 72v296H116z" fill="#fffef9" stroke="#182026" stroke-width="20"/>
+  <path d="M324 72v88h72" fill="none" stroke="#182026" stroke-width="20" stroke-linejoin="round"/>
+  <path d="M172 338c82-8 137-52 164-132-78 14-137 58-164 132Z" fill="#bfe3d0" stroke="#3157d5" stroke-width="18" stroke-linejoin="round"/>
+  <path d="M176 342c40-49 89-86 148-111" fill="none" stroke="#3157d5" stroke-width="16" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,113 @@
+name: LeafPDF visual preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  render-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install project dependencies
+        run: npm ci
+
+      - name: Build deterministic PDF fixtures
+        run: |
+          pip install reportlab pypdf
+          python3 scripts/create-fixture.py
+          python3 scripts/create-edge-fixtures.py
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build production application
+        run: npm run build
+
+      - name: Start production preview
+        run: |
+          npx vite preview --host 127.0.0.1 --port 4173 > /tmp/leafpdf-preview.log 2>&1 &
+          echo $! > /tmp/leafpdf-preview.pid
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:4173/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/leafpdf-preview.log
+          exit 1
+
+      - name: Capture desktop and mobile states
+        run: |
+          mkdir -p preview
+          node <<'NODE'
+          const { chromium } = require('@playwright/test')
+
+          async function openPdf(page, path) {
+            await page.locator('input[type="file"]').first().setInputFiles(path)
+            await page.getByLabel('Rendered PDF page').first().waitFor({ state: 'visible', timeout: 30000 })
+          }
+
+          ;(async () => {
+            const browser = await chromium.launch({ headless: true })
+
+            const desktop = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 })
+            await desktop.emulateMedia({ reducedMotion: 'reduce' })
+            await desktop.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' })
+            await desktop.screenshot({ path: 'preview/01-landing-desktop.png', fullPage: true, animations: 'disabled' })
+
+            await openPdf(desktop, 'tmp/pdfs/mvp-fixture.pdf')
+            await desktop.screenshot({ path: 'preview/02-workbench-desktop.png', animations: 'disabled' })
+
+            await desktop.getByRole('button', { name: /^Review/ }).click()
+            await desktop.getByPlaceholder('Add a review note').fill('Please verify the approval section before release.')
+            await desktop.getByPlaceholder('Optional').fill('Syed')
+            await desktop.getByRole('button', { name: 'Add comment' }).click()
+            await desktop.screenshot({ path: 'preview/03-review-panel.png', animations: 'disabled' })
+
+            const privacy = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 })
+            await privacy.emulateMedia({ reducedMotion: 'reduce' })
+            await privacy.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' })
+            await openPdf(privacy, 'tmp/pdfs/edge-metadata.pdf')
+            await privacy.getByRole('button', { name: 'Privacy' }).click()
+            await privacy.locator('.privacy-panel').waitFor({ state: 'visible' })
+            await privacy.screenshot({ path: 'preview/04-privacy-panel.png', animations: 'disabled' })
+
+            const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 })
+            await mobile.emulateMedia({ reducedMotion: 'reduce' })
+            await mobile.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' })
+            await mobile.screenshot({ path: 'preview/05-landing-mobile.png', fullPage: true, animations: 'disabled' })
+            await openPdf(mobile, 'tmp/pdfs/mvp-fixture.pdf')
+            await mobile.screenshot({ path: 'preview/06-workbench-mobile.png', animations: 'disabled' })
+
+            await browser.close()
+          })().catch((error) => {
+            console.error(error)
+            process.exit(1)
+          })
+          NODE
+
+      - name: Upload rendered preview and production build
+        uses: actions/upload-artifact@v4
+        with:
+          name: leafpdf-visual-preview
+          path: |
+            preview
+            dist
+          if-no-files-found: error
+          retention-days: 7
