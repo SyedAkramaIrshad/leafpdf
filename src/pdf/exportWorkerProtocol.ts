@@ -1,6 +1,8 @@
 import type { EditorDocument } from '../model/editor'
 import type { SourcePdfFeatures } from './sourceFeatures'
 
+export type PdfFormOutput = 'fillable' | 'flattened'
+
 /**
  * Both requests carry the user's `File` rather than an ArrayBuffer. A File is cloned by
  * reference to its underlying blob data, so neither of these messages materialises the
@@ -12,6 +14,7 @@ export interface ExportStartRequest {
   sourceFile: File
   document: EditorDocument
   allowCompatibilityCopy: boolean
+  formOutput: PdfFormOutput
   /**
    * The other PDFs whose pages the document inserts, keyed by the id carried in
    * each external page. Also Files, for the same no-main-thread-bytes reason.

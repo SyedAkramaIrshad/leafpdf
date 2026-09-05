@@ -42,8 +42,11 @@ export function ComparisonPanel({
       <input
         ref={inputRef}
         className="visually-hidden"
+        hidden
         type="file"
         accept="application/pdf,.pdf"
+        aria-label="Choose a PDF to compare"
+        tabIndex={-1}
         onChange={(event) => {
           const file = event.target.files?.[0]
           if (file) onCompare(file)

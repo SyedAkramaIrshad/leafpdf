@@ -1,4 +1,12 @@
 import type { Annotation, EditorDocument, EditorPage } from '../model/editor'
+import { isDateValue, type DateStampFormat } from '../model/dateStamp'
+import { LINK_TARGET_MAX_LENGTH } from '../model/linkTarget'
+import {
+  hasPersonalDetails,
+  isPersonalDetails,
+  normalizePersonalDetails,
+  type PersonalDetails,
+} from '../model/personalDetails'
 
 /** A user-approved signature bitmap retained only in this browser. */
 export interface SavedSignature {
@@ -10,9 +18,11 @@ export interface SavedSignature {
 }
 
 const DATABASE_NAME = 'leafpdf-local-store'
-const DATABASE_VERSION = 1
+const DATABASE_VERSION = 2
 const SIGNATURES_STORE = 'signatures'
 const SESSIONS_STORE = 'sessions'
+const DETAILS_STORE = 'details'
+const PERSONAL_DETAILS_KEY = 'profile'
 const unavailable = Symbol('indexeddb-unavailable')
 
 type MaybeDatabaseValue = unknown | typeof unavailable
@@ -49,6 +59,31 @@ export async function saveSignature(signature: SavedSignature): Promise<void> {
 export async function deleteSignature(id: string): Promise<void> {
   if (!nonEmptyString(id)) return
   const result = await remove(SIGNATURES_STORE, id)
+  if (result === unavailable) throw new Error('Local browser storage is unavailable.')
+}
+
+/** Load the one user-approved reusable profile retained only in this browser. */
+export async function loadPersonalDetails(): Promise<PersonalDetails | null> {
+  const record = await get(DETAILS_STORE, PERSONAL_DETAILS_KEY)
+  if (record === unavailable || !isPersonalDetailsRecord(record)) return null
+  return clone(normalizePersonalDetails(record.details))
+}
+
+/** Save only an explicit, non-empty reusable profile. Placed text is stored elsewhere. */
+export async function savePersonalDetails(details: PersonalDetails): Promise<void> {
+  if (!isPersonalDetails(details)) {
+    throw new Error('Only valid personal details can be saved locally.')
+  }
+  const normalized = normalizePersonalDetails(details)
+  if (!hasPersonalDetails(normalized)) {
+    throw new Error('Add at least one detail before saving on this device.')
+  }
+  const result = await put(DETAILS_STORE, { id: PERSONAL_DETAILS_KEY, details: normalized })
+  if (result === unavailable) throw new Error('Local browser storage is unavailable.')
+}
+
+export async function deletePersonalDetails(): Promise<void> {
+  const result = await remove(DETAILS_STORE, PERSONAL_DETAILS_KEY)
   if (result === unavailable) throw new Error('Local browser storage is unavailable.')
 }
 
@@ -194,6 +229,9 @@ async function openDatabase(): Promise<IDBDatabase | null> {
         if (!database.objectStoreNames.contains(SESSIONS_STORE)) {
           database.createObjectStore(SESSIONS_STORE, { keyPath: 'key' })
         }
+        if (!database.objectStoreNames.contains(DETAILS_STORE)) {
+          database.createObjectStore(DETAILS_STORE, { keyPath: 'id' })
+        }
       }
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
@@ -207,6 +245,14 @@ async function openDatabase(): Promise<IDBDatabase | null> {
 function isSessionRecord(value: unknown, expectedKey: string): value is { key: string; document: EditorDocument } {
   if (!isRecord(value) || value.key !== expectedKey || !isEditorDocument(value.document)) return false
   return Object.keys(value).every((key) => key === 'key' || key === 'document')
+}
+
+function isPersonalDetailsRecord(value: unknown): value is { id: string; details: PersonalDetails } {
+  return isRecord(value)
+    && value.id === PERSONAL_DETAILS_KEY
+    && isPersonalDetails(value.details)
+    && hasPersonalDetails(value.details)
+    && Object.keys(value).every((key) => key === 'id' || key === 'details')
 }
 
 function isSavedSignature(value: unknown): value is SavedSignature {
@@ -283,11 +329,22 @@ function isAnnotation(value: unknown, pageIds: Set<string>): value is Annotation
         && optionalOneOf(value.fontWeight, [400, 700])
         && optionalOneOf(value.fontStyle, ['normal', 'italic'])
         && optionalOneOf(value.direction, ['ltr', 'rtl'])
-        && hasOnly(value, annotationBaseKeys, ['kind', 'text', 'color', 'fontSize', 'opacity', 'fontFamily', 'fontWeight', 'fontStyle', 'direction'])
+        && (value.sourceReplacement === undefined || typeof value.sourceReplacement === 'boolean')
+        && hasOnly(value, annotationBaseKeys, ['kind', 'text', 'color', 'fontSize', 'opacity', 'fontFamily', 'fontWeight', 'fontStyle', 'direction', 'sourceReplacement'])
     case 'highlight':
       return nonEmptyString(value.color)
         && numberBetween(value.opacity, 0, 1)
-        && hasOnly(value, annotationBaseKeys, ['kind', 'color', 'opacity'])
+        && optionalOneOf(value.mark, ['highlight', 'underline', 'strikeout'])
+        && (value.strokeWidth === undefined || positiveNumber(value.strokeWidth))
+        && hasOnly(value, annotationBaseKeys, ['kind', 'color', 'opacity', 'mark', 'strokeWidth'])
+    case 'link':
+      return oneOf(value.targetType, ['url', 'email', 'phone'])
+        && typeof value.target === 'string'
+        && value.target.length <= LINK_TARGET_MAX_LENGTH
+        && (value.rotation === undefined || value.rotation === 0)
+        && hasOnly(value, annotationBaseKeys, ['kind', 'targetType', 'target'])
+    case 'whiteout':
+      return hasOnly(value, annotationBaseKeys, ['kind'])
     case 'redaction':
       return hasOnly(value, annotationBaseKeys, ['kind'])
     case 'ink':
@@ -299,7 +356,8 @@ function isAnnotation(value: unknown, pageIds: Set<string>): value is Annotation
     case 'image':
       return imageDataMatchesMime(value.dataUrl, value.mimeType)
         && optionalOneOf(value.role, ['image', 'signature'])
-        && hasOnly(value, annotationBaseKeys, ['kind', 'dataUrl', 'mimeType', 'role'])
+        && optionalNumberBetween(value.opacity, 0, 1)
+        && hasOnly(value, annotationBaseKeys, ['kind', 'dataUrl', 'mimeType', 'role', 'opacity'])
     case 'shape':
       return oneOf(value.shape, ['rectangle', 'ellipse', 'line', 'arrow'])
         && nonEmptyString(value.strokeColor)
@@ -309,9 +367,14 @@ function isAnnotation(value: unknown, pageIds: Set<string>): value is Annotation
     case 'stamp':
       return oneOf(value.stamp, ['check', 'cross', 'dot', 'date'])
         && (value.label === undefined || typeof value.label === 'string')
+        && (value.dateValue === undefined || isDateValue(value.dateValue))
+        && optionalOneOf<DateStampFormat>(value.dateFormat, ['day-month', 'month-day', 'day-first', 'iso', 'custom'])
+        && (value.stamp === 'date'
+          ? value.dateFormat === undefined || value.dateFormat === 'custom' || isDateValue(value.dateValue)
+          : value.dateValue === undefined && value.dateFormat === undefined)
         && nonEmptyString(value.color)
         && positiveNumber(value.strokeWidth)
-        && hasOnly(value, annotationBaseKeys, ['kind', 'stamp', 'label', 'color', 'strokeWidth'])
+        && hasOnly(value, annotationBaseKeys, ['kind', 'stamp', 'label', 'dateValue', 'dateFormat', 'color', 'strokeWidth'])
     default:
       return false
   }

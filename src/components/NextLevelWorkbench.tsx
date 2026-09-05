@@ -13,20 +13,53 @@ import {
   annotationId,
   createEditorState,
   editorReducer,
+  isUnfinishedTextAnnotation,
   type EditorDocument,
   type EditorPage,
   type ExternalPage,
   type ImageAnnotation,
+  type NormalizedPoint,
+  type TextAnnotation,
+  type Tool,
 } from '../model/editor'
+import {
+  adjacentFormFieldTarget,
+  firstFormFieldTarget,
+  type FormFieldDirection,
+  type FormFieldFocusRequest,
+  type FormFieldTarget,
+} from '../model/formNavigation'
 import { validatePlacedImage } from '../model/imageValidation'
+import { externalLinkDestination } from '../model/linkTarget'
+import {
+  mediaAnnotationAtPoint,
+  replacementMediaBounds,
+  type MediaSurfaceSize,
+  type PendingMediaPlacement,
+} from '../model/mediaPlacement'
+import type { PersonalDetails, PreparedDetailPlacement } from '../model/personalDetails'
+import {
+  advanceSearchReplacementBatch,
+  createSearchReplacementBatch,
+  currentSearchReplacementRequest,
+  sourceSearchEntries,
+  type SearchReplacementBatch,
+  type SearchReplacementRequest,
+} from '../model/searchReplacement'
 import { nativeOcrAvailable, runNativeOcr } from '../ocr/nativeOcr'
 import { addStandardTextComments, importStandardTextComments } from '../pdf/standardAnnotationInterop'
 import { sanitizeInWorker } from '../pdf/sanitizeClient'
 import { formatFileSize, MAX_PDF_BYTES } from '../pdf/loadPdf'
-import { searchDocument, type PageMatches } from '../pdf/textSearch'
-import type { ExportProgress } from '../pdf/exportWorkerProtocol'
+import {
+  searchCursorEntries,
+  searchDocument,
+  type PageMatches,
+  type SearchCursorEntry,
+} from '../pdf/textSearch'
+import type { ExportProgress, PdfFormOutput } from '../pdf/exportWorkerProtocol'
 import type { SourcePdfFeatures } from '../pdf/sourceFeatures'
 import type { LoadedPdf } from '../pdf/types'
+import { readPageFormFields, type FormFieldWidget } from '../pdf/formFields'
 import {
   createLeafProject,
   hydrateLeafProject,
@@ -53,25 +86,39 @@ import {
   saveLocalBlob,
 } from '../pwa/fileAccess'
 import {
+  deletePersonalDetails,
   deleteSignature,
+  loadPersonalDetails,
   loadSignatures,
+  savePersonalDetails,
   saveSignature,
   type SavedSignature,
 } from '../persistence/localStore'
 import { RecoveryQueue } from '../persistence/recoveryQueue'
 import { ComparisonPanel } from './ComparisonPanel'
 import { DiscardChangesDialog } from './DiscardChangesDialog'
+import { DetailsPanel } from './DetailsPanel'
 import { DocumentMarksDialog, type DocumentMarkRequest } from './DocumentMarksDialog'
 import { ExportCompatibilityDialog } from './ExportCompatibilityDialog'
+import { FormFieldGuide } from './FormFieldGuide'
+import { HelpPanel } from './HelpPanel'
 import { Inspector } from './Inspector'
+import { MultiSelectionInspector } from './MultiSelectionInspector'
 import { OcrPanel } from './OcrPanel'
 import { PageRail } from './PageRail'
 import { PageStrip } from './PageStrip'
+import { PdfSaveMenu } from './PdfSaveMenu'
 import { PrivacyPanel } from './PrivacyPanel'
+import { ProjectToolsMenu } from './ProjectToolsMenu'
 import { RecoveryDialog } from './RecoveryDialog'
 import { ReviewPanel } from './ReviewPanel'
-import { SignatureDialog } from './SignatureDialog'
+import { SearchReplacePopover } from './SearchReplacePopover'
+import { SIGNATURE_ASPECT_RATIO, SignatureDialog } from './SignatureDialog'
+import { SkipNavigation } from './SkipNavigation'
+import { ToolPlacementHint } from './ToolPlacementHint'
 import { ToolRail } from './ToolRail'
+import { UnfinishedTextDialog } from './UnfinishedTextDialog'
+import { ZoomControl, type ZoomMode } from './ZoomControl'
 
 interface NextLevelWorkbenchProps {
   loaded: LoadedPdf
@@ -80,8 +127,13 @@ interface NextLevelWorkbenchProps {
   onClose: () => void
 }
 
+interface SavedPdfReceipt {
+  document: EditorDocument
+  comments: ReviewComment[]
+}
+
 type InsertedPdfEntry = { file: File; pdf: PDFDocumentProxy }
-type NextPanel = 'review' | 'privacy' | 'ocr' | 'compare' | null
+type NextPanel = 'review' | 'privacy' | 'ocr' | 'compare' | 'help' | 'details' | null
 
 const NUDGE_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'])
 
@@ -145,8 +197,10 @@ export function NextLevelWorkbench({
   const [comments, setComments] = useState<ReviewComment[]>(() => structuredClone(initialProject?.project.comments ?? []))
   const [ocr, setOcr] = useState<OcrPageResult[]>(() => structuredClone(initialProject?.project.ocr ?? []))
   const [activePanel, setActivePanel] = useState<NextPanel>(null)
+  const [pagesOpen, setPagesOpen] = useState(false)
   const [signatureOpen, setSignatureOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [savedPdfReceipt, setSavedPdfReceipt] = useState<SavedPdfReceipt | null>(null)
   const [savingProject, setSavingProject] = useState(false)
   const [sanitizing, setSanitizing] = useState(false)
   const [ocrRunning, setOcrRunning] = useState(false)
@@ -155,18 +209,42 @@ export function NextLevelWorkbench({
   const [comparison, setComparison] = useState<PdfComparisonResult | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [compatibilityFeatures, setCompatibilityFeatures] = useState<SourcePdfFeatures | null>(null)
+  const [unfinishedText, setUnfinishedText] = useState<TextAnnotation[]>([])
+  const [pendingFormOutput, setPendingFormOutput] = useState<PdfFormOutput>('fillable')
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null)
   const [discardOpen, setDiscardOpen] = useState(false)
   const [marksOpen, setMarksOpen] = useState(false)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
   const [recoveryProject, setRecoveryProject] = useState<LeafProject | null>(null)
   const [savedSignatures, setSavedSignatures] = useState<SavedSignature[]>([])
+  const [savedDetails, setSavedDetails] = useState<PersonalDetails | null>(null)
+  const [savingDetails, setSavingDetails] = useState(false)
+  const [pendingDetail, setPendingDetail] = useState<PreparedDetailPlacement | null>(null)
+  const [pendingMedia, setPendingMedia] = useState<PendingMediaPlacement | null>(null)
+  const [multiSelectMode, setMultiSelectMode] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<PageMatches[] | null>(null)
   const [searchCursor, setSearchCursor] = useState(0)
+  const [replaceOpen, setReplaceOpen] = useState(false)
+  const [replacementText, setReplacementText] = useState('')
+  const [replacementBatch, setReplacementBatch] = useState<SearchReplacementBatch | null>(null)
+  const [formGuideOpen, setFormGuideOpen] = useState(loaded.features.hasAcroForm)
+  const [formFieldTarget, setFormFieldTarget] = useState<FormFieldTarget | null>(null)
+  const [formFieldFocusRequest, setFormFieldFocusRequest] = useState<FormFieldFocusRequest | null>(null)
+  const [formNavigationBusy, setFormNavigationBusy] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const nudgeTimerRef = useRef<number | null>(null)
+  const formFocusRequestCounter = useRef(0)
+  const formWidgetsCacheRef = useRef<{
+    document: PDFDocumentProxy
+    pages: Map<number, Promise<FormFieldWidget[]>>
+  }>({ document: loaded.document, pages: new Map() })
+  const pageSurfaceSizesRef = useRef(new Map<string, MediaSurfaceSize>())
   const [scrollTargetPageId, setScrollTargetPageId] = useState<string | null>(null)
+  const pageOrderSignature = state.present.pages.map(({ id }) => id).join('\u0000')
+  const previousPageOrderSignatureRef = useRef(pageOrderSignature)
+  const [zoomMode, setZoomMode] = useState<ZoomMode>('manual')
+  const [fitWidthRequest, setFitWidthRequest] = useState(0)
 
   const latestDocument = useRef(state.present)
   const latestComments = useRef(comments)
@@ -176,6 +254,46 @@ export function NextLevelWorkbench({
     initialProject ? { signature: '', project: structuredClone(initialProject.project) } : null,
   )
   const recoveryQueue = useRef(new RecoveryQueue<LeafProject>(saveProjectRecovery, deleteProjectRecovery))
+  const loadFormWidgets = useCallback((sourceIndex: number) => {
+    if (formWidgetsCacheRef.current.document !== loaded.document) {
+      formWidgetsCacheRef.current = { document: loaded.document, pages: new Map() }
+    }
+    const cache = formWidgetsCacheRef.current.pages
+    const cached = cache.get(sourceIndex)
+    if (cached) return cached
+    const request = readPageFormFields(loaded.document, sourceIndex + 1)
+      .catch(() => [] as FormFieldWidget[])
+    cache.set(sourceIndex, request)
+    return request
+  }, [loaded.document])
+
+  const setManualZoom = useCallback((zoom: number) => {
+    setZoomMode('manual')
+    dispatch({ type: 'setZoom', zoom })
+  }, [])
+  const fitPageWidth = useCallback(() => {
+    setZoomMode('fit-width')
+    setFitWidthRequest((current) => current + 1)
+  }, [])
+  const changeTool = useCallback((tool: Tool) => {
+    setMultiSelectMode(false)
+    dispatch({ type: 'setTool', tool })
+  }, [])
+  const selectEditorPage = useCallback((pageId: string) => {
+    setMultiSelectMode(false)
+    dispatch({ type: 'selectPage', pageId })
+  }, [])
+
+  useEffect(() => {
+    if (previousPageOrderSignatureRef.current === pageOrderSignature) return
+    previousPageOrderSignatureRef.current = pageOrderSignature
+    // Reordering, inserting, deleting, Undo, and Redo can move the selected page
+    // under a fixed scroll offset. Keep the paper aligned with the selected id.
+    setScrollTargetPageId(state.selectedPageId)
+  }, [pageOrderSignature, state.selectedPageId])
+  const applyFitZoom = useCallback((zoom: number) => {
+    dispatch({ type: 'setZoom', zoom })
+  }, [])
 
   useEffect(() => { latestDocument.current = state.present }, [state.present])
   useEffect(() => { latestComments.current = comments }, [comments])
@@ -216,13 +334,33 @@ export function NextLevelWorkbench({
     [insertedPdfs],
   )
   const selectedPage = state.present.pages.find((page) => page.id === state.selectedPageId) ?? state.present.pages[0]
-  const selectedAnnotation = state.present.annotations.find((annotation) => annotation.id === state.selectedAnnotationId) ?? null
+  const selectedAnnotations = state.present.annotations.filter(({ id }) => state.selectedAnnotationIds.includes(id))
+  const selectedAnnotation = selectedAnnotations.length === 1 ? selectedAnnotations[0] : null
   const pageNumberById = useMemo(
     () => new Map(state.present.pages.map((page, index) => [page.id, index + 1])),
     [state.present.pages],
   )
   const projectDirty = state.present !== projectSavedDocument || projectOnlyDirty
-  const modalOpen = signatureOpen || discardOpen || marksOpen || recoveryOpen || compatibilityFeatures !== null
+  const pdfCopyCurrent = savedPdfReceipt !== null
+    && savedPdfReceipt.document === state.present
+    && savedPdfReceipt.comments === comments
+  const pdfSaveStatus = savedPdfReceipt === null
+    ? { label: 'Ready to save PDF', tone: 'ready' }
+    : pdfCopyCurrent
+      ? { label: 'PDF copy saved', tone: 'saved' }
+      : { label: 'New changes to save', tone: 'stale' }
+  const visibleNotice = savedPdfReceipt !== null
+    && !pdfCopyCurrent
+    && (notice?.startsWith('Saved fillable PDF as ') || notice?.startsWith('Saved flattened PDF as '))
+    ? null
+    : notice
+  const modalOpen = signatureOpen
+    || pagesOpen
+    || discardOpen
+    || marksOpen
+    || recoveryOpen
+    || compatibilityFeatures !== null
+    || unfinishedText.length > 0
   const recoveryKey = useMemo(
     () => projectRecoveryKey(loaded.sourceFile, loaded.documentFingerprint),
     [loaded.documentFingerprint, loaded.sourceFile],
@@ -233,9 +371,87 @@ export function NextLevelWorkbench({
   )
   const selectedOcr = ocr.find((result) => result.pageId === selectedPage.id) ?? null
 
+  const commitPendingMedia = useCallback((pageId: string, point: NormalizedPoint, surface?: MediaSurfaceSize) => {
+    if (!pendingMedia) return
+    const placementSurface = surface ?? pageSurfaceSizesRef.current.get(pageId)
+    if (!placementSurface) {
+      setNotice('This page is still loading. Wait for it to appear, then press Enter again.')
+      return
+    }
+    const role = pendingMedia.role === 'signature' ? 'Signature' : 'Image'
+    selectEditorPage(pageId)
+    dispatch({
+      type: 'addAnnotation',
+      annotation: mediaAnnotationAtPoint(pendingMedia, pageId, point, annotationId(), placementSurface),
+    })
+    setPendingMedia(null)
+    setNotice(`${role} placed. Resize if needed, then choose Done.`)
+  }, [pendingMedia, selectEditorPage])
+
   const navigateToPage = useCallback((pageId: string) => {
-    dispatch({ type: 'selectPage', pageId })
+    selectEditorPage(pageId)
     setScrollTargetPageId(pageId)
+  }, [selectEditorPage])
+
+  const focusFormTarget = useCallback((target: FormFieldTarget) => {
+    formFocusRequestCounter.current += 1
+    setFormFieldTarget(target)
+    setFormFieldFocusRequest({
+      requestId: `form-focus-${formFocusRequestCounter.current}`,
+      pageId: target.pageId,
+      widgetId: target.widgetId,
+    })
+    navigateToPage(target.pageId)
+  }, [navigateToPage])
+
+  const startFormNavigation = useCallback(async () => {
+    setFormNavigationBusy(true)
+    setPendingMedia(null)
+    setPendingDetail(null)
+    changeTool('select')
+    try {
+      const target = await firstFormFieldTarget(state.present.pages, loadFormWidgets)
+      if (!target) {
+        setNotice('This PDF has no text, choice, or checkbox fields LeafPDF can fill.')
+        return
+      }
+      focusFormTarget(target)
+    } finally {
+      setFormNavigationBusy(false)
+    }
+  }, [changeTool, focusFormTarget, loadFormWidgets, state.present.pages])
+
+  const moveFormNavigation = useCallback(async (direction: FormFieldDirection) => {
+    if (!formFieldTarget) {
+      await startFormNavigation()
+      return
+    }
+    setFormNavigationBusy(true)
+    try {
+      const target = await adjacentFormFieldTarget(
+        state.present.pages,
+        formFieldTarget,
+        direction,
+        loadFormWidgets,
+      )
+      if (!target) {
+        setNotice(direction === 'next'
+          ? 'This is the last fillable field.'
+          : 'This is the first fillable field.')
+        return
+      }
+      focusFormTarget(target)
+    } finally {
+      setFormNavigationBusy(false)
+    }
+  }, [focusFormTarget, formFieldTarget, loadFormWidgets, startFormNavigation, state.present.pages])
+
+  const handleFormFieldFocus = useCallback((target: FormFieldTarget) => {
+    setFormFieldTarget(target)
+  }, [])
+
+  const handleFormFocusRequestHandled = useCallback((requestId: string) => {
+    setFormFieldFocusRequest((current) => current?.requestId === requestId ? null : current)
   }, [])
 
   const buildProject = useCallback(async (
@@ -288,6 +504,9 @@ export function NextLevelWorkbench({
     void loadSignatures().then((signatures) => {
       if (active) setSavedSignatures(signatures)
     }).catch(() => undefined)
+    void loadPersonalDetails().then((details) => {
+      if (active) setSavedDetails(details)
+    }).catch(() => undefined)
     if (!initialProject) {
       void loadProjectRecovery(recoveryKey).then((recovered) => {
         if (active && recovered) {
@@ -304,7 +523,8 @@ export function NextLevelWorkbench({
     const keyboard = (event: KeyboardEvent) => {
       const target = event.target
       const isEditing = target instanceof Element && target.matches('input, textarea, select')
-      const annotationControl = target instanceof Element && target.closest('.annotation, .move-handle')
+      const annotationControl = target instanceof Element
+        && target.closest('.annotation, .move-handle, .group-move-handle')
       if (!isEditing && annotationControl && NUDGE_KEYS.has(event.key)) {
         if (nudgeTimerRef.current !== null) window.clearTimeout(nudgeTimerRef.current)
         nudgeTimerRef.current = window.setTimeout(() => {
@@ -312,31 +532,48 @@ export function NextLevelWorkbench({
           nudgeTimerRef.current = null
         }, 400)
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+      if (!isEditing && event.key === 'Enter' && pendingMedia) {
+        event.preventDefault()
+        commitPendingMedia(selectedPage.id, { x: 0.5, y: 0.5 })
+      } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
         event.preventDefault()
         searchInputRef.current?.focus()
         searchInputRef.current?.select()
       } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
         event.preventDefault()
-        dispatch({ type: event.shiftKey ? 'redo' : 'undo' })
-      } else if (!isEditing && (event.key === 'Delete' || event.key === 'Backspace') && state.selectedAnnotationId) {
-        dispatch({ type: 'removeAnnotation', annotationId: state.selectedAnnotationId })
-      } else if (!isEditing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c' && state.selectedAnnotationId) {
+        const historyAction = event.shiftKey ? 'redo' : 'undo'
+        dispatch({ type: historyAction })
+        setMultiSelectMode(false)
+        setNotice(historyAction === 'undo' ? 'Undid last change.' : 'Redid last change.')
+      } else if (!isEditing && (event.key === 'Delete' || event.key === 'Backspace') && state.selectedAnnotationIds.length > 0) {
+        dispatch({ type: 'removeAnnotations', annotationIds: state.selectedAnnotationIds })
+      } else if (!isEditing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c' && selectedAnnotation) {
         event.preventDefault()
-        dispatch({ type: 'copyAnnotation', annotationId: state.selectedAnnotationId })
+        dispatch({ type: 'copyAnnotation', annotationId: selectedAnnotation.id })
       } else if (!isEditing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v' && state.clipboard) {
         event.preventDefault()
         dispatch({ type: 'pasteAnnotation', pageId: selectedPage.id, newId: annotationId() })
-      } else if (!isEditing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd' && state.selectedAnnotationId) {
+      } else if (!isEditing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd' && selectedAnnotation) {
         event.preventDefault()
-        dispatch({ type: 'duplicateAnnotation', annotationId: state.selectedAnnotationId, newId: annotationId() })
-      } else if (!isEditing && event.key === ']' && state.selectedAnnotationId) {
-        dispatch({ type: 'bringForward', annotationId: state.selectedAnnotationId })
-      } else if (!isEditing && event.key === '[' && state.selectedAnnotationId) {
-        dispatch({ type: 'sendBackward', annotationId: state.selectedAnnotationId })
+        dispatch({ type: 'duplicateAnnotation', annotationId: selectedAnnotation.id, newId: annotationId() })
+      } else if (!isEditing && event.key === ']' && selectedAnnotation) {
+        dispatch({ type: 'bringForward', annotationId: selectedAnnotation.id })
+      } else if (!isEditing && event.key === '[' && selectedAnnotation) {
+        dispatch({ type: 'sendBackward', annotationId: selectedAnnotation.id })
+      } else if (!isEditing && (event.key === '?' || (event.key === '/' && event.shiftKey))) {
+        setActivePanel((current) => current === 'help' ? null : 'help')
       } else if (!isEditing && event.key === 'Escape') {
+        if (pendingMedia) {
+          setNotice(`${pendingMedia.role === 'signature' ? 'Signature' : 'Image'} placement cancelled.`)
+          setPendingMedia(null)
+        }
+        if (pendingDetail) {
+          setNotice(`${pendingDetail.label} placement cancelled.`)
+          setPendingDetail(null)
+        }
         dispatch({ type: 'selectAnnotation', annotationId: null })
-        dispatch({ type: 'setTool', tool: 'select' })
+        changeTool('select')
+        setMultiSelectMode(false)
         setActivePanel(null)
       }
     }
@@ -348,7 +585,7 @@ export function NextLevelWorkbench({
         nudgeTimerRef.current = null
       }
     }
-  }, [modalOpen, selectedPage.id, state.clipboard, state.selectedAnnotationId])
+  }, [changeTool, commitPendingMedia, modalOpen, pendingDetail, pendingMedia, selectedAnnotation, selectedPage.id, state.clipboard, state.selectedAnnotationIds])
 
   useEffect(() => {
     if (!state.dirty && !projectDirty) return
@@ -367,51 +604,117 @@ export function NextLevelWorkbench({
 
   const placeImage = async (file: File) => {
     try {
+      setFormGuideOpen(false)
+      setPendingDetail(null)
       const { width, height } = await validatePlacedImage(file)
       const dataUrl = await readDataUrl(file)
-      const placedWidth = 0.42
-      const aspect = height / width
-      const annotation: ImageAnnotation = {
-        id: annotationId(), pageId: selectedPage.id, kind: 'image', x: 0.2, y: 0.2,
+      const placedWidth = 0.36
+      setPendingMedia({
         width: placedWidth,
-        height: Math.min(0.8, Math.max(0.04, placedWidth * aspect)),
+        aspectRatio: width / height,
         dataUrl,
-        mimeType: file.type as ImageAnnotation['mimeType'],
-      }
-      dispatch({ type: 'addAnnotation', annotation })
-      setNotice('Image placed. Drag it to reposition.')
+        mimeType: file.type as PendingMediaPlacement['mimeType'],
+      })
+      changeTool('image')
+      setNotice(null)
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'The image could not be read.')
     }
   }
 
-  const placeSignature = (dataUrl: string, saveForReuse = false) => {
-    dispatch({
-      type: 'addAnnotation',
-      annotation: {
-        id: annotationId(), pageId: selectedPage.id, kind: 'image', x: 0.25, y: 0.65,
-        width: 0.38, height: 0.13, dataUrl, mimeType: 'image/png', role: 'signature',
-      },
+  const replaceImage = async (annotation: ImageAnnotation, file: File) => {
+    if (annotation.role === 'signature') return
+    const surface = pageSurfaceSizesRef.current.get(annotation.pageId)
+    if (!surface) {
+      setNotice('This page is still loading. Wait for it to appear, then replace the image again.')
+      return
+    }
+    try {
+      const { width, height } = await validatePlacedImage(file)
+      const dataUrl = await readDataUrl(file)
+      dispatch({
+        type: 'updateAnnotation',
+        annotationId: annotation.id,
+        patch: {
+          ...replacementMediaBounds(annotation, width / height, surface),
+          dataUrl,
+          mimeType: file.type as ImageAnnotation['mimeType'],
+        },
+      })
+      setNotice('Image replaced. Undo restores the previous image.')
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'The image could not be replaced.')
+    }
+  }
+
+  const placeSignature = (dataUrl: string, saveForReuse = false, suggestedName?: string) => {
+    setFormGuideOpen(false)
+    setPendingDetail(null)
+    setPendingMedia({
+      width: 0.32,
+      aspectRatio: SIGNATURE_ASPECT_RATIO,
+      dataUrl,
+      mimeType: 'image/png',
+      role: 'signature',
     })
     if (saveForReuse) {
       const signature: SavedSignature = {
         id: `signature-${crypto.randomUUID()}`,
-        name: `Signature ${savedSignatures.length + 1}`,
+        name: suggestedName?.trim() || `Signature ${savedSignatures.length + 1}`,
         dataUrl,
         createdAt: Date.now(),
       }
       void saveSignature(signature)
         .then(() => setSavedSignatures((current) => [signature, ...current]))
-        .catch(() => setNotice('The signature was placed, but this browser could not save it for reuse.'))
+        .catch(() => setNotice('This browser could not save that signature for reuse; you can still place it now.'))
     }
     setSignatureOpen(false)
-    setNotice('Signature placed. Drag it to reposition.')
+    changeTool('signature')
+    setNotice(null)
   }
 
   const removeSavedSignature = (id: string) => {
     void deleteSignature(id)
       .then(() => setSavedSignatures((current) => current.filter((signature) => signature.id !== id)))
       .catch(() => setNotice('That saved signature could not be deleted.'))
+  }
+
+  const saveDetailsOnDevice = (details: PersonalDetails) => {
+    setSavingDetails(true)
+    void savePersonalDetails(details)
+      .then(() => {
+        setSavedDetails(structuredClone(details))
+        setNotice('Personal details saved only in this browser.')
+      })
+      .catch(() => setNotice('This browser could not save those details; you can still place them now.'))
+      .finally(() => setSavingDetails(false))
+  }
+
+  const clearDetailsFromDevice = () => {
+    setSavingDetails(true)
+    void deletePersonalDetails()
+      .then(() => {
+        setSavedDetails(null)
+        setNotice('Saved personal details cleared from this browser.')
+      })
+      .catch(() => setNotice('Saved personal details could not be cleared.'))
+      .finally(() => setSavingDetails(false))
+  }
+
+  const prepareDetailPlacement = (placement: PreparedDetailPlacement) => {
+    setFormGuideOpen(false)
+    setPendingMedia(null)
+    setPendingDetail(placement)
+    setActivePanel(null)
+    changeTool('text')
+    setNotice(null)
+  }
+
+  const finishPreparedDetailPlacement = () => {
+    if (!pendingDetail) return
+    const label = pendingDetail.label
+    setPendingDetail(null)
+    setNotice(`${label} added. Edit it on the page, then press Enter.`)
   }
 
   const addDocumentMarks = (request: DocumentMarkRequest) => {
@@ -512,6 +815,8 @@ export function NextLevelWorkbench({
 
   const runSearch = async (event: FormEvent) => {
     event.preventDefault()
+    if (replacementBatch) return
+    setReplaceOpen(false)
     try {
       const results = await searchDocument(loaded.document, externalDocuments, state.present.pages, searchQuery)
       const normalizedQuery = searchQuery.trim().toLocaleLowerCase()
@@ -527,13 +832,15 @@ export function NextLevelWorkbench({
             pageId: result.pageId,
             pageNumber,
             matches: (existing?.matches ?? 0) + matches,
+            occurrences: existing?.occurrences ?? [],
           })
         }
       }
       const allResults = Array.from(merged.values()).sort((left, right) => left.pageNumber - right.pageNumber)
       setSearchResults(allResults)
       setSearchCursor(0)
-      if (allResults.length > 0) navigateToPage(allResults[0].pageId)
+      const firstEntry = searchCursorEntries(allResults)[0]
+      if (firstEntry) navigateToPage(firstEntry.pageId)
     } catch {
       setNotice('The document text could not be searched.')
     }
@@ -541,17 +848,108 @@ export function NextLevelWorkbench({
 
   const liveResults = (searchResults ?? []).filter((result) =>
     state.present.pages.some((page) => page.id === result.pageId))
+  const liveSearchEntries = searchCursorEntries(liveResults)
+  const activeSearchIndex = liveSearchEntries.length === 0
+    ? -1
+    : Math.min(searchCursor, liveSearchEntries.length - 1)
+  const activeSearchEntry: SearchCursorEntry | null = activeSearchIndex === -1
+    ? null
+    : liveSearchEntries[activeSearchIndex]
   const stepSearch = (direction: 1 | -1) => {
-    if (liveResults.length === 0) return
-    const next = ((searchCursor + direction) % liveResults.length + liveResults.length) % liveResults.length
+    if (liveSearchEntries.length === 0) return
+    const next = ((activeSearchIndex + direction) % liveSearchEntries.length + liveSearchEntries.length)
+      % liveSearchEntries.length
     setSearchCursor(next)
-    navigateToPage(liveResults[next].pageId)
+    navigateToPage(liveSearchEntries[next].pageId)
   }
-  const totalMatches = liveResults.reduce((sum, result) => sum + result.matches, 0)
+  const totalMatches = liveSearchEntries.length
+  const searchStatus = liveSearchEntries.length === 0
+    ? 'No matches'
+    : `${totalMatches} match${totalMatches === 1 ? '' : 'es'} · page ${activeSearchEntry?.pageNumber} · ${activeSearchIndex + 1} of ${totalMatches}`
+  const compactSearchStatus = liveSearchEntries.length === 0
+    ? searchStatus
+    : `${activeSearchIndex + 1}/${totalMatches} · page ${activeSearchEntry?.pageNumber}`
+  const sourceSearchMatches = sourceSearchEntries(liveSearchEntries)
+  const replacementRequest = replacementBatch
+    ? currentSearchReplacementRequest(replacementBatch)
+    : null
+  const replacementBusy = replacementBatch !== null
+
+  const showSearchReplacementRequest = useCallback((request: SearchReplacementRequest) => {
+    const cursor = liveSearchEntries.findIndex((entry) => entry.pageId === request.pageId
+      && entry.occurrence?.start === request.occurrence.start
+      && entry.occurrence.end === request.occurrence.end)
+    if (cursor >= 0) setSearchCursor(cursor)
+    dispatch({ type: 'viewPage', pageId: request.pageId })
+    setScrollTargetPageId(request.pageId)
+  }, [liveSearchEntries])
+
+  const startSearchReplacement = (entries: SearchCursorEntry[], value: string) => {
+    const batch = createSearchReplacementBatch(
+      entries,
+      value,
+      `search-replace-${crypto.randomUUID()}`,
+    )
+    if (!batch) return
+    setPendingMedia(null)
+    setPendingDetail(null)
+    changeTool('select')
+    setReplacementText(batch.replacementText)
+    setReplacementBatch(batch)
+    showSearchReplacementRequest(currentSearchReplacementRequest(batch))
+  }
+
+  const stopSearchReplacement = useCallback((message?: string) => {
+    if (!replacementBatch) return
+    const completed = replacementBatch.index
+    const total = replacementBatch.entries.length
+    dispatch({ type: 'endHistoryGroup' })
+    setReplacementBatch(null)
+    window.getSelection()?.removeAllRanges()
+    document.dispatchEvent(new Event('selectionchange'))
+    setNotice(message ?? (
+      completed > 0
+        ? `Replacement stopped after ${completed} of ${total}. One Undo removes the completed visual corrections.`
+        : 'Replacement stopped before any visual corrections were added.'
+    ))
+  }, [replacementBatch])
+
+  const handleSearchReplacementUnavailable = useCallback((requestId: string) => {
+    if (!replacementBatch || replacementRequest?.id !== requestId) return
+    const completed = replacementBatch.index
+    stopSearchReplacement(
+      `Find & Replace stopped at match ${replacementRequest.index}; its source geometry was unavailable. ${completed} visual correction${completed === 1 ? '' : 's'} completed.`,
+    )
+  }, [replacementBatch, replacementRequest, stopSearchReplacement])
+
+  const handleSearchReplacementHandled = useCallback((requestId: string) => {
+    if (!replacementBatch || replacementRequest?.id !== requestId) return
+    const next = advanceSearchReplacementBatch(replacementBatch)
+    if (next) {
+      setReplacementBatch(next)
+      showSearchReplacementRequest(currentSearchReplacementRequest(next))
+      return
+    }
+    dispatch({ type: 'endHistoryGroup' })
+    setReplacementBatch(null)
+    setReplaceOpen(false)
+    const count = replacementBatch.entries.length
+    setNotice(`Replaced ${count} source match${count === 1 ? '' : 'es'} visually. Original PDF text remains underneath; use Redact for permanent removal.`)
+  }, [replacementBatch, replacementRequest, showSearchReplacementRequest])
+
+  useEffect(() => {
+    if (!replacementRequest) return
+    const requestId = replacementRequest.id
+    const timeout = window.setTimeout(() => {
+      handleSearchReplacementUnavailable(requestId)
+    }, 10_000)
+    return () => window.clearTimeout(timeout)
+  }, [handleSearchReplacementUnavailable, replacementRequest])
 
   const buildEditedBytes = async (
     documentSnapshot: EditorDocument,
     allowCompatibilityCopy: boolean,
+    formOutput: PdfFormOutput,
     includeComments: boolean,
     commentsSnapshot: ReviewComment[],
   ): Promise<Uint8Array> => {
@@ -570,7 +968,7 @@ export function NextLevelWorkbench({
       loaded.sourceFile,
       documentSnapshot,
       (progress) => setExportProgress(progress),
-      { allowCompatibilityCopy, insertedFiles, rasterizedPages },
+      { allowCompatibilityCopy, formOutput, insertedFiles, rasterizedPages },
     )
     if (includeComments && commentsSnapshot.length > 0) {
       bytes = await addStandardTextComments(
@@ -582,7 +980,8 @@ export function NextLevelWorkbench({
     return bytes
   }
 
-  const exportFile = async (allowCompatibilityCopy = false) => {
+  const exportFile = async (formOutput: PdfFormOutput, allowCompatibilityCopy = false) => {
+    setPendingFormOutput(formOutput)
     setExporting(true)
     setExportProgress(null)
     setNotice(null)
@@ -591,7 +990,13 @@ export function NextLevelWorkbench({
     try {
       let bytes: Uint8Array
       try {
-        bytes = await buildEditedBytes(documentSnapshot, allowCompatibilityCopy, true, commentsSnapshot)
+        bytes = await buildEditedBytes(
+          documentSnapshot,
+          allowCompatibilityCopy,
+          formOutput,
+          true,
+          commentsSnapshot,
+        )
       } catch (error) {
         if (error instanceof Error && error.name === 'CompatibilityConfirmationRequired') {
           const { features } = error as Error & { features?: SourcePdfFeatures }
@@ -601,12 +1006,13 @@ export function NextLevelWorkbench({
         throw error
       }
       const { exportedFileName } = await import('../pdf/exportNaming')
-      const fileName = exportedFileName(loaded.fileName)
+      const fileName = exportedFileName(loaded.fileName, formOutput)
       const result = await saveLocalBlob(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }), fileName, PDF_SAVE_TYPE)
       if (result === 'cancelled') {
         setNotice('PDF export cancelled.')
         return
       }
+      setSavedPdfReceipt({ document: documentSnapshot, comments: commentsSnapshot })
       setCompatibilityFeatures(null)
       dispatch({ type: 'markSaved', document: documentSnapshot })
       const projectOnlyStateSaved = latestComments.current === commentsSnapshot
@@ -616,10 +1022,16 @@ export function NextLevelWorkbench({
         setProjectOnlyDirty(false)
         await recoveryQueue.current.clear(recoveryKey)
       }
+      const pdfSnapshotCurrent = latestDocument.current === documentSnapshot
+        && latestComments.current === commentsSnapshot
+      const outputLabel = formOutput === 'flattened' ? 'flattened PDF' : 'fillable PDF'
+      const outputDetail = formOutput === 'flattened'
+        ? ' Form controls were removed; this is not encryption.'
+        : commentsSnapshot.length ? ' It includes standard PDF comments.' : ''
       setNotice(
-        latestDocument.current === documentSnapshot
-          ? `Exported ${fileName}${commentsSnapshot.length ? ' with standard PDF comments' : ''}.`
-          : `Exported ${fileName}. Edits made while it was building are not in that file.`,
+        pdfSnapshotCurrent
+          ? `Saved ${outputLabel} as ${fileName}.${outputDetail}`
+          : `Saved ${outputLabel} as ${fileName}. Edits made while it was building are not in that file.`,
       )
     } catch (error) {
       setNotice(error instanceof Error ? `Export failed: ${error.message}` : 'Export failed.')
@@ -627,6 +1039,40 @@ export function NextLevelWorkbench({
       setExporting(false)
       setExportProgress(null)
     }
+  }
+
+  const requestPdfSave = (formOutput: PdfFormOutput) => {
+    setPendingFormOutput(formOutput)
+    const invalidLink = state.present.annotations.find((annotation) =>
+      annotation.kind === 'link' && externalLinkDestination(annotation) === null)
+    if (invalidLink?.kind === 'link') {
+      changeTool('select')
+      navigateToPage(invalidLink.pageId)
+      dispatch({ type: 'selectAnnotation', annotationId: invalidLink.id })
+      setNotice('Add a valid link destination before saving the PDF.')
+      return
+    }
+    const unfinished = state.present.annotations.filter(isUnfinishedTextAnnotation)
+    if (unfinished.length === 0) {
+      void exportFile(formOutput)
+      return
+    }
+    dispatch({ type: 'selectAnnotation', annotationId: null })
+    setUnfinishedText(unfinished)
+  }
+
+  const reviewUnfinishedText = () => {
+    const first = unfinishedText[0]
+    if (!first) return
+    setUnfinishedText([])
+    changeTool('select')
+    navigateToPage(first.pageId)
+    dispatch({ type: 'selectAnnotation', annotationId: first.id })
+  }
+
+  const saveWithUnfinishedText = () => {
+    setUnfinishedText([])
+    void exportFile(pendingFormOutput)
   }
 
   const saveProject = async () => {
@@ -672,7 +1118,7 @@ export function NextLevelWorkbench({
     setSanitizing(true)
     setNotice(null)
     try {
-      const edited = await buildEditedBytes(state.present, true, false, comments)
+      const edited = await buildEditedBytes(state.present, true, 'fillable', false, comments)
       const sanitized = await sanitizeInWorker(edited)
       const fileName = sanitizedFileName(loaded.fileName)
       const result = await saveLocalBlob(
@@ -745,7 +1191,7 @@ export function NextLevelWorkbench({
       const { getDocument } = await import('pdfjs-dist')
       comparisonPdf = await getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise
       if (!loaded.features.isEncrypted) {
-        const currentBytes = await buildEditedBytes(state.present, true, false, comments)
+        const currentBytes = await buildEditedBytes(state.present, true, 'fillable', false, comments)
         currentPdf = await getDocument({ data: new Uint8Array(currentBytes) }).promise
       }
       setComparison(await comparePdfText(currentPdf ?? loaded.document, comparisonPdf))
@@ -788,45 +1234,52 @@ export function NextLevelWorkbench({
 
   return (
     <main className="workbench-shell next-level-workbench">
+      <SkipNavigation hasItemProperties={selectedAnnotations.length > 0} />
       <header className="topbar">
         <button type="button" className="brand-button" disabled={closing} onClick={requestClose} aria-label="Close document and return home">
           <span className="brand-mark" aria-hidden="true">L</span>
           <span>LeafPDF</span>
         </button>
         <div className="document-identity">
-          <strong title={loaded.fileName}>{loaded.fileName}</strong>
-          <span>
+          <h1 title={loaded.fileName}>{loaded.fileName}</h1>
+          <span className={`pdf-save-status is-${pdfSaveStatus.tone}`}>
             <i className="status-dot" /> {state.present.pages.length} page{state.present.pages.length === 1 ? '' : 's'}
-            {' · '}{formatFileSize(loaded.sourceFile.size)} · {projectDirty ? 'Project unsaved' : 'Project saved'}
+            {' · '}{formatFileSize(loaded.sourceFile.size)} · {pdfSaveStatus.label}
           </span>
         </div>
         <div className="history-controls" aria-label="Edit history">
-          <button type="button" disabled={state.past.length === 0} onClick={() => dispatch({ type: 'undo' })} aria-label="Undo">↶</button>
-          <button type="button" disabled={state.future.length === 0} onClick={() => dispatch({ type: 'redo' })} aria-label="Redo">↷</button>
+          <button type="button" disabled={state.past.length === 0} onClick={() => {
+            dispatch({ type: 'undo' })
+            setNotice('Undid last change.')
+          }} aria-label="Undo">↶</button>
+          <button type="button" disabled={state.future.length === 0} onClick={() => {
+            dispatch({ type: 'redo' })
+            setNotice('Redid last change.')
+          }} aria-label="Redo">↷</button>
         </div>
         <div className="next-actions" aria-label="Project and review tools">
-          <button type="button" className="mobile-document-marks" aria-label="Marks" onClick={() => setMarksOpen(true)}>Marks</button>
-          <button type="button" onClick={() => void saveProject()} disabled={savingProject}>{savingProject ? 'Saving…' : 'Save project'}</button>
-          <button type="button" onClick={() => setActivePanel(activePanel === 'review' ? null : 'review')}>Review{comments.length ? ` ${comments.length}` : ''}</button>
-          <button type="button" onClick={() => setActivePanel(activePanel === 'privacy' ? null : 'privacy')}>Privacy</button>
-          <button type="button" onClick={() => setActivePanel(activePanel === 'ocr' ? null : 'ocr')}>OCR</button>
-          <button type="button" onClick={() => setActivePanel(activePanel === 'compare' ? null : 'compare')}>Compare</button>
-          <button type="button" className="desktop-document-marks" aria-label="Document marks" onClick={() => setMarksOpen(true)}>Marks</button>
+          <ProjectToolsMenu
+            commentsCount={comments.length}
+            savingProject={savingProject}
+            onSaveProject={() => void saveProject()}
+            onReview={() => setActivePanel(activePanel === 'review' ? null : 'review')}
+            onPrivacy={() => setActivePanel(activePanel === 'privacy' ? null : 'privacy')}
+            onOcr={() => setActivePanel(activePanel === 'ocr' ? null : 'ocr')}
+            onCompare={() => setActivePanel(activePanel === 'compare' ? null : 'compare')}
+            onMarks={() => setMarksOpen(true)}
+            onHelp={() => setActivePanel(activePanel === 'help' ? null : 'help')}
+          />
         </div>
-        <button
-          type="button"
-          className="export-button"
-          disabled={exporting || loaded.features.isEncrypted}
-          title={loaded.features.isEncrypted ? 'Encrypted PDFs cannot be exported.' : undefined}
-          onClick={() => void exportFile()}
-        >
-          {exporting
-            ? exportProgress
-              ? `Building PDF… ${exportProgress.completedPages}/${exportProgress.totalPages}`
-              : 'Building PDF…'
-            : 'Export PDF'}
-          {' '}<span aria-hidden="true">↓</span>
-        </button>
+        <PdfSaveMenu
+          disabled={loaded.features.isEncrypted}
+          disabledReason={loaded.features.isEncrypted ? 'Encrypted PDFs cannot be exported.' : undefined}
+          exporting={exporting}
+          primaryLabel={pdfCopyCurrent ? 'Save again' : 'Save PDF'}
+          progressLabel={exportProgress
+            ? `Saving PDF… ${exportProgress.completedPages}/${exportProgress.totalPages}`
+            : 'Saving PDF…'}
+          onSave={requestPdfSave}
+        />
       </header>
 
       {loaded.features.isEncrypted && (
@@ -842,86 +1295,249 @@ export function NextLevelWorkbench({
         </p>
       )}
 
-      <div className="workbench-grid">
-        <PageRail
-          pdf={loaded.document}
-          pages={state.present.pages}
-          selectedPageId={state.selectedPageId}
-          externalDocuments={externalDocuments}
-          onInsertBlankPage={() => void insertBlankPage()}
-          onInsertPdf={(file) => void insertPdf(file)}
-          onSelectPage={navigateToPage}
-          dispatch={dispatch}
-        />
+      <div className={`workbench-grid ${selectedAnnotations.length > 0 ? 'has-item-properties' : 'is-paper-focused'}`}>
+        {pagesOpen && (
+          <>
+            <div className="page-organizer-backdrop" aria-hidden="true" onPointerDown={() => setPagesOpen(false)} />
+            <PageRail
+              pdf={loaded.document}
+              pages={state.present.pages}
+              selectedPageId={state.selectedPageId}
+              externalDocuments={externalDocuments}
+              onInsertBlankPage={() => void insertBlankPage()}
+              onInsertPdf={(file) => void insertPdf(file)}
+              onSelectPage={(pageId) => {
+                navigateToPage(pageId)
+                setPagesOpen(false)
+              }}
+              onClose={() => setPagesOpen(false)}
+              dispatch={dispatch}
+            />
+          </>
+        )}
         <ToolRail
           activeTool={state.activeTool}
-          onTool={(tool) => dispatch({ type: 'setTool', tool })}
-          onImage={placeImage}
-          onSignature={() => setSignatureOpen(true)}
+          detailsOpen={activePanel === 'details'}
+          onTool={(tool) => {
+            setFormGuideOpen(false)
+            setPendingMedia(null)
+            setPendingDetail(null)
+            setActivePanel(null)
+            changeTool(tool)
+          }}
+          onImage={(file) => {
+            void placeImage(file)
+          }}
+          onSignature={() => {
+            setFormGuideOpen(false)
+            setPendingMedia(null)
+            setPendingDetail(null)
+            setActivePanel(null)
+            changeTool('select')
+            setSignatureOpen(true)
+          }}
+          onDetails={() => {
+            const nextOpen = activePanel !== 'details'
+            setFormGuideOpen(false)
+            setPendingMedia(null)
+            setPendingDetail(null)
+            changeTool('select')
+            setActivePanel(nextOpen ? 'details' : null)
+          }}
         />
-        <section className="document-stage">
+        <section id="pdf-document" className="document-stage" tabIndex={-1} aria-labelledby="pdf-document-title">
+          <h2 id="pdf-document-title" className="visually-hidden">PDF document</h2>
           <div className="stage-ruler" aria-hidden="true">
             {Array.from({ length: 19 }, (_, index) => <i key={index} className={index % 5 === 0 ? 'major' : ''} />)}
           </div>
           <div className="stage-toolbar">
-            <span>PAGE {pageNumberById.get(selectedPage.id)} / {state.present.pages.length}</span>
-            <form className="search-control" role="search" aria-label="Find text in document" onSubmit={(event) => void runSearch(event)}>
-              <input
-                ref={searchInputRef}
-                type="search"
-                placeholder="Find in PDF or OCR"
-                aria-label="Find text in document"
-                value={searchQuery}
-                onChange={(event) => {
-                  setSearchQuery(event.target.value)
-                  setSearchResults(null)
-                }}
-              />
-              <button type="submit" aria-label="Search">Find</button>
-              {searchResults !== null && (
-                <span className="search-status" role="status">
-                  {liveResults.length === 0
-                    ? 'No matches'
-                    : `${totalMatches} match${totalMatches === 1 ? '' : 'es'} · page ${liveResults[Math.min(searchCursor, liveResults.length - 1)]?.pageNumber}`}
-                </span>
+            <button
+              type="button"
+              className="page-organizer-trigger"
+              aria-label={`Open page organizer, page ${pageNumberById.get(selectedPage.id)} of ${state.present.pages.length}`}
+              aria-haspopup="dialog"
+              aria-expanded={pagesOpen}
+              aria-controls="document-pages"
+              onClick={() => {
+                setReplaceOpen(false)
+                setFormGuideOpen(false)
+                setActivePanel(null)
+                setPagesOpen(true)
+              }}
+            >
+              <span aria-hidden="true">▤</span>
+              Pages {pageNumberById.get(selectedPage.id)} / {state.present.pages.length}
+            </button>
+            <div className="search-cluster">
+              <form className="search-control" role="search" aria-label="Find text in document" onSubmit={(event) => void runSearch(event)}>
+                <input
+                  ref={searchInputRef}
+                  type="search"
+                  placeholder="Find in PDF or OCR"
+                  aria-label="Find text in document"
+                  value={searchQuery}
+                  disabled={replacementBusy}
+                  onChange={(event) => {
+                    setSearchQuery(event.target.value)
+                    setSearchResults(null)
+                    setReplaceOpen(false)
+                    setReplacementText('')
+                  }}
+                />
+                <button type="submit" aria-label="Search" disabled={replacementBusy}>Find</button>
+                {liveSearchEntries.length > 0 && (
+                  <button
+                    type="button"
+                    className="search-replace-trigger"
+                    aria-expanded={replaceOpen}
+                    aria-controls="search-replace-popover"
+                    disabled={replacementBusy}
+                    onClick={() => setReplaceOpen((open) => !open)}
+                  >
+                    Replace
+                  </button>
+                )}
+                {searchResults !== null && (
+                  <span className="search-status" role="status" aria-label={searchStatus}>
+                    {liveSearchEntries.length === 0
+                      ? searchStatus
+                      : (
+                        <>
+                          <span className="search-status-full">{searchStatus}</span>
+                          <span className="search-status-compact" aria-hidden="true">{compactSearchStatus}</span>
+                        </>
+                      )}
+                  </span>
+                )}
+                {liveSearchEntries.length > 1 && (
+                  <>
+                    <button type="button" className="search-nav-button" aria-label="Previous match" disabled={replacementBusy} onClick={() => stepSearch(-1)}>‹</button>
+                    <button type="button" className="search-nav-button" aria-label="Next match" disabled={replacementBusy} onClick={() => stepSearch(1)}>›</button>
+                  </>
+                )}
+              </form>
+              {replaceOpen && liveSearchEntries.length > 0 && (
+                <SearchReplacePopover
+                  query={searchQuery.trim()}
+                  replacementText={replacementText}
+                  onReplacementTextChange={setReplacementText}
+                  sourceMatches={sourceSearchMatches.length}
+                  totalMatches={liveSearchEntries.length}
+                  currentIsSource={activeSearchEntry?.occurrence != null}
+                  busy={replacementBusy}
+                  progress={replacementRequest
+                    ? { index: replacementRequest.index, total: replacementRequest.total }
+                    : null}
+                  onReplaceThis={(value) => {
+                    if (activeSearchEntry?.occurrence) startSearchReplacement([activeSearchEntry], value)
+                  }}
+                  onReplaceAll={(value) => startSearchReplacement(liveSearchEntries, value)}
+                  onStop={() => stopSearchReplacement()}
+                  onClose={() => setReplaceOpen(false)}
+                />
               )}
-              {liveResults.length > 1 && (
-                <>
-                  <button type="button" aria-label="Previous matching page" onClick={() => stepSearch(-1)}>‹</button>
-                  <button type="button" aria-label="Next matching page" onClick={() => stepSearch(1)}>›</button>
-                </>
-              )}
-            </form>
-            <span className="source-boundary" role="note">Original protected · Project stays editable</span>
-            <button type="button" className="marks-mobile-button" onClick={() => setMarksOpen(true)}>Marks</button>
-            <div className="zoom-control">
-              <button type="button" aria-label="Zoom out" onClick={() => dispatch({ type: 'setZoom', zoom: state.zoom - 0.15 })}>−</button>
-              <output>{Math.round(state.zoom * 100)}%</output>
-              <button type="button" aria-label="Zoom in" onClick={() => dispatch({ type: 'setZoom', zoom: state.zoom + 0.15 })}>+</button>
             </div>
+            {loaded.features.hasAcroForm && (
+              <button
+                type="button"
+                className="form-guide-trigger"
+                aria-expanded={formGuideOpen}
+                aria-controls="form-field-guide"
+                onClick={() => {
+                  const nextOpen = !formGuideOpen
+                  setFormGuideOpen(nextOpen)
+                  if (nextOpen) {
+                    setPendingMedia(null)
+                    setPendingDetail(null)
+                    changeTool('select')
+                  }
+                }}
+              >
+                <span aria-hidden="true">▣</span>
+                Fields
+              </button>
+            )}
+            <ZoomControl
+              zoom={state.zoom}
+              mode={zoomMode}
+              onZoom={setManualZoom}
+              onFitWidth={fitPageWidth}
+            />
           </div>
+          <ToolPlacementHint tool={state.activeTool} preparedDetail={pendingDetail} />
+          <FormFieldGuide
+            open={loaded.features.hasAcroForm && formGuideOpen}
+            busy={formNavigationBusy}
+            target={formFieldTarget}
+            pageNumber={formFieldTarget
+              ? pageNumberById.get(formFieldTarget.pageId) ?? null
+              : null}
+            onStart={() => void startFormNavigation()}
+            onPrevious={() => void moveFormNavigation('previous')}
+            onNext={() => void moveFormNavigation('next')}
+            onClose={() => setFormGuideOpen(false)}
+          />
           <PageStrip
             pdf={loaded.document}
             pages={state.present.pages}
             externalDocuments={externalDocuments}
             annotations={state.present.annotations}
             activeTool={state.activeTool}
-            selectedAnnotationId={state.selectedAnnotationId}
+            selectedPageId={state.selectedPageId}
+            selectedAnnotationIds={state.selectedAnnotationIds}
+            multiSelectMode={multiSelectMode}
+            onMultiSelectComplete={() => setMultiSelectMode(false)}
             zoom={state.zoom}
+            fitWidth={zoomMode === 'fit-width'}
+            fitWidthRequest={fitWidthRequest}
+            onFitZoom={applyFitZoom}
             formValues={state.present.formValues}
+            loadFormWidgets={loadFormWidgets}
+            formFieldFocusRequest={formFieldFocusRequest}
+            onFormFieldFocus={handleFormFieldFocus}
+            onFormFocusRequestHandled={handleFormFocusRequestHandled}
+            searchResults={liveResults}
+            activeSearchEntry={activeSearchEntry}
+            searchReplacementRequest={replacementRequest}
+            onSearchReplacementHandled={handleSearchReplacementHandled}
+            onSearchReplacementUnavailable={handleSearchReplacementUnavailable}
+            pendingMedia={pendingMedia}
+            onPlaceMedia={commitPendingMedia}
+            preparedDetail={pendingDetail}
+            onPlacePreparedDetail={finishPreparedDetailPlacement}
+            announce={setNotice}
+            onPageMeasured={(pageId, size) => pageSurfaceSizesRef.current.set(pageId, size)}
             scrollTargetPageId={scrollTargetPageId}
             onScrolledToTarget={() => setScrollTargetPageId(null)}
             dispatch={dispatch}
           />
         </section>
-        <Inspector annotation={selectedAnnotation} canPaste={state.clipboard !== null} dispatch={dispatch} />
+        {selectedAnnotations.length > 1 ? (
+          <MultiSelectionInspector
+            key={selectedAnnotations.map(({ id }) => id).join('\u0000')}
+            annotations={selectedAnnotations}
+            dispatch={dispatch}
+            onAddMore={() => setMultiSelectMode(true)}
+            onDone={() => {
+              setMultiSelectMode(false)
+              dispatch({ type: 'selectAnnotation', annotationId: null })
+            }}
+            announce={setNotice}
+          />
+        ) : (
+          <Inspector
+            key={selectedAnnotation?.id ?? 'empty'}
+            annotation={selectedAnnotation}
+            annotations={state.present.annotations}
+            canPaste={state.clipboard !== null}
+            multiSelectMode={multiSelectMode}
+            onSelectMore={selectedAnnotation ? () => setMultiSelectMode(true) : undefined}
+            dispatch={dispatch}
+            announce={setNotice}
+            onReplaceImage={replaceImage}
+          />
+        )}
       </div>
-
-      <footer className="statusbar">
-        <span>{state.activeTool === 'select' ? 'Select, move, and resize added items' : `${state.activeTool} tool active`}</span>
-        <span>{state.present.annotations.length} item{state.present.annotations.length === 1 ? '' : 's'} added</span>
-        <span className="privacy-footer">Local project · {comments.length} comment{comments.length === 1 ? '' : 's'} · No upload · No tracking</span>
-      </footer>
 
       <ReviewPanel
         open={activePanel === 'review'}
@@ -981,11 +1597,21 @@ export function NextLevelWorkbench({
           if (page) navigateToPage(page.id)
         }}
       />
+      <HelpPanel open={activePanel === 'help'} onClose={() => setActivePanel(null)} />
+      <DetailsPanel
+        open={activePanel === 'details'}
+        saved={savedDetails}
+        saving={savingDetails}
+        onClose={() => setActivePanel(null)}
+        onSave={saveDetailsOnDevice}
+        onClear={clearDetailsFromDevice}
+        onPlace={prepareDetailPlacement}
+      />
 
       <div className="toast-region" role="status" aria-live="polite">
-        {notice && (
+        {visibleNotice && (
           <div className="toast">
-            <span>{notice}</span>
+            <span>{visibleNotice}</span>
             <button type="button" aria-label="Dismiss notification" onClick={() => setNotice(null)}>
               <span aria-hidden="true">×</span>
             </button>
@@ -1021,12 +1647,18 @@ export function NextLevelWorkbench({
           }).catch(() => setNotice('The local recovery project could not be deleted. Save the project before closing.'))
         }}
       />
+      <UnfinishedTextDialog
+        count={unfinishedText.length}
+        onCancel={() => setUnfinishedText([])}
+        onReview={reviewUnfinishedText}
+        onSaveAnyway={saveWithUnfinishedText}
+      />
       <ExportCompatibilityDialog
         features={compatibilityFeatures}
         onCancel={() => setCompatibilityFeatures(null)}
         onAccept={() => {
           setCompatibilityFeatures(null)
-          void exportFile(true)
+          void exportFile(pendingFormOutput, true)
         }}
       />
     </main>

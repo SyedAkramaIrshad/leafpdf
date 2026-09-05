@@ -27,6 +27,7 @@ async function handle(request: ExportWorkerRequest) {
     request.document,
     {
       allowCompatibilityCopy: request.allowCompatibilityCopy,
+      formOutput: request.formOutput,
       insertedDocuments,
       rasterizedPages: new Map(request.rasterizedPages.map((raster) => [raster.pageId, raster])),
       onProgress: (completedPages, totalPages) => post({ type: 'progress', completedPages, totalPages }),

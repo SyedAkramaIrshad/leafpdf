@@ -1,6 +1,11 @@
+import { clampZoom } from './zoomFit'
+import type { DateStampFormat } from './dateStamp'
+import { nextCreatedFormFieldName, nextRadioOptionValue } from './createdFormFields'
+import { movePageToIndex } from './pageReorder'
+
 export type ShapeTool = 'rectangle' | 'ellipse' | 'line' | 'arrow'
 export type StampTool = 'check' | 'cross' | 'dot' | 'date'
-export type Tool = 'select' | 'text' | 'highlight' | 'redact' | 'pen' | 'image' | 'signature' | ShapeTool | StampTool
+export type Tool = 'select' | 'text' | 'form-text' | 'form-checkbox' | 'form-radio' | 'form-dropdown' | 'highlight' | 'underline' | 'strikeout' | 'link' | 'whiteout' | 'redact' | 'pen' | 'image' | 'signature' | ShapeTool | StampTool
 
 export interface NormalizedPoint {
   x: number
@@ -85,12 +90,46 @@ export interface TextAnnotation extends AnnotationBase, TextStyle {
   color: string
   fontSize: number
   opacity?: number
+  /** Added over one or more whiteouts derived from selected source-PDF text. */
+  sourceReplacement?: boolean
 }
+
+export type TextMarkStyle = 'highlight' | 'underline' | 'strikeout'
 
 export interface HighlightAnnotation extends AnnotationBase {
   kind: 'highlight'
   color: string
   opacity: number
+  /** Missing on legacy projects, where this annotation is a filled highlight. */
+  mark?: TextMarkStyle
+  /** PDF-point line weight for underline and strikeout. Legacy marks default to 2. */
+  strokeWidth?: number
+}
+
+export function textMarkStyleOf(annotation: HighlightAnnotation): TextMarkStyle {
+  return annotation.mark ?? 'highlight'
+}
+
+export function textMarkStrokeWidthOf(annotation: HighlightAnnotation): number {
+  return annotation.strokeWidth ?? 2
+}
+
+export type LinkTargetType = 'url' | 'email' | 'phone'
+
+/** An editor proof area that exports as a standard invisible PDF link. */
+export interface LinkAnnotation extends AnnotationBase {
+  kind: 'link'
+  targetType: LinkTargetType
+  /** Raw user input. Export normalizes and validates it before writing `/URI`. */
+  target: string
+}
+
+/**
+ * An opaque white visual cover. Unlike redaction, this is ordinary page content:
+ * the original text or image remains underneath and may still be recoverable.
+ */
+export interface WhiteoutAnnotation extends AnnotationBase {
+  kind: 'whiteout'
 }
 
 /**
@@ -115,6 +154,12 @@ export interface ImageAnnotation extends AnnotationBase {
   dataUrl: string
   mimeType: 'image/png' | 'image/jpeg'
   role?: 'image' | 'signature'
+  /** Missing on legacy projects, where placed media is fully opaque. */
+  opacity?: number
+}
+
+export function imageOpacityOf(annotation: ImageAnnotation): number {
+  return annotation.opacity ?? 1
 }
 
 export interface ShapeAnnotation extends AnnotationBase {
@@ -129,18 +174,103 @@ export interface StampAnnotation extends AnnotationBase {
   kind: 'stamp'
   stamp: StampTool
   label?: string
+  dateValue?: string
+  dateFormat?: DateStampFormat
   color: string
   strokeWidth: number
 }
 
+export type CreatedFormFieldType = 'text' | 'checkbox' | 'radio' | 'dropdown'
+
+interface CreatedFormFieldBase extends AnnotationBase {
+  kind: 'form-field'
+  fieldType: CreatedFormFieldType
+  fieldName: string
+  required: boolean
+  /** AcroForm widgets are axis-aligned; created fields intentionally cannot rotate. */
+  rotation?: never
+}
+
+export interface CreatedTextFormFieldAnnotation extends CreatedFormFieldBase {
+  fieldType: 'text'
+  defaultText: string
+  multiline: boolean
+  checkedByDefault?: never
+}
+
+export interface CreatedCheckboxFormFieldAnnotation extends CreatedFormFieldBase {
+  fieldType: 'checkbox'
+  checkedByDefault: boolean
+  defaultText?: never
+  multiline?: never
+}
+
+export interface CreatedRadioFormFieldAnnotation extends CreatedFormFieldBase {
+  fieldType: 'radio'
+  optionValue: string
+  selectedByDefault: boolean
+  defaultText?: never
+  multiline?: never
+  checkedByDefault?: never
+  options?: never
+  defaultOption?: never
+}
+
+export interface CreatedDropdownFormFieldAnnotation extends CreatedFormFieldBase {
+  fieldType: 'dropdown'
+  options: string[]
+  defaultOption: string
+  defaultText?: never
+  multiline?: never
+  checkedByDefault?: never
+  optionValue?: never
+  selectedByDefault?: never
+}
+
+export type CreatedFormFieldAnnotation =
+  | CreatedTextFormFieldAnnotation
+  | CreatedCheckboxFormFieldAnnotation
+  | CreatedRadioFormFieldAnnotation
+  | CreatedDropdownFormFieldAnnotation
+
 export type Annotation =
   | TextAnnotation
   | HighlightAnnotation
+  | LinkAnnotation
+  | WhiteoutAnnotation
   | RedactionAnnotation
   | InkAnnotation
   | ImageAnnotation
   | ShapeAnnotation
   | StampAnnotation
+  | CreatedFormFieldAnnotation
+
+export const DEFAULT_ADDED_TEXT = 'Type here'
+
+export function replacementTextForWhiteout(
+  whiteout: WhiteoutAnnotation,
+  id: string,
+): TextAnnotation {
+  return {
+    id,
+    pageId: whiteout.pageId,
+    kind: 'text',
+    x: whiteout.x,
+    y: whiteout.y,
+    width: whiteout.width,
+    height: whiteout.height,
+    rotation: whiteout.rotation,
+    text: DEFAULT_ADDED_TEXT,
+    color: '#182026',
+    fontSize: 18,
+  }
+}
+
+export function isUnfinishedTextAnnotation(annotation: Annotation): annotation is TextAnnotation {
+  if (annotation.kind !== 'text') return false
+  const text = annotation.text.trim()
+  return text.length === 0 || text === DEFAULT_ADDED_TEXT
+}
 
 /** True when any page of the document carries a pending redaction. */
 export function hasRedactions(document: EditorDocument): boolean {
@@ -168,7 +298,8 @@ export interface EditorState {
   present: EditorDocument
   future: EditorDocument[]
   selectedPageId: string
-  selectedAnnotationId: string | null
+  /** Ordered, same-page annotation selection. Empty means no selected item. */
+  selectedAnnotationIds: string[]
   activeTool: Tool
   zoom: number
   /**
@@ -191,18 +322,28 @@ export type EditorAction =
    */
   | { type: 'viewPage'; pageId: string }
   | { type: 'selectAnnotation'; annotationId: string | null }
+  | { type: 'toggleAnnotationSelection'; annotationId: string }
   | { type: 'setTool'; tool: Tool }
   | { type: 'setZoom'; zoom: number }
   | { type: 'rotatePage'; pageId: string; degrees: 90 | -90 }
   | { type: 'movePage'; pageId: string; direction: -1 | 1 }
+  | { type: 'movePageToIndex'; pageId: string; targetIndex: number }
   | { type: 'removePage'; pageId: string }
   /** Insert ready-made pages after `afterPageId`, or at the front when null. */
   | { type: 'insertPages'; afterPageId: string | null; pages: EditorPage[] }
   | { type: 'addAnnotation'; annotation: Annotation }
-  | { type: 'addAnnotations'; annotations: Annotation[] }
+  | {
+      type: 'addAnnotations'
+      annotations: Annotation[]
+      historyGroup?: string
+      /** Batch-generated annotations stay out of the inline editor. */
+      selectLast?: boolean
+    }
   | { type: 'updateAnnotation'; annotationId: string; patch: Partial<Annotation>; historyGroup?: string }
   | { type: 'replaceAnnotation'; annotation: Annotation }
+  | { type: 'replaceAnnotations'; annotations: Annotation[]; historyGroup?: string }
   | { type: 'removeAnnotation'; annotationId: string }
+  | { type: 'removeAnnotations'; annotationIds: string[] }
   | { type: 'copyAnnotation'; annotationId: string }
   | { type: 'pasteAnnotation'; pageId: string; newId: string }
   | { type: 'duplicateAnnotation'; annotationId: string; newId: string }
@@ -235,7 +376,7 @@ export function createEditorState(fileName: string, pageCount: number): EditorSt
     present: { fileName, pages, annotations: [], formValues: {} },
     future: [],
     selectedPageId: pages[0].id,
-    selectedAnnotationId: null,
+    selectedAnnotationIds: [],
     activeTool: 'select',
     zoom: 1,
     historyGroupKey: null,
@@ -288,18 +429,51 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
   switch (action.type) {
     case 'selectPage':
       return state.present.pages.some((page) => page.id === action.pageId)
-        ? { ...state, selectedPageId: action.pageId, selectedAnnotationId: null }
+        ? {
+            ...state,
+            selectedPageId: action.pageId,
+            selectedAnnotationIds: [],
+            historyGroupKey: null,
+          }
         : state
     case 'viewPage':
       return state.selectedPageId !== action.pageId && state.present.pages.some((page) => page.id === action.pageId)
         ? { ...state, selectedPageId: action.pageId }
         : state
-    case 'selectAnnotation':
-      return { ...state, selectedAnnotationId: action.annotationId }
+    case 'selectAnnotation': {
+      if (action.annotationId !== null
+        && !state.present.annotations.some(({ id }) => id === action.annotationId)) return state
+      const selectedAnnotationIds = action.annotationId === null ? [] : [action.annotationId]
+      const unchangedSelection = state.selectedAnnotationIds.length === selectedAnnotationIds.length
+        && state.selectedAnnotationIds.every((id, index) => id === selectedAnnotationIds[index])
+      const groupBelongsToSelection = action.annotationId !== null
+        && state.historyGroupKey?.startsWith(`annotation-${action.annotationId}-`)
+      if (unchangedSelection && (state.historyGroupKey === null || groupBelongsToSelection)) return state
+      return { ...state, selectedAnnotationIds, historyGroupKey: null }
+    }
+    case 'toggleAnnotationSelection': {
+      const annotation = state.present.annotations.find(({ id }) => id === action.annotationId)
+      if (!annotation) return state
+      const selected = state.selectedAnnotationIds.includes(annotation.id)
+      const selectedAnnotations = state.present.annotations.filter(({ id }) =>
+        state.selectedAnnotationIds.includes(id))
+      const samePage = selectedAnnotations.every(({ pageId }) => pageId === annotation.pageId)
+      const selectedAnnotationIds = selected
+        ? state.selectedAnnotationIds.filter((id) => id !== annotation.id)
+        : samePage
+          ? [...state.selectedAnnotationIds, annotation.id]
+          : [annotation.id]
+      return {
+        ...state,
+        selectedPageId: annotation.pageId,
+        selectedAnnotationIds,
+        historyGroupKey: null,
+      }
+    }
     case 'setTool':
-      return { ...state, activeTool: action.tool, selectedAnnotationId: null }
+      return { ...state, activeTool: action.tool, selectedAnnotationIds: [], historyGroupKey: null }
     case 'setZoom':
-      return { ...state, zoom: Math.min(2.25, Math.max(0.5, action.zoom)) }
+      return { ...state, zoom: clampZoom(action.zoom) }
     case 'rotatePage': {
       const pages = state.present.pages.map((page) =>
         page.id === action.pageId
@@ -316,6 +490,10 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       ;[pages[index], pages[target]] = [pages[target], pages[index]]
       return commit(state, { ...state.present, pages })
     }
+    case 'movePageToIndex': {
+      const pages = movePageToIndex(state.present.pages, action.pageId, action.targetIndex)
+      return pages === state.present.pages ? state : commit(state, { ...state.present, pages })
+    }
     case 'removePage': {
       if (state.present.pages.length === 1) return state
       const index = state.present.pages.findIndex((page) => page.id === action.pageId)
@@ -328,7 +506,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return {
         ...commit(state, { ...state.present, pages, annotations }),
         selectedPageId,
-        selectedAnnotationId: null,
+        selectedAnnotationIds: [],
       }
     }
     case 'insertPages': {
@@ -347,7 +525,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return {
         ...commit(state, { ...state.present, pages }),
         selectedPageId: action.pages[0].id,
-        selectedAnnotationId: null,
+        selectedAnnotationIds: [],
       }
     }
     case 'addAnnotation':
@@ -356,17 +534,24 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
           ...state.present,
           annotations: [...state.present.annotations, action.annotation],
         }),
-        selectedAnnotationId: action.annotation.id,
+        selectedAnnotationIds: [action.annotation.id],
         activeTool: 'select',
       }
     case 'addAnnotations':
       if (action.annotations.length === 0) return state
       return {
-        ...commit(state, {
-          ...state.present,
-          annotations: [...state.present.annotations, ...action.annotations],
-        }),
-        selectedAnnotationId: action.annotations.at(-1)?.id ?? null,
+        ...(action.historyGroup
+          ? commitGrouped(state, {
+              ...state.present,
+              annotations: [...state.present.annotations, ...action.annotations],
+            }, action.historyGroup)
+          : commit(state, {
+              ...state.present,
+              annotations: [...state.present.annotations, ...action.annotations],
+            })),
+        selectedAnnotationIds: action.selectLast === false
+          ? []
+          : action.annotations.at(-1)?.id ? [action.annotations.at(-1)!.id] : [],
         activeTool: 'select',
       }
     case 'updateAnnotation': {
@@ -388,34 +573,66 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       annotations[index] = action.annotation
       return commit(state, { ...state.present, annotations })
     }
+    case 'replaceAnnotations': {
+      if (action.annotations.length === 0) return state
+      const replacements = new Map(action.annotations.map((annotation) => [annotation.id, annotation]))
+      if (replacements.size !== action.annotations.length) return state
+      const currentById = new Map(state.present.annotations.map((annotation) => [annotation.id, annotation]))
+      if (action.annotations.some((annotation) => {
+        const current = currentById.get(annotation.id)
+        return !current || current.pageId !== annotation.pageId || current.kind !== annotation.kind
+      })) return state
+      let changed = false
+      const annotations = state.present.annotations.map((annotation) => {
+        const replacement = replacements.get(annotation.id)
+        if (!replacement || replacement === annotation) return annotation
+        changed = true
+        return replacement
+      })
+      if (!changed) return state
+      const next = { ...state.present, annotations }
+      return action.historyGroup
+        ? commitGrouped(state, next, action.historyGroup)
+        : commit(state, next)
+    }
     case 'removeAnnotation':
       return {
         ...commit(state, {
           ...state.present,
           annotations: state.present.annotations.filter((annotation) => annotation.id !== action.annotationId),
         }),
-        selectedAnnotationId: state.selectedAnnotationId === action.annotationId ? null : state.selectedAnnotationId,
+        selectedAnnotationIds: state.selectedAnnotationIds.filter((id) => id !== action.annotationId),
       }
+    case 'removeAnnotations': {
+      const removedIds = new Set(action.annotationIds)
+      if (removedIds.size === 0) return state
+      const annotations = state.present.annotations.filter((annotation) => !removedIds.has(annotation.id))
+      if (annotations.length === state.present.annotations.length) return state
+      return {
+        ...commit(state, { ...state.present, annotations }),
+        selectedAnnotationIds: state.selectedAnnotationIds.filter((id) => !removedIds.has(id)),
+      }
+    }
     case 'copyAnnotation': {
       const annotation = state.present.annotations.find(({ id }) => id === action.annotationId)
       return annotation ? { ...state, clipboard: structuredClone(annotation) } : state
     }
     case 'pasteAnnotation': {
       if (!state.clipboard) return state
-      const annotation = offsetClone(state.clipboard, action.newId, action.pageId)
+      const annotation = offsetClone(state.clipboard, action.newId, action.pageId, state.present.annotations)
       return {
         ...commit(state, { ...state.present, annotations: [...state.present.annotations, annotation] }),
         selectedPageId: action.pageId,
-        selectedAnnotationId: annotation.id,
+        selectedAnnotationIds: [annotation.id],
       }
     }
     case 'duplicateAnnotation': {
       const source = state.present.annotations.find(({ id }) => id === action.annotationId)
       if (!source) return state
-      const annotation = offsetClone(source, action.newId, source.pageId)
+      const annotation = offsetClone(source, action.newId, source.pageId, state.present.annotations)
       return {
         ...commit(state, { ...state.present, annotations: [...state.present.annotations, annotation] }),
-        selectedAnnotationId: annotation.id,
+        selectedAnnotationIds: [annotation.id],
       }
     }
     case 'bringForward':
@@ -450,7 +667,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         present: action.document,
         future: [],
         selectedPageId: action.document.pages[0].id,
-        selectedAnnotationId: null,
+        selectedAnnotationIds: [],
         historyGroupKey: null,
         dirty: true,
       }
@@ -471,7 +688,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         present: previous,
         future: [state.present, ...state.future].slice(0, HISTORY_LIMIT),
         selectedPageId: pageExists ? state.selectedPageId : previous.pages[0].id,
-        selectedAnnotationId: null,
+        selectedAnnotationIds: [],
         historyGroupKey: null,
         // Stepping back through history still leaves the exported file out of date.
         dirty: true,
@@ -487,7 +704,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         present: next,
         future: state.future.slice(1),
         selectedPageId: pageExists ? state.selectedPageId : next.pages[0].id,
-        selectedAnnotationId: null,
+        selectedAnnotationIds: [],
         historyGroupKey: null,
         dirty: true,
       }
@@ -499,7 +716,12 @@ export function annotationId(): string {
   return `annotation-${crypto.randomUUID()}`
 }
 
-function offsetClone(source: Annotation, id: string, pageId: string): Annotation {
+function offsetClone(
+  source: Annotation,
+  id: string,
+  pageId: string,
+  annotations: readonly Annotation[],
+): Annotation {
   const clone = structuredClone(source)
   if (clone.kind === 'ink') {
     const maxX = Math.max(...clone.points.map(({ x }) => x), 0)
@@ -511,9 +733,30 @@ function offsetClone(source: Annotation, id: string, pageId: string): Annotation
       points: clone.points.map((point) => ({ x: point.x + dx, y: point.y + dy })),
     }
   }
-  return {
+  const offset = {
     ...clone, id, pageId,
     x: Math.round(Math.min(1 - clone.width, clone.x + 0.02) * 1e6) / 1e6,
     y: Math.round(Math.min(1 - clone.height, clone.y + 0.02) * 1e6) / 1e6,
   }
+  if (offset.kind !== 'form-field') return offset
+  if (offset.fieldType === 'radio') {
+    const gap = 0.015
+    const maxX = 1 - clone.width
+    const maxY = 1 - clone.height
+    const beside = clone.x + clone.width + gap
+    const below = clone.y + clone.height + gap
+    const position = beside <= maxX
+      ? { x: beside, y: clone.y }
+      : below <= maxY
+        ? { x: clone.x, y: below }
+        : { x: Math.max(0, clone.x - clone.width - gap), y: clone.y }
+    return {
+      ...offset,
+      x: Math.round(position.x * 1e6) / 1e6,
+      y: Math.round(position.y * 1e6) / 1e6,
+      optionValue: nextRadioOptionValue(offset.fieldName, annotations),
+      selectedByDefault: false,
+    }
+  }
+  return { ...offset, fieldName: nextCreatedFormFieldName(offset.fieldType, annotations) }
 }

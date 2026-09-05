@@ -3,7 +3,12 @@ import type { LoadedPdf } from '../pdf/types'
 import type { SourcePdfFeatures } from '../pdf/sourceFeatures'
 import type { ExportProgress } from '../pdf/exportWorkerProtocol'
 import { formatFileSize, MAX_PDF_BYTES } from '../pdf/loadPdf'
-import { searchDocument, type PageMatches } from '../pdf/textSearch'
+import {
+  searchCursorEntries,
+  searchDocument,
+  type PageMatches,
+  type SearchCursorEntry,
+} from '../pdf/textSearch'
 import { annotationId, createEditorState, editorReducer, type EditorDocument, type EditorPage, type ExternalPage, type ImageAnnotation } from '../model/editor'
 import { validatePlacedImage } from '../model/imageValidation'
 import {
@@ -23,6 +28,8 @@ import { PageRail } from './PageRail'
 import { PageStrip } from './PageStrip'
 import { RecoveryDialog } from './RecoveryDialog'
 import { SignatureDialog } from './SignatureDialog'
+import { SkipNavigation } from './SkipNavigation'
+import { ToolPlacementHint } from './ToolPlacementHint'
 import { ToolRail } from './ToolRail'
 
 interface WorkbenchProps {
@@ -42,6 +49,7 @@ function readDataUrl(file: File): Promise<string> {
 
 export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) {
   const [state, dispatch] = useReducer(editorReducer, createEditorState(loaded.fileName, loaded.pageCount))
+  const [pagesOpen, setPagesOpen] = useState(false)
   const [signatureOpen, setSignatureOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -58,10 +66,17 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
   const searchInputRef = useRef<HTMLInputElement>(null)
   /** Set by explicit navigation; the page strip scrolls there and clears it. */
   const [scrollTargetPageId, setScrollTargetPageId] = useState<string | null>(null)
+  const pageOrderSignature = state.present.pages.map(({ id }) => id).join('\u0000')
+  const previousPageOrderSignatureRef = useRef(pageOrderSignature)
   const navigateToPage = (pageId: string) => {
     dispatch({ type: 'selectPage', pageId })
     setScrollTargetPageId(pageId)
   }
+  useEffect(() => {
+    if (previousPageOrderSignatureRef.current === pageOrderSignature) return
+    previousPageOrderSignatureRef.current = pageOrderSignature
+    setScrollTargetPageId(state.selectedPageId)
+  }, [pageOrderSignature, state.selectedPageId])
   /**
    * PDFs inserted into this document during the session, keyed by the id their
    * pages carry. Files are needed again at export; proxies render previews.
@@ -87,8 +102,9 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
     [loaded.documentFingerprint, loaded.sourceFile],
   )
   const selectedPage = state.present.pages.find((page) => page.id === state.selectedPageId) ?? state.present.pages[0]
-  const selectedAnnotation = state.present.annotations.find((annotation) => annotation.id === state.selectedAnnotationId) ?? null
-  const modalOpen = signatureOpen || discardOpen || marksOpen || recoveryOpen || compatibilityFeatures !== null
+  const selectedAnnotations = state.present.annotations.filter(({ id }) => state.selectedAnnotationIds.includes(id))
+  const selectedAnnotation = selectedAnnotations.length === 1 ? selectedAnnotations[0] : null
+  const modalOpen = pagesOpen || signatureOpen || discardOpen || marksOpen || recoveryOpen || compatibilityFeatures !== null
 
   // `state` inside an async export closure is the value from that render, so the
   // current document has to be read through a ref to detect edits made meanwhile.
@@ -148,22 +164,24 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
         searchInputRef.current?.select()
       } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
         event.preventDefault()
-        dispatch({ type: event.shiftKey ? 'redo' : 'undo' })
-      } else if (!isEditing && (event.key === 'Delete' || event.key === 'Backspace') && state.selectedAnnotationId) {
-        dispatch({ type: 'removeAnnotation', annotationId: state.selectedAnnotationId })
-      } else if (!isEditing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c' && state.selectedAnnotationId) {
+        const historyAction = event.shiftKey ? 'redo' : 'undo'
+        dispatch({ type: historyAction })
+        setNotice(historyAction === 'undo' ? 'Undid last change.' : 'Redid last change.')
+      } else if (!isEditing && (event.key === 'Delete' || event.key === 'Backspace') && state.selectedAnnotationIds.length > 0) {
+        dispatch({ type: 'removeAnnotations', annotationIds: state.selectedAnnotationIds })
+      } else if (!isEditing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c' && selectedAnnotation) {
         event.preventDefault()
-        dispatch({ type: 'copyAnnotation', annotationId: state.selectedAnnotationId })
+        dispatch({ type: 'copyAnnotation', annotationId: selectedAnnotation.id })
       } else if (!isEditing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v' && state.clipboard) {
         event.preventDefault()
         dispatch({ type: 'pasteAnnotation', pageId: selectedPage.id, newId: annotationId() })
-      } else if (!isEditing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd' && state.selectedAnnotationId) {
+      } else if (!isEditing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd' && selectedAnnotation) {
         event.preventDefault()
-        dispatch({ type: 'duplicateAnnotation', annotationId: state.selectedAnnotationId, newId: annotationId() })
-      } else if (!isEditing && event.key === ']' && state.selectedAnnotationId) {
-        dispatch({ type: 'bringForward', annotationId: state.selectedAnnotationId })
-      } else if (!isEditing && event.key === '[' && state.selectedAnnotationId) {
-        dispatch({ type: 'sendBackward', annotationId: state.selectedAnnotationId })
+        dispatch({ type: 'duplicateAnnotation', annotationId: selectedAnnotation.id, newId: annotationId() })
+      } else if (!isEditing && event.key === ']' && selectedAnnotation) {
+        dispatch({ type: 'bringForward', annotationId: selectedAnnotation.id })
+      } else if (!isEditing && event.key === '[' && selectedAnnotation) {
+        dispatch({ type: 'sendBackward', annotationId: selectedAnnotation.id })
       } else if (!isEditing && event.key === 'Escape') {
         dispatch({ type: 'selectAnnotation', annotationId: null })
         dispatch({ type: 'setTool', tool: 'select' })
@@ -171,7 +189,7 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
     }
     window.addEventListener('keydown', keyboard)
     return () => window.removeEventListener('keydown', keyboard)
-  }, [state.selectedAnnotationId, state.clipboard, selectedPage.id, modalOpen])
+  }, [modalOpen, selectedAnnotation, selectedPage.id, state.clipboard, state.selectedAnnotationIds])
 
   // Registered only while there is something to lose, so a clean session never
   // triggers the browser's leave-site prompt.
@@ -208,13 +226,13 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
         mimeType: file.type as ImageAnnotation['mimeType'],
       }
       dispatch({ type: 'addAnnotation', annotation })
-      setNotice('Image placed. Drag it to reposition.')
+      setNotice('Image added. Drag it into place, resize with the blue handles, then choose Done.')
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'The image could not be read.')
     }
   }
 
-  const placeSignature = (dataUrl: string, saveForReuse = false) => {
+  const placeSignature = (dataUrl: string, saveForReuse = false, suggestedName?: string) => {
     dispatch({
       type: 'addAnnotation',
       annotation: {
@@ -225,7 +243,7 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
     if (saveForReuse) {
       const signature: SavedSignature = {
         id: `signature-${crypto.randomUUID()}`,
-        name: `Signature ${savedSignatures.length + 1}`,
+        name: suggestedName?.trim() || `Signature ${savedSignatures.length + 1}`,
         dataUrl,
         createdAt: Date.now(),
       }
@@ -234,7 +252,7 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
         .catch(() => setNotice('The signature was placed, but this browser could not save it for reuse.'))
     }
     setSignatureOpen(false)
-    setNotice('Signature placed. Drag it to reposition.')
+    setNotice('Signature added. Drag it onto the signature line, then choose Done.')
   }
 
   const removeSavedSignature = (id: string) => {
@@ -347,7 +365,8 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
       const results = await searchDocument(loaded.document, externalDocuments, state.present.pages, searchQuery)
       setSearchResults(results)
       setSearchCursor(0)
-      if (results.length > 0) navigateToPage(results[0].pageId)
+      const firstEntry = searchCursorEntries(results)[0]
+      if (firstEntry) navigateToPage(firstEntry.pageId)
     } catch {
       setNotice('The document text could not be searched.')
     }
@@ -357,13 +376,27 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
   // simply skips pages that no longer exist.
   const liveResults = (searchResults ?? []).filter((result) =>
     state.present.pages.some((page) => page.id === result.pageId))
+  const liveSearchEntries = searchCursorEntries(liveResults)
+  const activeSearchIndex = liveSearchEntries.length === 0
+    ? -1
+    : Math.min(searchCursor, liveSearchEntries.length - 1)
+  const activeSearchEntry: SearchCursorEntry | null = activeSearchIndex === -1
+    ? null
+    : liveSearchEntries[activeSearchIndex]
   const stepSearch = (direction: 1 | -1) => {
-    if (liveResults.length === 0) return
-    const next = ((searchCursor + direction) % liveResults.length + liveResults.length) % liveResults.length
+    if (liveSearchEntries.length === 0) return
+    const next = ((activeSearchIndex + direction) % liveSearchEntries.length + liveSearchEntries.length)
+      % liveSearchEntries.length
     setSearchCursor(next)
-    navigateToPage(liveResults[next].pageId)
+    navigateToPage(liveSearchEntries[next].pageId)
   }
-  const totalMatches = liveResults.reduce((sum, result) => sum + result.matches, 0)
+  const totalMatches = liveSearchEntries.length
+  const searchStatus = liveSearchEntries.length === 0
+    ? 'No matches'
+    : `${totalMatches} match${totalMatches === 1 ? '' : 'es'} · page ${activeSearchEntry?.pageNumber} · ${activeSearchIndex + 1} of ${totalMatches}`
+  const compactSearchStatus = liveSearchEntries.length === 0
+    ? searchStatus
+    : `${activeSearchIndex + 1}/${totalMatches} · page ${activeSearchEntry?.pageNumber}`
 
   const exportFile = async (allowCompatibilityCopy = false) => {
     setExporting(true)
@@ -436,21 +469,28 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
 
   return (
     <main className="workbench-shell">
+      <SkipNavigation hasItemProperties={selectedAnnotation !== null} />
       <header className="topbar">
         <button type="button" className="brand-button" disabled={closing} onClick={requestClose} aria-label="Close document and return home">
           <span className="brand-mark" aria-hidden="true">L</span>
           <span>LeafPDF</span>
         </button>
         <div className="document-identity">
-          <strong title={loaded.fileName}>{loaded.fileName}</strong>
+          <h1 title={loaded.fileName}>{loaded.fileName}</h1>
           <span>
             <i className="status-dot" /> {state.present.pages.length} page{state.present.pages.length === 1 ? '' : 's'}
             {' · '}{formatFileSize(loaded.sourceFile.size)} · Local session
           </span>
         </div>
         <div className="history-controls" aria-label="Edit history">
-          <button type="button" disabled={state.past.length === 0} onClick={() => dispatch({ type: 'undo' })} aria-label="Undo">↶</button>
-          <button type="button" disabled={state.future.length === 0} onClick={() => dispatch({ type: 'redo' })} aria-label="Redo">↷</button>
+          <button type="button" disabled={state.past.length === 0} onClick={() => {
+            dispatch({ type: 'undo' })
+            setNotice('Undid last change.')
+          }} aria-label="Undo">↶</button>
+          <button type="button" disabled={state.future.length === 0} onClick={() => {
+            dispatch({ type: 'redo' })
+            setNotice('Redid last change.')
+          }} aria-label="Redo">↷</button>
         </div>
         <button type="button" className="marks-button" onClick={() => setMarksOpen(true)}>
           Document marks
@@ -484,24 +524,45 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
         </p>
       )}
 
-      <div className="workbench-grid">
-        <PageRail
-          pdf={loaded.document}
-          pages={state.present.pages}
-          selectedPageId={state.selectedPageId}
-          externalDocuments={externalDocuments}
-          onInsertBlankPage={() => void insertBlankPage()}
-          onInsertPdf={(file) => void insertPdf(file)}
-          onSelectPage={navigateToPage}
-          dispatch={dispatch}
-        />
+      <div className={`workbench-grid ${selectedAnnotation ? 'has-item-properties' : 'is-paper-focused'}`}>
+        {pagesOpen && (
+          <>
+            <div className="page-organizer-backdrop" aria-hidden="true" onPointerDown={() => setPagesOpen(false)} />
+            <PageRail
+              pdf={loaded.document}
+              pages={state.present.pages}
+              selectedPageId={state.selectedPageId}
+              externalDocuments={externalDocuments}
+              onInsertBlankPage={() => void insertBlankPage()}
+              onInsertPdf={(file) => void insertPdf(file)}
+              onSelectPage={(pageId) => {
+                navigateToPage(pageId)
+                setPagesOpen(false)
+              }}
+              onClose={() => setPagesOpen(false)}
+              dispatch={dispatch}
+            />
+          </>
+        )}
         <ToolRail activeTool={state.activeTool} onTool={(tool) => dispatch({ type: 'setTool', tool })} onImage={placeImage} onSignature={() => setSignatureOpen(true)} />
-        <section className="document-stage">
+        <section id="pdf-document" className="document-stage" tabIndex={-1} aria-labelledby="pdf-document-title">
+          <h2 id="pdf-document-title" className="visually-hidden">PDF document</h2>
           <div className="stage-ruler" aria-hidden="true">
             {Array.from({ length: 19 }, (_, index) => <i key={index} className={index % 5 === 0 ? 'major' : ''} />)}
           </div>
           <div className="stage-toolbar">
-            <span>PAGE {state.present.pages.findIndex((page) => page.id === selectedPage.id) + 1} / {state.present.pages.length}</span>
+            <button
+              type="button"
+              className="page-organizer-trigger"
+              aria-label={`Open page organizer, page ${state.present.pages.findIndex((page) => page.id === selectedPage.id) + 1} of ${state.present.pages.length}`}
+              aria-haspopup="dialog"
+              aria-expanded={pagesOpen}
+              aria-controls="document-pages"
+              onClick={() => setPagesOpen(true)}
+            >
+              <span aria-hidden="true">▤</span>
+              Pages {state.present.pages.findIndex((page) => page.id === selectedPage.id) + 1} / {state.present.pages.length}
+            </button>
             <form className="search-control" role="search" aria-label="Find text in document" onSubmit={(event) => void runSearch(event)}>
               <input
                 ref={searchInputRef}
@@ -516,51 +577,60 @@ export function Workbench({ loaded, closing = false, onClose }: WorkbenchProps) 
               />
               <button type="submit" aria-label="Search">Find</button>
               {searchResults !== null && (
-                <span className="search-status" role="status">
-                  {liveResults.length === 0
-                    ? 'No matches'
-                    : `${totalMatches} match${totalMatches === 1 ? '' : 'es'} · page ${liveResults[Math.min(searchCursor, liveResults.length - 1)]?.pageNumber}`}
+                <span className="search-status" role="status" aria-label={searchStatus}>
+                  {liveSearchEntries.length === 0
+                    ? searchStatus
+                    : (
+                      <>
+                        <span className="search-status-full">{searchStatus}</span>
+                        <span className="search-status-compact" aria-hidden="true">{compactSearchStatus}</span>
+                      </>
+                    )}
                 </span>
               )}
-              {liveResults.length > 1 && (
+              {liveSearchEntries.length > 1 && (
                 <>
-                  <button type="button" aria-label="Previous matching page" onClick={() => stepSearch(-1)}>‹</button>
-                  <button type="button" aria-label="Next matching page" onClick={() => stepSearch(1)}>›</button>
+                  <button type="button" className="search-nav-button" aria-label="Previous match" onClick={() => stepSearch(-1)}>‹</button>
+                  <button type="button" className="search-nav-button" aria-label="Next match" onClick={() => stepSearch(1)}>›</button>
                 </>
               )}
             </form>
-            <span className="source-boundary" role="note">Original page protected · Added content stays editable</span>
-            <button type="button" className="marks-mobile-button" onClick={() => setMarksOpen(true)}>
-              Marks
-            </button>
+            <span className={`source-boundary ${loaded.features.hasAcroForm ? 'is-form-document' : ''}`} role="note">
+              {loaded.features.hasAcroForm
+                ? 'Fillable fields detected · Click the highlighted fields'
+                : 'Original page protected · Added content stays editable'}
+            </span>
             <div className="zoom-control">
               <button type="button" aria-label="Zoom out" onClick={() => dispatch({ type: 'setZoom', zoom: state.zoom - 0.15 })}>−</button>
               <output>{Math.round(state.zoom * 100)}%</output>
               <button type="button" aria-label="Zoom in" onClick={() => dispatch({ type: 'setZoom', zoom: state.zoom + 0.15 })}>+</button>
             </div>
           </div>
+          <ToolPlacementHint tool={state.activeTool} />
           <PageStrip
             pdf={loaded.document}
             pages={state.present.pages}
             externalDocuments={externalDocuments}
             annotations={state.present.annotations}
             activeTool={state.activeTool}
-            selectedAnnotationId={state.selectedAnnotationId}
+            selectedPageId={state.selectedPageId}
+            selectedAnnotationIds={state.selectedAnnotationIds}
             zoom={state.zoom}
+            fitWidth={false}
+            fitWidthRequest={0}
+            onFitZoom={(zoom) => dispatch({ type: 'setZoom', zoom })}
             formValues={state.present.formValues}
+            searchResults={liveResults}
+            activeSearchEntry={activeSearchEntry}
+            announce={setNotice}
             scrollTargetPageId={scrollTargetPageId}
             onScrolledToTarget={() => setScrollTargetPageId(null)}
             dispatch={dispatch}
           />
         </section>
-        <Inspector annotation={selectedAnnotation} canPaste={state.clipboard !== null} dispatch={dispatch} />
+        <Inspector key={selectedAnnotation?.id ?? 'empty'} annotation={selectedAnnotation} canPaste={state.clipboard !== null} dispatch={dispatch} announce={setNotice} />
       </div>
 
-      <footer className="statusbar">
-        <span>{state.activeTool === 'select' ? 'Select, move, and resize added items' : `${state.activeTool} tool active`}</span>
-        <span>{state.present.annotations.length} item{state.present.annotations.length === 1 ? '' : 's'} added</span>
-        <span className="privacy-footer">No upload. No account. No tracking.</span>
-      </footer>
       {/*
         A live region rather than a button: the text is an announcement, not a
         control, and only the dismiss affordance should be focusable.

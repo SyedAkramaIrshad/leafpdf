@@ -227,12 +227,17 @@ export async function analyzeSourcePdf(bytes: Uint8Array): Promise<SourcePdfFeat
  */
 export function analyzeLoadedPdf(document: PDFDocument): SourcePdfFeatures {
   const acroForm = lookupDict(document.context, document.catalog.get(PDFName.of('AcroForm')))
+  const fields = acroForm
+    ? lookupArray(document.context, acroForm.get(PDFName.of('Fields')))
+    : undefined
+  const hasAcroForm = acroForm !== undefined
+    && ((fields?.size() ?? 0) > 0 || acroForm.get(PDFName.of('XFA')) !== undefined)
   return {
     isEncrypted: false,
     hasMetadata: hasAnyMetadata(document),
     hasOutlines: hasOutlineEntries(document),
     hasAttachments: hasEmbeddedFiles(document),
-    hasAcroForm: acroForm !== undefined,
+    hasAcroForm,
     hasDigitalSignatures: acroForm ? hasSignatureField(document, acroForm) : false,
     additionalFeatures: additionalCatalogFeatures(document),
   }
@@ -288,4 +293,3 @@ export function chooseExportStrategy(
   // carry catalog features across.
   return hasStructuralReferences(features) ? 'requires-confirmation' : 'rebuild-safe'
 }
-

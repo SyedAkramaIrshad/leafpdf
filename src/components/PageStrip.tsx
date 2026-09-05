@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import type { Annotation, EditorAction, EditorPage, FormValue, Tool } from '../model/editor'
+import type { Annotation, EditorAction, EditorPage, FormValue, NormalizedPoint, Tool } from '../model/editor'
+import type {
+  FormFieldFocusRequest,
+  FormFieldTarget,
+  FormWidgetLoader,
+} from '../model/formNavigation'
+import type { MediaSurfaceSize, PendingMediaPlacement } from '../model/mediaPlacement'
+import type { PreparedDetailPlacement } from '../model/personalDetails'
+import type { SearchReplacementRequest } from '../model/searchReplacement'
+import { fitZoomForWidth } from '../model/zoomFit'
 import type { ExternalDocuments } from '../pdf/pageSource'
+import type { PageMatches, SearchCursorEntry } from '../pdf/textSearch'
 import { PageCanvas } from './PageCanvas'
 
 /**
@@ -17,9 +27,30 @@ interface PageStripProps {
   externalDocuments: ExternalDocuments
   annotations: Annotation[]
   activeTool: Tool
-  selectedAnnotationId: string | null
+  selectedPageId: string
+  selectedAnnotationIds: string[]
+  multiSelectMode?: boolean
+  onMultiSelectComplete?: () => void
   zoom: number
+  fitWidth: boolean
+  fitWidthRequest: number
+  onFitZoom: (zoom: number) => void
   formValues: Record<string, FormValue>
+  loadFormWidgets?: FormWidgetLoader
+  formFieldFocusRequest?: FormFieldFocusRequest | null
+  onFormFieldFocus?: (target: FormFieldTarget) => void
+  onFormFocusRequestHandled?: (requestId: string) => void
+  searchResults?: PageMatches[]
+  activeSearchEntry?: SearchCursorEntry | null
+  searchReplacementRequest?: SearchReplacementRequest | null
+  onSearchReplacementHandled?: (requestId: string) => void
+  onSearchReplacementUnavailable?: (requestId: string) => void
+  pendingMedia?: PendingMediaPlacement | null
+  onPlaceMedia?: (pageId: string, point: NormalizedPoint, surface: MediaSurfaceSize) => void
+  preparedDetail?: PreparedDetailPlacement | null
+  onPlacePreparedDetail?: () => void
+  onPageMeasured?: (pageId: string, surface: MediaSurfaceSize) => void
+  announce?: (message: string) => void
   /** The page that explicit navigation wants scrolled into view, then cleared. */
   scrollTargetPageId: string | null
   onScrolledToTarget: () => void
@@ -75,9 +106,30 @@ export function PageStrip({
   externalDocuments,
   annotations,
   activeTool,
-  selectedAnnotationId,
+  selectedPageId,
+  selectedAnnotationIds,
+  multiSelectMode = false,
+  onMultiSelectComplete,
   zoom,
+  fitWidth,
+  fitWidthRequest,
+  onFitZoom,
   formValues,
+  loadFormWidgets,
+  formFieldFocusRequest = null,
+  onFormFieldFocus,
+  onFormFocusRequestHandled,
+  searchResults = [],
+  activeSearchEntry = null,
+  searchReplacementRequest = null,
+  onSearchReplacementHandled,
+  onSearchReplacementUnavailable,
+  pendingMedia = null,
+  onPlaceMedia,
+  preparedDetail = null,
+  onPlacePreparedDetail,
+  onPageMeasured,
+  announce,
   scrollTargetPageId,
   onScrolledToTarget,
   dispatch,
@@ -86,15 +138,22 @@ export function PageStrip({
   const [scrollRoot, setScrollRoot] = useState<HTMLElement | null>(null)
   // Sheet sizes measured as pages render, so unmounted placeholders hold their
   // real footprint instead of a guess.
-  const [measuredSizes, setMeasuredSizes] = useState(() => new Map<string, { width: number; height: number }>())
-  const recordMeasurement = (pageId: string, size: { width: number; height: number }) =>
+  const [measuredSizes, setMeasuredSizes] = useState(() => new Map<string, { width: number; height: number; zoom: number }>())
+  const recordMeasurement = (pageId: string, size: MediaSurfaceSize, renderedAtZoom: number) => {
+    onPageMeasured?.(pageId, size)
     setMeasuredSizes((current) => {
       const previous = current.get(pageId)
-      if (previous && previous.width === size.width && previous.height === size.height) return current
+      if (
+        previous
+        && previous.width === size.width
+        && previous.height === size.height
+        && previous.zoom === renderedAtZoom
+      ) return current
       const next = new Map(current)
-      next.set(pageId, size)
+      next.set(pageId, { ...size, zoom: renderedAtZoom })
       return next
     })
+  }
   // Until a page of a document has rendered, placeholders assume US Letter; the
   // first real measurement becomes the default for the document's other sheets.
   const fallbackSize = measuredSizes.values().next().value ?? { width: 612 * 1.16, height: 792 * 1.16 }
@@ -102,6 +161,48 @@ export function PageStrip({
   useEffect(() => {
     setScrollRoot(scrollRef.current)
   }, [])
+
+  useEffect(() => {
+    if (!fitWidth) return
+    const root = scrollRef.current
+    if (!root) return
+
+    const selectedWrapper = Array.from(root.querySelectorAll<HTMLElement>('[data-page-id]'))
+      .find((element) => element.dataset.pageId === selectedPageId)
+    const surface = selectedWrapper?.querySelector<HTMLElement>('.page-surface') ?? null
+    const mat = surface?.closest<HTMLElement>('.page-mat') ?? null
+    const measured = measuredSizes.get(selectedPageId)
+    if (!surface || !mat || !measured) return
+
+    const cssPixels = (value: string) => {
+      const parsed = Number.parseFloat(value)
+      return Number.isFinite(parsed) ? parsed : 0
+    }
+    const fit = () => {
+      const rootStyle = window.getComputedStyle(root)
+      const matStyle = window.getComputedStyle(mat)
+      const horizontalInsets = (
+        cssPixels(rootStyle.paddingLeft)
+        + cssPixels(rootStyle.paddingRight)
+        + cssPixels(matStyle.paddingLeft)
+        + cssPixels(matStyle.paddingRight)
+      )
+      const nextZoom = fitZoomForWidth({
+        currentZoom: measured.zoom,
+        renderedPageWidth: measured.width,
+        viewportWidth: root.clientWidth || root.getBoundingClientRect().width,
+        horizontalInsets,
+      })
+      if (Math.abs(nextZoom - zoom) >= 0.001) onFitZoom(nextZoom)
+    }
+
+    fit()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(fit)
+    observer.observe(root)
+    observer.observe(surface)
+    return () => observer.disconnect()
+  }, [fitWidth, fitWidthRequest, measuredSizes, onFitZoom, selectedPageId, zoom])
 
   // Explicit navigation (page rail, search, insertion) scrolls to its target.
   // Scroll-driven `viewPage` updates never come through here, so the two cannot
@@ -164,12 +265,35 @@ export function PageStrip({
                   pageNumber={index + 1}
                   externalDocuments={externalDocuments}
                   annotations={annotations.filter((annotation) => annotation.pageId === page.id)}
+                  allAnnotations={annotations}
                   activeTool={activeTool}
-                  selectedAnnotationId={selectedAnnotationId}
+                  selectedAnnotationIds={selectedAnnotationIds}
+                  multiSelectMode={multiSelectMode}
+                  onMultiSelectComplete={onMultiSelectComplete}
                   zoom={zoom}
                   formValues={formValues}
+                  loadFormWidgets={loadFormWidgets}
+                  formFieldFocusRequest={formFieldFocusRequest?.pageId === page.id
+                    ? formFieldFocusRequest
+                    : null}
+                  onFormFieldFocus={onFormFieldFocus}
+                  onFormFocusRequestHandled={onFormFocusRequestHandled}
+                  searchOccurrences={searchResults.find((result) => result.pageId === page.id)?.occurrences ?? []}
+                  activeSearchOccurrence={activeSearchEntry?.pageId === page.id
+                    ? activeSearchEntry.occurrence
+                    : null}
+                  searchReplacementRequest={searchReplacementRequest?.pageId === page.id
+                    ? searchReplacementRequest
+                    : null}
+                  onSearchReplacementHandled={onSearchReplacementHandled}
+                  onSearchReplacementUnavailable={onSearchReplacementUnavailable}
+                  pendingMedia={pendingMedia}
+                  onPlaceMedia={onPlaceMedia}
+                  preparedDetail={preparedDetail}
+                  onPlacePreparedDetail={onPlacePreparedDetail}
+                  announce={announce}
                   dispatch={dispatch}
-                  onMeasured={(size) => recordMeasurement(page.id, size)}
+                  onMeasured={(size, renderedAtZoom) => recordMeasurement(page.id, size, renderedAtZoom)}
                 />
               )
               : null}

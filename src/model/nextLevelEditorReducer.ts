@@ -61,10 +61,9 @@ function isKeyboardNudge(left: Annotation, right: Annotation): boolean {
 export function nextLevelEditorReducer(state: EditorState, action: EditorAction): EditorState {
   if (action.type === 'selectAnnotation') {
     const selected = editorReducer(state, action)
-    const expectedGroup = action.annotationId
-      ? `annotation-${action.annotationId}-keyboard-nudge`
-      : null
-    return selected.historyGroupKey === null || selected.historyGroupKey === expectedGroup
+    const groupBelongsToSelection = action.annotationId !== null
+      && selected.historyGroupKey?.startsWith(`annotation-${action.annotationId}-`)
+    return selected.historyGroupKey === null || groupBelongsToSelection
       ? selected
       : { ...selected, historyGroupKey: null }
   }

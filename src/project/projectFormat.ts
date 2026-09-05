@@ -1,4 +1,7 @@
-import type { EditorDocument } from '../model/editor'
+import type { CreatedFormFieldAnnotation, EditorDocument } from '../model/editor'
+import { createdFormFieldCollectionIssue, createdFormFieldNameIssue } from '../model/createdFormFields'
+import { isDateValue } from '../model/dateStamp'
+import { LINK_TARGET_MAX_LENGTH } from '../model/linkTarget'
 import {
   LEAF_PROJECT_FORMAT,
   LEAF_PROJECT_MIME,
@@ -38,6 +41,12 @@ function finiteNumber(value: unknown): value is number {
 
 function normalized(value: unknown): value is number {
   return finiteNumber(value) && value >= 0 && value <= 1
+}
+
+function imageDataMatchesMime(dataUrl: unknown, mimeType: unknown): boolean {
+  return (mimeType === 'image/png' || mimeType === 'image/jpeg')
+    && typeof dataUrl === 'string'
+    && dataUrl.startsWith(`data:${mimeType};base64,`)
 }
 
 function ownedArrayBuffer(bytes: Uint8Array): ArrayBuffer {
@@ -126,6 +135,7 @@ function validateDocument(value: unknown): asserts value is EditorDocument {
     }
   }
 
+  const createdFields: CreatedFormFieldAnnotation[] = []
   for (const annotation of value.annotations) {
     assert(isRecord(annotation), 'A project annotation is invalid.')
     assert(typeof annotation.id === 'string' && annotation.id.length > 0, 'A project annotation id is invalid.')
@@ -135,7 +145,134 @@ function validateDocument(value: unknown): asserts value is EditorDocument {
       assert(normalized(annotation.x) && normalized(annotation.y), 'A project annotation position is invalid.')
       assert(normalized(annotation.width) && normalized(annotation.height), 'A project annotation size is invalid.')
     }
+    if (annotation.kind === 'highlight') {
+      assert(typeof annotation.color === 'string' && annotation.color.length > 0, 'A project text mark color is invalid.')
+      assert(
+        finiteNumber(annotation.opacity) && annotation.opacity >= 0 && annotation.opacity <= 1,
+        'A project text mark opacity is invalid.',
+      )
+      assert(
+        annotation.mark === undefined || annotation.mark === 'highlight'
+          || annotation.mark === 'underline' || annotation.mark === 'strikeout',
+        'A project text mark type is invalid.',
+      )
+      assert(
+        annotation.strokeWidth === undefined || (finiteNumber(annotation.strokeWidth) && annotation.strokeWidth > 0),
+        'A project text mark weight is invalid.',
+      )
+      const allowed = new Set([
+        'id', 'pageId', 'kind', 'x', 'y', 'width', 'height', 'rotation',
+        'color', 'opacity', 'mark', 'strokeWidth',
+      ])
+      assert(Object.keys(annotation).every((key) => allowed.has(key)), 'A project text mark contains unsupported fields.')
+    }
+    if (annotation.kind === 'image') {
+      assert(imageDataMatchesMime(annotation.dataUrl, annotation.mimeType), 'A project image source is invalid.')
+      assert(
+        annotation.role === undefined || annotation.role === 'image' || annotation.role === 'signature',
+        'A project image role is invalid.',
+      )
+      assert(
+        annotation.opacity === undefined
+          || (finiteNumber(annotation.opacity) && annotation.opacity >= 0 && annotation.opacity <= 1),
+        'A project image opacity is invalid.',
+      )
+      const allowed = new Set([
+        'id', 'pageId', 'kind', 'x', 'y', 'width', 'height', 'rotation',
+        'dataUrl', 'mimeType', 'role', 'opacity',
+      ])
+      assert(Object.keys(annotation).every((key) => allowed.has(key)), 'A project image contains unsupported fields.')
+    }
+    if (annotation.kind === 'link') {
+      assert(
+        annotation.targetType === 'url' || annotation.targetType === 'email' || annotation.targetType === 'phone',
+        'A project link type is invalid.',
+      )
+      assert(
+        typeof annotation.target === 'string' && annotation.target.length <= LINK_TARGET_MAX_LENGTH,
+        'A project link destination is invalid.',
+      )
+      assert(annotation.rotation === undefined || annotation.rotation === 0, 'A project link cannot be rotated.')
+      const allowed = new Set([
+        'id', 'pageId', 'kind', 'x', 'y', 'width', 'height', 'rotation', 'targetType', 'target',
+      ])
+      assert(Object.keys(annotation).every((key) => allowed.has(key)), 'A project link contains unsupported fields.')
+    }
+    if (annotation.kind === 'stamp') {
+      assert(
+        annotation.stamp === 'check' || annotation.stamp === 'cross'
+          || annotation.stamp === 'dot' || annotation.stamp === 'date',
+        'A project stamp type is invalid.',
+      )
+      const dateFormatValid = annotation.dateFormat === undefined
+        || annotation.dateFormat === 'day-month'
+        || annotation.dateFormat === 'month-day'
+        || annotation.dateFormat === 'day-first'
+        || annotation.dateFormat === 'iso'
+        || annotation.dateFormat === 'custom'
+      assert(dateFormatValid, 'A project date format is invalid.')
+      assert(
+        annotation.dateValue === undefined || isDateValue(annotation.dateValue),
+        'A project date value is invalid.',
+      )
+      assert(
+        annotation.stamp === 'date'
+          || (annotation.dateValue === undefined && annotation.dateFormat === undefined),
+        'Date metadata belongs only to date stamps.',
+      )
+      assert(
+        annotation.dateFormat === undefined
+          || annotation.dateFormat === 'custom'
+          || isDateValue(annotation.dateValue),
+        'A project date preset needs a valid calendar date.',
+      )
+    }
+    if (annotation.kind === 'form-field') {
+      assert(annotation.width !== 0 && annotation.height !== 0, 'A project form field size is invalid.')
+      assert(
+        annotation.fieldType === 'text' || annotation.fieldType === 'checkbox'
+          || annotation.fieldType === 'radio' || annotation.fieldType === 'dropdown',
+        'A project form field type is invalid.',
+      )
+      assert(typeof annotation.fieldName === 'string', 'A project form field name is invalid.')
+      assert(
+        createdFormFieldNameIssue(annotation.fieldName) === null,
+        'A project form field name is invalid.',
+      )
+      assert(typeof annotation.required === 'boolean', 'A project form field required state is invalid.')
+      assert(annotation.rotation === undefined, 'A project form field cannot be rotated.')
+      const baseKeys = ['id', 'pageId', 'kind', 'fieldType', 'fieldName', 'x', 'y', 'width', 'height', 'required']
+      if (annotation.fieldType === 'text') {
+        assert(
+          typeof annotation.defaultText === 'string' && annotation.defaultText.length <= 20_000,
+          'A project text form field default is invalid.',
+        )
+        assert(typeof annotation.multiline === 'boolean', 'A project text form field multiline state is invalid.')
+        const allowed = new Set([...baseKeys, 'defaultText', 'multiline'])
+        assert(Object.keys(annotation).every((key) => allowed.has(key)), 'A project text form field contains unsupported fields.')
+      } else if (annotation.fieldType === 'checkbox') {
+        assert(typeof annotation.checkedByDefault === 'boolean', 'A project checkbox form field default is invalid.')
+        const allowed = new Set([...baseKeys, 'checkedByDefault'])
+        assert(Object.keys(annotation).every((key) => allowed.has(key)), 'A project checkbox form field contains unsupported fields.')
+      } else if (annotation.fieldType === 'radio') {
+        assert(typeof annotation.optionValue === 'string', 'A project radio choice value is invalid.')
+        assert(typeof annotation.selectedByDefault === 'boolean', 'A project radio choice default is invalid.')
+        const allowed = new Set([...baseKeys, 'optionValue', 'selectedByDefault'])
+        assert(Object.keys(annotation).every((key) => allowed.has(key)), 'A project radio form field contains unsupported fields.')
+      } else {
+        assert(
+          Array.isArray(annotation.options) && annotation.options.every((option) => typeof option === 'string'),
+          'A project dropdown choice list is invalid.',
+        )
+        assert(typeof annotation.defaultOption === 'string', 'A project dropdown default is invalid.')
+        const allowed = new Set([...baseKeys, 'options', 'defaultOption'])
+        assert(Object.keys(annotation).every((key) => allowed.has(key)), 'A project dropdown form field contains unsupported fields.')
+      }
+      createdFields.push(annotation as unknown as CreatedFormFieldAnnotation)
+    }
   }
+  const createdFieldIssue = createdFormFieldCollectionIssue(createdFields)
+  assert(createdFieldIssue === null, createdFieldIssue ?? 'The project form fields are invalid.')
 }
 
 function validateComments(value: unknown, pageIds: Set<string>): asserts value is ReviewComment[] {

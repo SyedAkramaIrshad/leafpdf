@@ -1,17 +1,58 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import { annotationId, type Annotation, type EditorAction, type EditorPage, type FormValue, type NormalizedPoint, type ShapeTool, type StampTool, type Tool } from '../model/editor'
+import { DEFAULT_ADDED_TEXT, annotationId, type Annotation, type EditorAction, type EditorPage, type FormValue, type NormalizedPoint, type ShapeTool, type StampTool, type TextMarkStyle, type Tool } from '../model/editor'
+import { createCreatedFormField } from '../model/createdFormFields'
+import { createDateStampValue } from '../model/dateStamp'
 import { normalizePoint, normalizeRect } from '../model/geometry'
+import type {
+  FormFieldFocusRequest,
+  FormFieldTarget,
+  FormWidgetLoader,
+} from '../model/formNavigation'
+import { mediaPlacementBounds, type MediaSurfaceSize, type PendingMediaPlacement } from '../model/mediaPlacement'
+import type { PreparedDetailPlacement } from '../model/personalDetails'
+import {
+  searchReplacementMatchesOccurrence,
+  type SearchReplacementRequest,
+} from '../model/searchReplacement'
+import {
+  fitSourceReplacementWidth,
+  sourceReplacementAnnotations,
+  type SourceTextSelection,
+} from '../model/sourceTextReplacement'
 import { pageRenderSource, type ExternalDocuments } from '../pdf/pageSource'
 import { isRenderCancellation, PAGE_RENDER_ERROR } from '../pdf/renderLifecycle'
+import type { TextOccurrence } from '../pdf/textSearch'
+import { CSS_FONT_STACKS } from '../pdf/textTypography'
 import { AnnotationLayer } from './AnnotationLayer'
 import { FormLayer } from './FormLayer'
+import { SourceTextReplaceAction } from './SourceTextReplaceAction'
 import { TextLayer } from './TextLayer'
+import { useSourceTextSelection } from './useSourceTextSelection'
 
 /** Physical-pixel ceiling for one page canvas, about 16 megapixels. */
 const PIXEL_BUDGET = 16_000_000
 const SHAPE_TOOLS: ShapeTool[] = ['rectangle', 'ellipse', 'line', 'arrow']
 const STAMP_TOOLS: StampTool[] = ['check', 'cross', 'dot', 'date']
+const TEXT_MARK_TOOLS: Tool[] = ['highlight', 'underline', 'strikeout']
+const CREATED_FORM_TOOLS: Tool[] = ['form-text', 'form-checkbox', 'form-radio', 'form-dropdown']
+
+function measuredReplacementTextWidth(
+  selection: SourceTextSelection,
+  replacementText: string,
+  zoom: number,
+  surfaceWidth: number,
+): number {
+  const context = document.createElement('canvas').getContext('2d')
+  if (context) {
+    context.font = `${selection.fontStyle} ${selection.fontWeight} ${selection.fontSize * 1.16 * zoom}px ${CSS_FONT_STACKS[selection.fontFamily]}`
+    const measured = context.measureText(replacementText).width
+    if (Number.isFinite(measured) && measured > 0) return measured
+  }
+  const sourceLength = Math.max(1, Array.from(selection.text).length)
+  const replacementLength = Math.max(1, Array.from(replacementText).length)
+  return selection.bounds.width * surfaceWidth * (replacementLength / sourceLength)
+}
 
 interface PageCanvasProps {
   pdf: PDFDocumentProxy
@@ -20,16 +61,63 @@ interface PageCanvasProps {
   pageNumber: number
   externalDocuments: ExternalDocuments
   annotations: Annotation[]
+  /** Full document annotation list, used only to generate unique form-field names. */
+  allAnnotations?: Annotation[]
   activeTool: Tool
-  selectedAnnotationId: string | null
+  selectedAnnotationIds: string[]
+  multiSelectMode?: boolean
+  onMultiSelectComplete?: () => void
   zoom: number
   formValues: Record<string, FormValue>
+  loadFormWidgets?: FormWidgetLoader
+  formFieldFocusRequest?: FormFieldFocusRequest | null
+  onFormFieldFocus?: (target: FormFieldTarget) => void
+  onFormFocusRequestHandled?: (requestId: string) => void
+  searchOccurrences?: TextOccurrence[]
+  activeSearchOccurrence?: TextOccurrence | null
+  searchReplacementRequest?: SearchReplacementRequest | null
+  onSearchReplacementHandled?: (requestId: string) => void
+  onSearchReplacementUnavailable?: (requestId: string) => void
   dispatch: (action: EditorAction) => void
+  pendingMedia?: PendingMediaPlacement | null
+  onPlaceMedia?: (pageId: string, point: NormalizedPoint, surface: MediaSurfaceSize) => void
+  preparedDetail?: PreparedDetailPlacement | null
+  onPlacePreparedDetail?: () => void
+  announce?: (message: string) => void
   /** Reports the sheet's CSS size so the page strip can size placeholders. */
-  onMeasured?: (size: { width: number; height: number }) => void
+  onMeasured?: (size: { width: number; height: number }, renderedAtZoom: number) => void
 }
 
-export function PageCanvas({ pdf, page, pageNumber, externalDocuments, annotations, activeTool, selectedAnnotationId, zoom, formValues, dispatch, onMeasured }: PageCanvasProps) {
+export function PageCanvas({
+  pdf,
+  page,
+  pageNumber,
+  externalDocuments,
+  annotations,
+  allAnnotations = annotations,
+  activeTool,
+  selectedAnnotationIds,
+  multiSelectMode = false,
+  onMultiSelectComplete,
+  zoom,
+  formValues,
+  loadFormWidgets,
+  formFieldFocusRequest = null,
+  onFormFieldFocus,
+  onFormFocusRequestHandled,
+  searchOccurrences = [],
+  activeSearchOccurrence = null,
+  searchReplacementRequest = null,
+  onSearchReplacementHandled,
+  onSearchReplacementUnavailable,
+  dispatch,
+  pendingMedia = null,
+  onPlaceMedia,
+  preparedDetail = null,
+  onPlacePreparedDetail,
+  announce,
+  onMeasured,
+}: PageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const surfaceRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 612, height: 792 })
@@ -40,8 +128,61 @@ export function PageCanvas({ pdf, page, pageNumber, externalDocuments, annotatio
   }, [onMeasured])
   const [dragStart, setDragStart] = useState<NormalizedPoint | null>(null)
   const [draftPoints, setDraftPoints] = useState<NormalizedPoint[]>([])
+  const [mediaHoverPoint, setMediaHoverPoint] = useState<NormalizedPoint | null>(null)
   const [renderError, setRenderError] = useState<string | null>(null)
   const [reducedQuality, setReducedQuality] = useState(false)
+  const pendingMediaTool = pendingMedia?.role === 'signature' ? 'signature' : 'image'
+  const mediaPlacementActive = pendingMedia !== null && activeTool === pendingMediaTool
+  const processedSearchReplacement = useRef<string | null>(null)
+  const {
+    selection: sourceSelection,
+    sourceOccurrence,
+    clear: clearSourceSelection,
+  } = useSourceTextSelection({
+    active: activeTool === 'select',
+    pageId: page.id,
+    zoom,
+    surfaceRef,
+    canvasRef,
+  })
+
+  useEffect(() => {
+    const request = searchReplacementRequest
+    if (!request || request.pageId !== page.id || !sourceSelection
+      || processedSearchReplacement.current === request.id
+      || !searchReplacementMatchesOccurrence(sourceOccurrence, request)) return
+    const fittedSelection = fitSourceReplacementWidth(
+      sourceSelection,
+      request.replacementText,
+      dimensions.width,
+      measuredReplacementTextWidth(sourceSelection, request.replacementText, zoom, dimensions.width),
+    )
+    const replacements = sourceReplacementAnnotations(fittedSelection, annotationId)
+    if (replacements.length === 0) {
+      onSearchReplacementUnavailable?.(request.id)
+      return
+    }
+    processedSearchReplacement.current = request.id
+    dispatch({
+      type: 'addAnnotations',
+      annotations: replacements,
+      historyGroup: request.historyGroup,
+      selectLast: false,
+    })
+    clearSourceSelection()
+    onSearchReplacementHandled?.(request.id)
+  }, [
+    clearSourceSelection,
+    dispatch,
+    dimensions.width,
+    onSearchReplacementHandled,
+    onSearchReplacementUnavailable,
+    page.id,
+    searchReplacementRequest,
+    sourceOccurrence,
+    sourceSelection,
+    zoom,
+  ])
 
   useEffect(() => {
     let cancelled = false
@@ -61,7 +202,7 @@ export function PageCanvas({ pdf, page, pageNumber, externalDocuments, annotatio
           const width = (sideways ? page.height : page.width) * 1.16 * zoom
           const height = (sideways ? page.width : page.height) * 1.16 * zoom
           setDimensions({ width, height })
-          onMeasuredRef.current?.({ width, height })
+          onMeasuredRef.current?.({ width, height }, zoom)
           const canvas = canvasRef.current
           const context = canvas?.getContext('2d', { alpha: false })
           if (!canvas || !context) return
@@ -80,7 +221,7 @@ export function PageCanvas({ pdf, page, pageNumber, externalDocuments, annotatio
         const viewport = sourcePage.getViewport({ scale: 1.16 * zoom, rotation })
         if (cancelled) return
         setDimensions({ width: viewport.width, height: viewport.height })
-        onMeasuredRef.current?.({ width: viewport.width, height: viewport.height })
+        onMeasuredRef.current?.({ width: viewport.width, height: viewport.height }, zoom)
         const canvas = canvasRef.current
         const context = canvas?.getContext('2d', { alpha: false })
         if (!canvas || !context) return
@@ -138,29 +279,40 @@ export function PageCanvas({ pdf, page, pageNumber, externalDocuments, annotatio
   }
 
   const createSimpleAnnotation = (event: PointerEvent<HTMLDivElement>) => {
-    if (activeTool !== 'text' && activeTool !== 'highlight' && activeTool !== 'redact' && !SHAPE_TOOLS.includes(activeTool as ShapeTool) && !STAMP_TOOLS.includes(activeTool as StampTool)) return
+    if (!mediaPlacementActive && activeTool !== 'text' && !CREATED_FORM_TOOLS.includes(activeTool) && !TEXT_MARK_TOOLS.includes(activeTool) && activeTool !== 'link' && activeTool !== 'whiteout' && activeTool !== 'redact' && !SHAPE_TOOLS.includes(activeTool as ShapeTool) && !STAMP_TOOLS.includes(activeTool as StampTool)) return
     const point = pointFromEvent(event)
     if (!point) return
+    if (mediaPlacementActive) {
+      setMediaHoverPoint(null)
+      onPlaceMedia?.(page.id, point, dimensions)
+      return
+    }
     if (activeTool === 'text') {
+      const width = preparedDetail?.width ?? 0.32
+      const height = preparedDetail?.height ?? 0.07
       dispatch({
         type: 'addAnnotation',
         annotation: {
           id: annotationId(), pageId: page.id, kind: 'text', x: point.x, y: point.y,
-          width: 0.32, height: 0.07, text: 'Type here', color: '#182026', fontSize: 18,
+          width, height,
+          text: preparedDetail?.text ?? DEFAULT_ADDED_TEXT,
+          color: '#182026', fontSize: preparedDetail?.fontSize ?? 18,
         },
       })
+      if (preparedDetail) onPlacePreparedDetail?.()
       return
     }
     if (STAMP_TOOLS.includes(activeTool as StampTool)) {
       const stamp = activeTool as StampTool
       const width = stamp === 'date' ? 0.22 : 0.055
       const height = stamp === 'date' ? 0.05 : 0.045
+      const dateDetails = stamp === 'date' ? createDateStampValue(new Date()) : null
       dispatch({
         type: 'addAnnotation',
         annotation: {
           id: annotationId(), pageId: page.id, kind: 'stamp', stamp,
           x: Math.min(1 - width, point.x), y: Math.min(1 - height, point.y),
-          width, height, label: stamp === 'date' ? new Intl.DateTimeFormat().format(new Date()) : undefined,
+          width, height, ...(dateDetails ?? {}),
           color: '#182026', strokeWidth: 2.5,
         },
       })
@@ -169,16 +321,54 @@ export function PageCanvas({ pdf, page, pageNumber, externalDocuments, annotatio
     const start = dragStart ?? point
     const bounds = surfaceRef.current?.getBoundingClientRect()
     if (!bounds) return
+    const formFieldTool = CREATED_FORM_TOOLS.includes(activeTool)
+    const squareFieldTool = activeTool === 'form-checkbox' || activeTool === 'form-radio'
+    const dropdownFieldTool = activeTool === 'form-dropdown'
+    const draggedWidth = Math.abs(point.x - start.x) * bounds.width
+    const draggedHeight = Math.abs(point.y - start.y) * bounds.height
+    const checkboxSize = Math.max(draggedWidth, draggedHeight, 28)
     const rect = normalizeRect({
       x: Math.min(start.x, point.x) * bounds.width,
       y: Math.min(start.y, point.y) * bounds.height,
-      width: Math.max(Math.abs(point.x - start.x) * bounds.width, 60),
-      height: Math.max(Math.abs(point.y - start.y) * bounds.height, 22),
+      width: squareFieldTool ? checkboxSize : Math.max(draggedWidth, dropdownFieldTool ? 90 : 60),
+      height: squareFieldTool ? checkboxSize : Math.max(draggedHeight, formFieldTool ? 28 : 22),
     }, bounds)
-    if (activeTool === 'highlight') {
+    if (formFieldTool) {
       dispatch({
         type: 'addAnnotation',
-        annotation: { id: annotationId(), pageId: page.id, kind: 'highlight', ...rect, color: '#ffd447', opacity: 0.42 },
+        annotation: createCreatedFormField({
+          id: annotationId(),
+          pageId: page.id,
+          fieldType: activeTool === 'form-checkbox'
+            ? 'checkbox'
+            : activeTool === 'form-radio' ? 'radio' : activeTool === 'form-dropdown' ? 'dropdown' : 'text',
+          ...rect,
+          annotations: allAnnotations,
+        }),
+      })
+    } else if (TEXT_MARK_TOOLS.includes(activeTool)) {
+      const mark = activeTool as TextMarkStyle
+      const color = mark === 'highlight' ? '#ffd447' : mark === 'underline' ? '#3157d5' : '#b54434'
+      dispatch({
+        type: 'addAnnotation',
+        annotation: {
+          id: annotationId(), pageId: page.id, kind: 'highlight', mark, ...rect,
+          color, opacity: mark === 'highlight' ? 0.42 : 1,
+          ...(mark === 'highlight' ? {} : { strokeWidth: 2 }),
+        },
+      })
+    } else if (activeTool === 'link') {
+      dispatch({
+        type: 'addAnnotation',
+        annotation: {
+          id: annotationId(), pageId: page.id, kind: 'link', ...rect,
+          targetType: 'url', target: '',
+        },
+      })
+    } else if (activeTool === 'whiteout') {
+      dispatch({
+        type: 'addAnnotation',
+        annotation: { id: annotationId(), pageId: page.id, kind: 'whiteout', ...rect },
       })
     } else if (activeTool === 'redact') {
       dispatch({
@@ -225,16 +415,61 @@ export function PageCanvas({ pdf, page, pageNumber, externalDocuments, annotatio
     setDraftPoints([])
   }
 
+  const mediaPreviewBounds = pendingMedia && mediaHoverPoint
+    ? mediaPlacementBounds(pendingMedia, mediaHoverPoint, dimensions)
+    : null
+  const sourceActionPosition = sourceSelection
+    ? (() => {
+        const actionWidth = Math.min(190, Math.max(0, dimensions.width - 16))
+        const left = Math.max(8, Math.min(
+          dimensions.width - actionWidth - 8,
+          sourceSelection.bounds.x * dimensions.width,
+        ))
+        const selectionTop = sourceSelection.bounds.y * dimensions.height
+        const selectionBottom = (sourceSelection.bounds.y + sourceSelection.bounds.height) * dimensions.height
+        const top = selectionTop >= 64
+          ? selectionTop - 58
+          : Math.min(dimensions.height - 58, selectionBottom + 8)
+        return { left, top: Math.max(8, top) }
+      })()
+    : null
+
+  const replaceSourceSelection = () => {
+    if (!sourceSelection) return
+    const replacements = sourceReplacementAnnotations(sourceSelection, annotationId)
+    const replacement = replacements.at(-1)
+    if (!replacement || replacement.kind !== 'text') return
+    dispatch({ type: 'selectPage', pageId: sourceSelection.pageId })
+    dispatch({
+      type: 'addAnnotations',
+      annotations: replacements,
+      historyGroup: `annotation-${replacement.id}-text`,
+    })
+    clearSourceSelection()
+    announce?.('Visual replacement added. The source text remains underneath; use Redact to remove content permanently.')
+  }
+
   return (
-    <div className="page-mat" aria-label={`Page ${pageNumber} editor`}>
+    <div className="page-mat" role="group" aria-label={`Page ${pageNumber} editor`}>
       <div
         ref={surfaceRef}
         className="page-surface"
         style={{ width: dimensions.width, height: dimensions.height }}
-        onPointerDown={activeTool === 'highlight' || activeTool === 'redact' || SHAPE_TOOLS.includes(activeTool as ShapeTool) ? (event) => setDragStart(pointFromEvent(event)) : undefined}
+        onPointerDown={CREATED_FORM_TOOLS.includes(activeTool) || TEXT_MARK_TOOLS.includes(activeTool) || activeTool === 'link' || activeTool === 'whiteout' || activeTool === 'redact' || SHAPE_TOOLS.includes(activeTool as ShapeTool) ? (event) => setDragStart(pointFromEvent(event)) : undefined}
+        onPointerMove={mediaPlacementActive ? (event) => setMediaHoverPoint(pointFromEvent(event)) : undefined}
+        onPointerLeave={mediaPlacementActive ? () => setMediaHoverPoint(null) : undefined}
       >
         <canvas ref={canvasRef} aria-label="Rendered PDF page" />
-        <TextLayer pdf={pdf} page={page} externalDocuments={externalDocuments} zoom={zoom} />
+        <TextLayer
+          pdf={pdf}
+          page={page}
+          externalDocuments={externalDocuments}
+          zoom={zoom}
+          searchOccurrences={searchOccurrences}
+          activeSearchOccurrence={searchReplacementRequest?.occurrence ?? activeSearchOccurrence}
+          selectionRequest={searchReplacementRequest}
+          onSelectionUnavailable={onSearchReplacementUnavailable}
+        />
         {renderError && <p className="page-render-error" role="alert">{renderError}</p>}
         {reducedQuality && !renderError && (
           <p className="page-quality-notice" role="status">Preview quality reduced for this large page</p>
@@ -242,7 +477,9 @@ export function PageCanvas({ pdf, page, pageNumber, externalDocuments, annotatio
         <AnnotationLayer
           annotations={annotations}
           activeTool={activeTool}
-          selectedAnnotationId={selectedAnnotationId}
+          selectedAnnotationIds={selectedAnnotationIds}
+          multiSelectMode={multiSelectMode}
+          onMultiSelectComplete={onMultiSelectComplete}
           dispatch={dispatch}
           onCreate={createSimpleAnnotation}
           onDrawStart={drawStart}
@@ -260,7 +497,35 @@ export function PageCanvas({ pdf, page, pageNumber, externalDocuments, annotatio
           activeTool={activeTool}
           formValues={formValues}
           dispatch={dispatch}
+          loadFormWidgets={loadFormWidgets}
+          focusRequest={formFieldFocusRequest}
+          onFormFieldFocus={onFormFieldFocus}
+          onFormFocusRequestHandled={onFormFocusRequestHandled}
         />
+        {sourceSelection && sourceActionPosition && (
+          <SourceTextReplaceAction
+            left={sourceActionPosition.left}
+            top={sourceActionPosition.top}
+            onReplace={replaceSourceSelection}
+          />
+        )}
+        {pendingMedia && mediaPreviewBounds && mediaPlacementActive && (
+          <div
+            className="media-placement-preview"
+            data-media-role={pendingMediaTool}
+            role="img"
+            aria-label={`${pendingMediaTool === 'signature' ? 'Signature' : 'Image'} placement preview`}
+            style={{
+              left: `${mediaPreviewBounds.x * 100}%`,
+              top: `${mediaPreviewBounds.y * 100}%`,
+              width: `${mediaPreviewBounds.width * 100}%`,
+              height: `${mediaPreviewBounds.height * 100}%`,
+            }}
+          >
+            <span>{pendingMediaTool.toUpperCase()}</span>
+            <img src={pendingMedia.dataUrl} alt="" />
+          </div>
+        )}
       </div>
     </div>
   )

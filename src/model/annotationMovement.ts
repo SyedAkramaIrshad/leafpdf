@@ -67,6 +67,39 @@ export function annotationBounds(annotation: Annotation) {
   return { x, y, width: Math.max(1e-6, Math.max(...xs) - x), height: Math.max(1e-6, Math.max(...ys) - y) }
 }
 
+/** Axis-aligned union of several stored annotation bounds. */
+export function annotationsBounds(annotations: readonly Annotation[]) {
+  if (annotations.length === 0) return null
+  const boxes = annotations.map(annotationBounds)
+  const x = Math.min(...boxes.map((box) => box.x))
+  const y = Math.min(...boxes.map((box) => box.y))
+  const right = Math.max(...boxes.map((box) => box.x + box.width))
+  const bottom = Math.max(...boxes.map((box) => box.y + box.height))
+  return {
+    x: round(x),
+    y: round(y),
+    width: round(right - x),
+    height: round(bottom - y),
+  }
+}
+
+/**
+ * Translate several annotations by one shared, page-clamped delta. Clamping the
+ * union first preserves the exact spacing between items when any edge reaches
+ * the page boundary.
+ */
+export function moveAnnotations(
+  annotations: readonly Annotation[],
+  dx: number,
+  dy: number,
+): Annotation[] {
+  const bounds = annotationsBounds(annotations)
+  if (!bounds) return []
+  const clampedX = clampDelta(dx, bounds.x, bounds.x + bounds.width, 1)
+  const clampedY = clampDelta(dy, bounds.y, bounds.y + bounds.height, 1)
+  return annotations.map((annotation) => moveAnnotation(annotation, clampedX, clampedY))
+}
+
 /**
  * Resize from any corner while the diagonally opposite corner remains anchored.
  * The result is clamped to the page and never becomes too small to manipulate.
@@ -120,6 +153,7 @@ export function resizeAnnotationFromCorner(
 
 /** Store a stable visual angle in the compact [-180, 180) range. */
 export function rotateAnnotation(annotation: Annotation, angle: number): Annotation {
+  if (annotation.kind === 'form-field') return annotation
   const rotation = round(((angle + 180) % 360 + 360) % 360 - 180)
   if (annotation.kind === 'ink') {
     const box = annotationBounds(annotation)

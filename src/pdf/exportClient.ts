@@ -4,6 +4,7 @@ import type {
   ExportProgress,
   ExportWorkerRequest,
   ExportWorkerResponse,
+  PdfFormOutput,
 } from './exportWorkerProtocol'
 
 /**
@@ -81,6 +82,7 @@ export function exportInWorker(
   onProgress?: (progress: ExportProgress) => void,
   options: {
     allowCompatibilityCopy?: boolean
+    formOutput?: PdfFormOutput
     insertedFiles?: Array<{ id: string; file: File }>
     rasterizedPages?: Array<{ pageId: string; width: number; height: number; png: ArrayBuffer }>
   } = {},
@@ -92,6 +94,7 @@ export function exportInWorker(
       sourceFile: file,
       document,
       allowCompatibilityCopy: options.allowCompatibilityCopy ?? false,
+      formOutput: options.formOutput ?? 'fillable',
       insertedFiles: options.insertedFiles ?? [],
       rasterizedPages,
     },

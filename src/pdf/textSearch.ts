@@ -7,6 +7,19 @@ export interface PageMatches {
   /** 1-based position of the page in the current document order. */
   pageNumber: number
   matches: number
+  /** Source-PDF text offsets. OCR-only matches add to `matches` without geometry. */
+  occurrences: TextOccurrence[]
+}
+
+export interface TextOccurrence {
+  start: number
+  end: number
+}
+
+export interface SearchCursorEntry {
+  pageId: string
+  pageNumber: number
+  occurrence: TextOccurrence | null
 }
 
 /**
@@ -38,18 +51,42 @@ async function extractPageText(pdf: PDFDocumentProxy, pageNumber: number): Promi
   return loading
 }
 
+/** Case-insensitive, non-overlapping source-text offsets. */
+export function findOccurrences(text: string, query: string): TextOccurrence[] {
+  const haystack = text.toLocaleLowerCase()
+  const needle = query.toLocaleLowerCase()
+  if (needle.length === 0) return []
+  const occurrences: TextOccurrence[] = []
+  let start = haystack.indexOf(needle)
+  while (start !== -1) {
+    occurrences.push({ start, end: start + needle.length })
+    start = haystack.indexOf(needle, start + needle.length)
+  }
+  return occurrences
+}
+
 /** Case-insensitive, non-overlapping occurrence count. */
 export function countMatches(text: string, query: string): number {
-  const haystack = text.toLowerCase()
-  const needle = query.toLowerCase()
-  if (needle.length === 0) return 0
-  let count = 0
-  let position = haystack.indexOf(needle)
-  while (position !== -1) {
-    count += 1
-    position = haystack.indexOf(needle, position + needle.length)
+  return findOccurrences(text, query).length
+}
+
+/**
+ * Flatten page summaries into the cursor order exposed by Previous/Next.
+ * Source occurrences keep exact offsets; any remaining count represents OCR
+ * words and deliberately carries no glyph geometry.
+ */
+export function searchCursorEntries(results: PageMatches[]): SearchCursorEntry[] {
+  const entries: SearchCursorEntry[] = []
+  for (const result of results) {
+    for (const occurrence of result.occurrences) {
+      entries.push({ pageId: result.pageId, pageNumber: result.pageNumber, occurrence })
+    }
+    const ocrMatches = Math.max(0, result.matches - result.occurrences.length)
+    for (let index = 0; index < ocrMatches; index += 1) {
+      entries.push({ pageId: result.pageId, pageNumber: result.pageNumber, occurrence: null })
+    }
   }
-  return count
+  return entries
 }
 
 /**
@@ -71,8 +108,15 @@ export async function searchDocument(
     const source = pageRenderSource(page, pdf, externalDocuments)
     if (!source) continue
     const text = await extractPageText(source.pdf, source.pageNumber)
-    const matches = countMatches(text, clean)
-    if (matches > 0) results.push({ pageId: page.id, pageNumber: index + 1, matches })
+    const occurrences = findOccurrences(text, clean)
+    if (occurrences.length > 0) {
+      results.push({
+        pageId: page.id,
+        pageNumber: index + 1,
+        matches: occurrences.length,
+        occurrences,
+      })
+    }
   }
   return results
 }

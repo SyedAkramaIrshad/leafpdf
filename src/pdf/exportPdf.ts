@@ -1,8 +1,12 @@
 import { Encodings } from '@pdf-lib/standard-fonts'
-import { LineCapStyle, PDFCheckBox, PDFDocument, PDFDropdown, PDFName, PDFRadioGroup, PDFRef, PDFTextField, degrees, rgb, type PDFPage } from 'pdf-lib'
-import { hasRedactions, textStyleOf, type Annotation, type EditorDocument, type EditorPage, type FormValue } from '../model/editor'
+import { LineCapStyle, PDFArray, PDFCheckBox, PDFDict, PDFDocument, PDFDropdown, PDFName, PDFRadioGroup, PDFRef, PDFTextField, degrees, rgb, type PDFPage } from 'pdf-lib'
+import { hasRedactions, imageOpacityOf, textMarkStrokeWidthOf, textMarkStyleOf, textStyleOf, type Annotation, type CreatedFormFieldAnnotation, type EditorDocument, type EditorPage, type FormValue } from '../model/editor'
+import { createdFormFieldCollectionIssue, formFieldNamesConflict } from '../model/createdFormFields'
+import { externalLinkDestination } from '../model/linkTarget'
 import { createFontRegistry, type FontRegistry } from './fontRegistry'
+import { appendExternalLinkAnnotation } from './linkAnnotation'
 import { analyzeLoadedPdf, chooseExportStrategy, describeFeatures, isEncryptedPdfError, type SourcePdfFeatures } from './sourceAnalysis'
+import type { PdfFormOutput } from './exportWorkerProtocol'
 
 interface Point {
   x: number
@@ -84,6 +88,82 @@ function annotationMetrics(annotation: Annotation, page: PDFPage, rotation: numb
   return { width, height, display, displayX, displayY, drawWidth, drawHeight, anchor, drawAngle }
 }
 
+const CREATED_FIELD_BORDER_WIDTH = 0.75
+
+function quarterTurn(rotation: number): 0 | 90 | 180 | 270 {
+  return (((rotation % 360) + 360) % 360) as 0 | 90 | 180 | 270
+}
+
+/**
+ * Convert the editor's top-left display rectangle into pdf-lib's form-widget
+ * inputs. pdf-lib rotates the widget around its supplied anchor and expands its
+ * rectangle by the border width, so the inverse below keeps the widget's outer
+ * rectangle exactly aligned with the on-page editing proof.
+ */
+function createdFieldWidgetPlacement(
+  annotation: CreatedFormFieldAnnotation,
+  page: PDFPage,
+  rotation: number,
+) {
+  const { width: pageWidth, height: pageHeight } = page.getSize()
+  const display = displaySize(pageWidth, pageHeight, rotation)
+  const left = annotation.x * display.width
+  const top = annotation.y * display.height
+  const right = (annotation.x + annotation.width) * display.width
+  const bottom = (annotation.y + annotation.height) * display.height
+  const corners = [
+    displayToPdf({ x: left, y: top }, pageWidth, pageHeight, rotation),
+    displayToPdf({ x: right, y: top }, pageWidth, pageHeight, rotation),
+    displayToPdf({ x: left, y: bottom }, pageWidth, pageHeight, rotation),
+    displayToPdf({ x: right, y: bottom }, pageWidth, pageHeight, rotation),
+  ]
+  const xs = corners.map(({ x }) => x)
+  const ys = corners.map(({ y }) => y)
+  const target = {
+    x: Math.min(...xs),
+    y: Math.min(...ys),
+    width: Math.max(...xs) - Math.min(...xs),
+    height: Math.max(...ys) - Math.min(...ys),
+  }
+  const border = CREATED_FIELD_BORDER_WIDTH
+  const halfBorder = border / 2
+  const fieldRotation = quarterTurn(rotation)
+  if (fieldRotation === 90) {
+    return {
+      x: target.x + target.width - halfBorder,
+      y: target.y + halfBorder,
+      width: Math.max(0.01, target.height - border),
+      height: Math.max(0.01, target.width - border),
+      rotate: degrees(90),
+    }
+  }
+  if (fieldRotation === 180) {
+    return {
+      x: target.x + target.width - halfBorder,
+      y: target.y + target.height - halfBorder,
+      width: Math.max(0.01, target.width - border),
+      height: Math.max(0.01, target.height - border),
+      rotate: degrees(180),
+    }
+  }
+  if (fieldRotation === 270) {
+    return {
+      x: target.x + halfBorder,
+      y: target.y + target.height - halfBorder,
+      width: Math.max(0.01, target.height - border),
+      height: Math.max(0.01, target.width - border),
+      rotate: degrees(270),
+    }
+  }
+  return {
+    x: target.x + halfBorder,
+    y: target.y + halfBorder,
+    width: Math.max(0.01, target.width - border),
+    height: Math.max(0.01, target.height - border),
+    rotate: degrees(0),
+  }
+}
+
 function dataUrlBytes(dataUrl: string): Uint8Array {
   const payload = dataUrl.split(',')[1]
   if (!payload) throw new Error('The placed image data is invalid.')
@@ -113,6 +193,28 @@ async function paintAnnotation(
       metrics.height,
       rotation,
     )
+  }
+  if (annotation.kind === 'link') {
+    const destination = externalLinkDestination(annotation)
+    if (!destination) {
+      throw new Error('A clickable link has no valid web, email, or phone destination.')
+    }
+    const corners = [
+      pointInAnnotation(0, 0),
+      pointInAnnotation(1, 0),
+      pointInAnnotation(0, 1),
+      pointInAnnotation(1, 1),
+    ]
+    const xs = corners.map(({ x }) => x)
+    const ys = corners.map(({ y }) => y)
+    appendExternalLinkAnnotation(
+      output,
+      page,
+      [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)],
+      destination,
+      annotation.id,
+    )
+    return
   }
   if (annotation.kind === 'text') {
     const text = annotation.text || ' '
@@ -148,6 +250,19 @@ async function paintAnnotation(
     return
   }
   if (annotation.kind === 'highlight') {
+    const mark = textMarkStyleOf(annotation)
+    if (mark !== 'highlight') {
+      const lineY = mark === 'underline' ? 0.82 : 0.5
+      page.drawLine({
+        start: pointInAnnotation(0, lineY),
+        end: pointInAnnotation(1, lineY),
+        thickness: textMarkStrokeWidthOf(annotation),
+        color: colorFromHex(annotation.color),
+        opacity: annotation.opacity,
+        lineCap: LineCapStyle.Round,
+      })
+      return
+    }
     page.drawRectangle({
       x: metrics.anchor.x,
       y: metrics.anchor.y,
@@ -155,6 +270,17 @@ async function paintAnnotation(
       height: metrics.drawHeight,
       color: colorFromHex(annotation.color),
       opacity: annotation.opacity,
+      rotate: angle,
+    })
+    return
+  }
+  if (annotation.kind === 'whiteout') {
+    page.drawRectangle({
+      x: metrics.anchor.x,
+      y: metrics.anchor.y,
+      width: metrics.drawWidth,
+      height: metrics.drawHeight,
+      color: rgb(1, 1, 1),
       rotate: angle,
     })
     return
@@ -254,12 +380,20 @@ async function paintAnnotation(
   const image = annotation.mimeType === 'image/png'
     ? await output.embedPng(bytes)
     : await output.embedJpg(bytes)
+  const fitted = image.scaleToFit(metrics.drawWidth, metrics.drawHeight)
+  const offsetX = (metrics.drawWidth - fitted.width) / 2
+  const offsetY = (metrics.drawHeight - fitted.height) / 2
+  const fittedAnchor = pointInAnnotation(
+    offsetX / metrics.drawWidth,
+    (offsetY + fitted.height) / metrics.drawHeight,
+  )
   page.drawImage(image, {
-    x: metrics.anchor.x,
-    y: metrics.anchor.y,
-    width: metrics.drawWidth,
-    height: metrics.drawHeight,
+    x: fittedAnchor.x,
+    y: fittedAnchor.y,
+    width: fitted.width,
+    height: fitted.height,
     rotate: angle,
+    opacity: imageOpacityOf(annotation),
   })
 }
 
@@ -275,6 +409,8 @@ export interface ExportOptions {
   rasterizedPages?: Map<string, { width: number; height: number; png: ArrayBuffer }>
   /** Called after each page is painted, so a long export can show progress. */
   onProgress?: (completedPages: number, totalPages: number) => void
+  /** Keep real form controls, or paint their current appearances into the pages. */
+  formOutput?: PdfFormOutput
 }
 
 /**
@@ -318,13 +454,18 @@ async function paintPage(
   editorPage: EditorPage,
   document: EditorDocument,
   fonts: FontRegistry,
+  createdFields: CreatedFieldExportContext,
 ) {
   const sourceRotation = page.getRotation().angle
   const finalRotation = ((sourceRotation + editorPage.rotation) % 360 + 360) % 360
   page.setRotation(degrees(finalRotation))
   const annotations = document.annotations.filter((annotation) => annotation.pageId === editorPage.id)
   for (const annotation of annotations) {
-    await paintAnnotation(output, page, annotation, finalRotation, fonts)
+    if (annotation.kind === 'form-field') {
+      await emitCreatedFormField(output, page, annotation, finalRotation, fonts, createdFields)
+    } else {
+      await paintAnnotation(output, page, annotation, finalRotation, fonts)
+    }
   }
 }
 
@@ -336,6 +477,208 @@ async function paintPage(
 function fieldValueStorable(text: string): boolean {
   return Array.from(text, (character) => character.codePointAt(0) ?? 0)
     .every((codePoint) => Encodings.WinAnsi.canEncodeUnicodeCodePoint(codePoint))
+}
+
+interface CreatedFieldExportContext {
+  radioGroups: Map<string, PDFRadioGroup>
+  radioDefaults: Map<string, string>
+}
+
+function createCreatedFieldExportContext(): CreatedFieldExportContext {
+  return { radioGroups: new Map(), radioDefaults: new Map() }
+}
+
+function finalizeCreatedFormFields(
+  output: PDFDocument,
+  context: CreatedFieldExportContext,
+) {
+  // Calling getForm() creates an AcroForm dictionary on a plain PDF. Do not
+  // mutate documents that have no created radio group to finalize.
+  if (context.radioGroups.size === 0) return
+  const form = output.getForm()
+  for (const [name, field] of context.radioGroups) {
+    const selected = context.radioDefaults.get(name)
+    if (selected) field.select(selected)
+    else field.clear()
+    field.defaultUpdateAppearances()
+    form.markFieldAsClean(field.ref)
+  }
+}
+
+async function emitCreatedFormField(
+  output: PDFDocument,
+  page: PDFPage,
+  annotation: CreatedFormFieldAnnotation,
+  rotation: number,
+  fonts: FontRegistry,
+  context: CreatedFieldExportContext,
+) {
+  const form = output.getForm()
+  const placement = createdFieldWidgetPlacement(annotation, page, rotation)
+  const appearance = {
+    ...placement,
+    textColor: rgb(0.094, 0.125, 0.149),
+    backgroundColor: rgb(1, 1, 1),
+    borderColor: rgb(0.42, 0.47, 0.55),
+    borderWidth: CREATED_FIELD_BORDER_WIDTH,
+  }
+  if (annotation.fieldType === 'text') {
+    if (!fieldValueStorable(annotation.defaultText)) {
+      throw new Error(`Created text field "${annotation.fieldName}" has default text that its PDF font cannot store. Use Latin text or leave the default blank.`)
+    }
+    const field = form.createTextField(annotation.fieldName)
+    if (annotation.required) field.enableRequired()
+    if (annotation.multiline) field.enableMultiline()
+    field.setText(annotation.defaultText)
+    const font = await fonts.fontFor({ text: ' ', fontFamily: 'sans', fontWeight: 400 })
+    field.addToPage(page, { ...appearance, font })
+    // addToPage just built the appearance with the chosen font. Keeping this
+    // field clean prevents PDFDocument.save() from replacing it with a generic
+    // font while still allowing edited source fields to refresh normally.
+    form.markFieldAsClean(field.ref)
+    return
+  }
+  if (annotation.fieldType === 'checkbox') {
+    const field = form.createCheckBox(annotation.fieldName)
+    if (annotation.required) field.enableRequired()
+    field.addToPage(page, appearance)
+    if (annotation.checkedByDefault) field.check()
+    else field.uncheck()
+    form.markFieldAsClean(field.ref)
+    return
+  }
+  if (annotation.fieldType === 'radio') {
+    let field = context.radioGroups.get(annotation.fieldName)
+    if (!field) {
+      field = form.createRadioGroup(annotation.fieldName)
+      if (annotation.required) field.enableRequired()
+      context.radioGroups.set(annotation.fieldName, field)
+    }
+    field.addOptionToPage(annotation.optionValue, page, appearance)
+    if (annotation.selectedByDefault) {
+      context.radioDefaults.set(annotation.fieldName, annotation.optionValue)
+    }
+    return
+  }
+
+  const values = [...annotation.options, annotation.defaultOption].filter(Boolean)
+  if (values.some((value) => !fieldValueStorable(value))) {
+    throw new Error(`Created dropdown "${annotation.fieldName}" has a choice that its PDF font cannot store. Use Latin text for every choice.`)
+  }
+  const field = form.createDropdown(annotation.fieldName)
+  if (annotation.required) field.enableRequired()
+  field.setOptions(annotation.options)
+  const font = await fonts.fontFor({
+    text: annotation.defaultOption || annotation.options[0] || ' ',
+    fontFamily: 'sans',
+    fontWeight: 400,
+  })
+  field.addToPage(page, { ...appearance, font })
+  if (annotation.defaultOption) field.select(annotation.defaultOption)
+  field.defaultUpdateAppearances(font)
+  form.markFieldAsClean(field.ref)
+}
+
+function catalogDictionary(document: PDFDocument, name: string): PDFDict | null {
+  const value = document.catalog.get(PDFName.of(name))
+  if (value instanceof PDFDict) return value
+  if (value instanceof PDFRef) {
+    const resolved = document.context.lookup(value)
+    return resolved instanceof PDFDict ? resolved : null
+  }
+  return null
+}
+
+function hasXfaForm(document: PDFDocument): boolean {
+  return catalogDictionary(document, 'AcroForm')?.get(PDFName.of('XFA')) !== undefined
+}
+
+interface WidgetAnnotationEntries {
+  refs: Set<string>
+  direct: Set<PDFDict>
+}
+
+function pageAnnotations(document: PDFDocument, page: PDFPage): PDFArray | null {
+  const value = page.node.get(PDFName.of('Annots'))
+  if (value instanceof PDFArray) return value
+  if (!(value instanceof PDFRef)) return null
+  const resolved = document.context.lookup(value)
+  return resolved instanceof PDFArray ? resolved : null
+}
+
+function collectWidgetAnnotationEntries(document: PDFDocument): WidgetAnnotationEntries {
+  const entries: WidgetAnnotationEntries = { refs: new Set(), direct: new Set() }
+  for (const page of document.getPages()) {
+    const annotations = pageAnnotations(document, page)
+    if (!annotations) continue
+    for (let index = 0; index < annotations.size(); index += 1) {
+      const entry = annotations.get(index)
+      const annotation = entry instanceof PDFRef ? document.context.lookup(entry) : entry
+      if (!(annotation instanceof PDFDict)) continue
+      const subtype = annotation.get(PDFName.of('Subtype'))
+      if (!(subtype instanceof PDFName) || subtype.asString() !== '/Widget') continue
+      if (entry instanceof PDFRef) entries.refs.add(entry.toString())
+      else entries.direct.add(annotation)
+    }
+  }
+  return entries
+}
+
+function removeFlattenedWidgetAnnotations(document: PDFDocument, widgets: WidgetAnnotationEntries) {
+  for (const page of document.getPages()) {
+    const annotations = pageAnnotations(document, page)
+    if (!annotations) continue
+    for (let index = annotations.size() - 1; index >= 0; index -= 1) {
+      const entry = annotations.get(index)
+      const remove = entry instanceof PDFRef
+        ? widgets.refs.has(entry.toString())
+        : entry instanceof PDFDict && widgets.direct.has(entry)
+      if (remove) annotations.remove(index)
+    }
+    if (annotations.size() === 0) page.node.delete(PDFName.of('Annots'))
+  }
+}
+
+function finalizeFormOutput(document: PDFDocument, formOutput: PdfFormOutput) {
+  // Calling getForm() creates an AcroForm dictionary. A plain PDF must remain
+  // plain even when the user asks for flattened output.
+  if (formOutput !== 'flattened' || !catalogDictionary(document, 'AcroForm')) return
+  const widgets = collectWidgetAnnotationEntries(document)
+  document.getForm().flatten()
+  // pdf-lib 1.17 deletes widget objects but can leave their page annotation
+  // references behind. Remove those exact entries so readers do not need to
+  // repair the xref table. Keep the now-empty AcroForm dictionary: pdf-lib's
+  // flattened appearance resources can render blank if that catalog entry is
+  // removed before serialization.
+  removeFlattenedWidgetAnnotations(document, widgets)
+}
+
+function validateCreatedFieldsBeforeExport(
+  source: PDFDocument,
+  document: EditorDocument,
+  sourceHasAcroForm: boolean,
+  preservingSource: boolean,
+) {
+  const fields = document.annotations.filter(
+    (annotation): annotation is CreatedFormFieldAnnotation => annotation.kind === 'form-field',
+  )
+  if (fields.length === 0) return
+
+  const issue = createdFormFieldCollectionIssue(fields)
+  if (issue) throw new Error(issue)
+
+  const xfa = sourceHasAcroForm && hasXfaForm(source)
+  if (xfa && preservingSource) {
+    throw new Error('This PDF uses an XFA form. Adding AcroForm fields in place would remove that form, so LeafPDF stopped before changing it.')
+  }
+  if (!sourceHasAcroForm || xfa) return
+  const sourceNames = source.getForm().getFields().map((field) => field.getName())
+  for (const field of fields) {
+    const conflicting = sourceNames.find((name) => formFieldNamesConflict(name, field.fieldName))
+    if (conflicting) {
+      throw new Error(`The source PDF already uses the form field name "${conflicting}". Rename the created field "${field.fieldName}" before saving.`)
+    }
+  }
 }
 
 /**
@@ -388,6 +731,7 @@ async function exportByPreserving(
   source: PDFDocument,
   document: EditorDocument,
   inserted: InsertedDocuments,
+  formOutput: PdfFormOutput,
   onProgress?: ExportOptions['onProgress'],
 ): Promise<Uint8Array> {
   // Belt and braces: the strategy chooser never routes a redacted document
@@ -397,6 +741,7 @@ async function exportByPreserving(
     throw new Error('Internal error: a redacted document must be exported as a rebuilt copy.')
   }
   const fonts = await createFontRegistry(source)
+  const createdFields = createCreatedFieldExportContext()
   // Page references taken before any removal or insertion: they stay valid while
   // the page tree changes around them, unlike indexes.
   const originalPages = source.getPages()
@@ -423,11 +768,13 @@ async function exportByPreserving(
       const [copied] = await source.copyPages(donor, [editorPage.sourceIndex])
       page = source.insertPage(index, copied)
     }
-    await paintPage(source, page, editorPage, document, fonts)
+    await paintPage(source, page, editorPage, document, fonts, createdFields)
     onProgress?.(index + 1, document.pages.length)
   }
 
+  finalizeCreatedFormFields(source, createdFields)
   applyFormValues(source, document.formValues)
+  finalizeFormOutput(source, formOutput)
 
   source.setProducer('LeafPDF')
   source.setModificationDate(new Date())
@@ -444,10 +791,12 @@ async function exportByRebuilding(
   document: EditorDocument,
   inserted: InsertedDocuments,
   rasterized: Map<string, { width: number; height: number; png: ArrayBuffer }>,
+  formOutput: PdfFormOutput,
   onProgress?: ExportOptions['onProgress'],
 ): Promise<Uint8Array> {
   const output = await PDFDocument.create()
   const fonts = await createFontRegistry(output)
+  const createdFields = createCreatedFieldExportContext()
 
   for (const [index, editorPage] of document.pages.entries()) {
     const pageAnnotations = document.annotations.filter((annotation) => annotation.pageId === editorPage.id)
@@ -469,7 +818,11 @@ async function exportByRebuilding(
       // paint against an unrotated page.
       for (const annotation of pageAnnotations) {
         if (annotation.kind === 'redaction') continue
-        await paintAnnotation(output, page, annotation, 0, fonts)
+        if (annotation.kind === 'form-field') {
+          await emitCreatedFormField(output, page, annotation, 0, fonts, createdFields)
+        } else {
+          await paintAnnotation(output, page, annotation, 0, fonts)
+        }
       }
       onProgress?.(index + 1, document.pages.length)
       continue
@@ -484,9 +837,12 @@ async function exportByRebuilding(
       output.addPage(copied)
       page = copied
     }
-    await paintPage(output, page, editorPage, document, fonts)
+    await paintPage(output, page, editorPage, document, fonts, createdFields)
     onProgress?.(index + 1, document.pages.length)
   }
+
+  finalizeCreatedFormFields(output, createdFields)
+  finalizeFormOutput(output, formOutput)
 
   const title = source.getTitle()
   const author = source.getAuthor()
@@ -543,6 +899,10 @@ export async function exportEditedPdf(
     throw error
   }
   const features = analyzeLoadedPdf(source)
+  const formOutput = options.formOutput ?? 'fillable'
+  if (formOutput === 'flattened' && features.hasAcroForm && hasXfaForm(source)) {
+    throw new Error('This PDF uses an XFA form, which LeafPDF cannot flatten safely. No file was saved.')
+  }
   // The source page count is what makes a deletion distinguishable from an untouched
   // document; without it, deleting the last page reads as "nothing changed".
   const strategy = chooseExportStrategy(features, document, source.getPageCount())
@@ -550,10 +910,17 @@ export async function exportEditedPdf(
     throw new CompatibilityConfirmationRequired(features)
   }
 
+  validateCreatedFieldsBeforeExport(
+    source,
+    document,
+    features.hasAcroForm,
+    strategy === 'preserve',
+  )
+
   const inserted = new InsertedDocuments(options.insertedDocuments ?? new Map())
   return strategy === 'preserve'
-    ? exportByPreserving(source, document, inserted, options.onProgress)
-    : exportByRebuilding(source, document, inserted, options.rasterizedPages ?? new Map(), options.onProgress)
+    ? exportByPreserving(source, document, inserted, formOutput, options.onProgress)
+    : exportByRebuilding(source, document, inserted, options.rasterizedPages ?? new Map(), formOutput, options.onProgress)
 }
 
 export { exportedFileName } from './exportNaming'

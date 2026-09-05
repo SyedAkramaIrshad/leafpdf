@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
 import { IMAGE_LIMITS } from '../model/imageValidation'
+import {
+  SIGNATURE_STYLES,
+  signatureTextForName,
+  suggestedSignatureName,
+  type SignatureStyle,
+  type SignatureStyleId,
+  type SignatureTextMode,
+} from '../model/typedSignature'
 import type { SavedSignature } from '../persistence/localStore'
 import { useModalDialog } from './useModalDialog'
 export type { SavedSignature } from '../persistence/localStore'
@@ -13,7 +21,7 @@ export interface SignatureDialogProps {
    * `saveForReuse` is a user choice. The parent is responsible for persisting
    * the data URL only when it is true, then placing the returned PNG in the PDF.
    */
-  onApply: (dataUrl: string, saveForReuse: boolean) => void
+  onApply: (dataUrl: string, saveForReuse: boolean, suggestedName?: string) => void
   /** Entries supplied by the parent's local-only signature store. */
   savedSignatures?: readonly SavedSignature[]
   /** Deletes the selected reusable entry from the parent's local-only store. */
@@ -22,30 +30,35 @@ export interface SignatureDialogProps {
 
 const CANVAS_WIDTH = 1120
 const CANVAS_HEIGHT = 380
+export const SIGNATURE_ASPECT_RATIO = CANVAS_WIDTH / CANVAS_HEIGHT
 
 function clearCanvas(canvas: HTMLCanvasElement | null) {
   const context = canvas?.getContext('2d')
   if (canvas && context) context.clearRect(0, 0, canvas.width, canvas.height)
 }
 
-function drawTypedName(canvas: HTMLCanvasElement | null, name: string) {
+function drawTypedName(
+  canvas: HTMLCanvasElement | null,
+  signatureText: string,
+  style: SignatureStyle,
+) {
   const context = canvas?.getContext('2d')
   if (!canvas || !context) return
   context.clearRect(0, 0, canvas.width, canvas.height)
-  const trimmed = name.trim()
-  if (!trimmed) return
+  if (!signatureText) return
 
-  // The browser selects the best locally-installed cursive face. It is rasterised
-  // before leaving this dialog, avoiding an external font request or dependency.
-  let size = 136
-  context.font = `italic ${size}px "Snell Roundhand", "Brush Script MT", "Segoe Script", cursive`
-  while (size > 42 && context.measureText(trimmed).width > canvas.width - 110) {
+  // The browser selects the best locally installed face in each stack. The result
+  // is rasterised here, avoiding an external font request or persistence change.
+  const emphasis = style.id === 'clean' ? '500' : 'italic'
+  let size = style.size
+  context.font = `${emphasis} ${size}px ${style.canvasFamily}`
+  while (size > 42 && context.measureText(signatureText).width > canvas.width - 110) {
     size -= 4
-    context.font = `italic ${size}px "Snell Roundhand", "Brush Script MT", "Segoe Script", cursive`
+    context.font = `${emphasis} ${size}px ${style.canvasFamily}`
   }
   context.fillStyle = '#182026'
   context.textBaseline = 'middle'
-  context.fillText(trimmed, 56, canvas.height / 2 + 10)
+  context.fillText(signatureText, 56, canvas.height / 2 + 10)
 }
 
 function paintImage(canvas: HTMLCanvasElement, image: HTMLImageElement) {
@@ -93,8 +106,8 @@ export async function normalizeSignatureUpload(file: File, canvas: HTMLCanvasEle
 }
 
 export function SignatureDialog({ open, ...rest }: SignatureDialogProps) {
-  // Mounted only while open: each open starts on a fresh Draw tab with an empty
-  // pad, and `useModalDialog` arms and disarms with the dialog itself.
+  // Mounted only while open: each open starts on a fresh Type tab, and
+  // `useModalDialog` arms and disarms with the dialog itself.
   if (!open) return null
   return <SignatureDialogContent {...rest} />
 }
@@ -106,36 +119,41 @@ function SignatureDialogContent({
   onDeleteSavedSignature,
 }: Omit<SignatureDialogProps, 'open'>) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const clearRef = useRef<HTMLButtonElement>(null)
-  const dialogRef = useModalDialog<HTMLElement>({ onEscape: onClose, initialFocusRef: clearRef })
-  const [mode, setMode] = useState<SignatureMode>('draw')
+  const typedNameRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useModalDialog<HTMLElement>({ onEscape: onClose, initialFocusRef: typedNameRef })
+  const [mode, setMode] = useState<SignatureMode>('type')
   const [hasDrawnInk, setHasDrawnInk] = useState(false)
   const [typedName, setTypedName] = useState('')
+  const [typedTextMode, setTypedTextMode] = useState<SignatureTextMode>('full')
+  const [typedStyleId, setTypedStyleId] = useState<SignatureStyleId>('script')
   const [uploadedDataUrl, setUploadedDataUrl] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [saveForReuse, setSaveForReuse] = useState(false)
+  const typedSignatureText = signatureTextForName(typedName, typedTextMode)
+  const typedStyle = SIGNATURE_STYLES.find((style) => style.id === typedStyleId) ?? SIGNATURE_STYLES[0]
 
   // Whether "Place signature" has something real to place is derived per mode,
   // so no effect has to mirror it into state.
   const placeable = mode === 'draw'
     ? hasDrawnInk
     : mode === 'type'
-      ? typedName.trim().length > 0
+      ? typedSignatureText.length > 0
       : uploadedDataUrl !== null
 
-  // The canvas is an external system: keep its pixels in sync with the typed name.
+  // The canvas is an external system: keep its pixels in sync with all typed choices.
   useEffect(() => {
-    if (mode === 'type') drawTypedName(canvasRef.current, typedName)
-  }, [mode, typedName])
+    if (mode === 'type') drawTypedName(canvasRef.current, typedSignatureText, typedStyle)
+  }, [mode, typedSignatureText, typedStyle])
 
   const resetForMode = (nextMode: SignatureMode) => {
     setMode(nextMode)
     setUploadError(null)
-    // Switching away from an upload starts a fresh source on return. Keeping an
-    // invisible stale PNG would make the preview and placed result disagree.
-    if (nextMode !== 'upload') setUploadedDataUrl(null)
+    // Every method switch starts with pixels belonging to that method only.
+    setUploadedDataUrl(null)
     if (nextMode === 'draw') {
       setHasDrawnInk(false)
+      clearCanvas(canvasRef.current)
+    } else if (nextMode === 'upload') {
       clearCanvas(canvasRef.current)
     }
   }
@@ -199,7 +217,11 @@ function SignatureDialogContent({
     const canvas = canvasRef.current
     const dataUrl = mode === 'upload' ? uploadedDataUrl : canvas?.toDataURL('image/png')
     if (!dataUrl || !placeable) return
-    onApply(dataUrl, saveForReuse)
+    onApply(
+      dataUrl,
+      saveForReuse,
+      mode === 'type' ? suggestedSignatureName(typedName, typedTextMode) : undefined,
+    )
   }
 
   return (
@@ -208,56 +230,12 @@ function SignatureDialogContent({
         <span className="inspector-label">SIGNATURE</span>
         <h2 id="signature-title">Add your signature</h2>
         <p id="signature-instructions">
-          Draw, type, or upload a signature. It is a picture of a signature, not a digital signature, and stays on this device.
+          Type, draw, or upload a signature. It is a picture of a signature, not a digital signature. It is not certificate-backed and stays on this device.
         </p>
-
-        <div className="signature-tabs" role="tablist" aria-label="Signature method">
-          {(['draw', 'type', 'upload'] as const).map((entry) => (
-            <button key={entry} id={`signature-tab-${entry}`} type="button" role="tab" aria-selected={mode === entry}
-              aria-controls={`signature-panel-${entry}`} onClick={() => resetForMode(entry)}>
-              {entry === 'draw' ? 'Draw' : entry === 'type' ? 'Type' : 'Upload'}
-            </button>
-          ))}
-        </div>
-
-        <div id={`signature-panel-${mode}`} role="tabpanel" aria-labelledby={`signature-tab-${mode}`}>
-          {mode === 'type' && (
-            <label className="signature-field">
-              Name for signature
-              <input autoFocus type="text" value={typedName} maxLength={100} placeholder="Type your name" onChange={(event) => setTypedName(event.target.value)} />
-            </label>
-          )}
-          {mode === 'upload' && (
-            <label className="signature-file-field">
-              <span>Signature image</span>
-              <input type="file" accept="image/png,image/jpeg" aria-label="Upload signature image" onChange={upload} />
-              <small>PNG or JPEG only. It is converted to a local PNG before placement.</small>
-            </label>
-          )}
-          <canvas
-            ref={canvasRef}
-            tabIndex={mode === 'draw' ? 0 : -1}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
-            aria-label="Signature drawing area"
-            aria-describedby={mode === 'draw' ? 'signature-canvas-help' : undefined}
-            onPointerDown={start}
-            onPointerMove={move}
-            onPointerUp={release}
-            onPointerCancel={release}
-          />
-          {mode === 'draw' && <small id="signature-canvas-help" className="signature-canvas-help">Draw with a mouse, trackpad, or touch screen. Keyboard users can use the Type tab.</small>}
-          {uploadError && <p className="signature-upload-error" role="alert">{uploadError}</p>}
-        </div>
-
-        <label className="signature-reuse-toggle">
-          <input type="checkbox" checked={saveForReuse} onChange={(event) => setSaveForReuse(event.target.checked)} />
-          Save this signature for reuse on this device
-        </label>
 
         {savedSignatures.length > 0 && (
           <section className="saved-signatures" aria-label="Saved signatures">
-            <div className="saved-signatures-heading"><strong>Saved signatures</strong><span>Local only</span></div>
+            <div className="saved-signatures-heading"><strong>Use saved</strong><span>Local only</span></div>
             <div className="saved-signature-list">
               {savedSignatures.map((signature) => (
                 <article className="saved-signature" key={signature.id}>
@@ -276,8 +254,77 @@ function SignatureDialogContent({
           </section>
         )}
 
+        <div className="signature-tabs" role="tablist" aria-label="Signature method">
+          {(['type', 'draw', 'upload'] as const).map((entry) => (
+            <button key={entry} id={`signature-tab-${entry}`} type="button" role="tab" aria-selected={mode === entry}
+              aria-controls={`signature-panel-${entry}`} onClick={() => resetForMode(entry)}>
+              {entry === 'draw' ? 'Draw' : entry === 'type' ? 'Type' : 'Upload'}
+            </button>
+          ))}
+        </div>
+
+        <div id={`signature-panel-${mode}`} role="tabpanel" aria-labelledby={`signature-tab-${mode}`}>
+          {mode === 'type' && (
+            <div className="signature-type-desk">
+              <label className="signature-field">
+                Name for signature
+                <input ref={typedNameRef} type="text" value={typedName} maxLength={100} placeholder="Type your name" onChange={(event) => setTypedName(event.target.value)} />
+              </label>
+              <div className="signature-text-modes" role="group" aria-label="Signature text">
+                <button type="button" aria-pressed={typedTextMode === 'full'} onClick={() => setTypedTextMode('full')}>Full name</button>
+                <button type="button" aria-pressed={typedTextMode === 'initials'} onClick={() => setTypedTextMode('initials')}>Initials</button>
+              </div>
+              <div className="signature-style-picker" role="radiogroup" aria-label="Signature style">
+                {SIGNATURE_STYLES.map((style) => (
+                  <button
+                    key={style.id}
+                    type="button"
+                    role="radio"
+                    data-signature-style={style.id}
+                    aria-label={`${style.label} signature style`}
+                    aria-checked={typedStyleId === style.id}
+                    onClick={() => setTypedStyleId(style.id)}
+                  >
+                    <span className="signature-style-sample" style={{ fontFamily: style.cssFamily }}>
+                      {typedSignatureText || 'Aa'}
+                    </span>
+                    <span>{style.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {mode === 'upload' && (
+            <label className="signature-file-field">
+              <span>Signature image</span>
+              <input type="file" accept="image/png,image/jpeg" aria-label="Upload signature image" onChange={upload} />
+              <small>PNG or JPEG only. It is converted to a local PNG before placement.</small>
+            </label>
+          )}
+          <canvas
+            ref={canvasRef}
+            tabIndex={mode === 'draw' ? 0 : -1}
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            className={mode === 'draw' ? 'is-drawable' : undefined}
+            aria-label={mode === 'draw' ? 'Signature drawing area' : 'Signature preview'}
+            aria-describedby={mode === 'draw' ? 'signature-canvas-help' : undefined}
+            onPointerDown={start}
+            onPointerMove={move}
+            onPointerUp={release}
+            onPointerCancel={release}
+          />
+          {mode === 'draw' && <small id="signature-canvas-help" className="signature-canvas-help">Draw with a mouse, trackpad, or touch screen. Keyboard users can use the Type tab.</small>}
+          {uploadError && <p className="signature-upload-error" role="alert">{uploadError}</p>}
+        </div>
+
+        <label className="signature-reuse-toggle">
+          <input type="checkbox" checked={saveForReuse} onChange={(event) => setSaveForReuse(event.target.checked)} />
+          Save this signature for reuse on this device
+        </label>
+
         <div className="dialog-actions">
-          <button type="button" ref={clearRef} className="text-button" onClick={clear}>Clear</button>
+          <button type="button" className="text-button" onClick={clear}>Clear</button>
           <button type="button" className="text-button" onClick={onClose}>Cancel</button>
           <button type="button" className="primary-button" disabled={!placeable} onClick={apply}>Place signature</button>
         </div>

@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { readPageFormFields, type FormFieldWidget } from '../pdf/formFields'
 import type { EditorAction, EditorPage, FormValue, Tool } from '../model/editor'
+import {
+  targetForFormWidget,
+  type FormFieldFocusRequest,
+  type FormFieldTarget,
+  type FormWidgetLoader,
+} from '../model/formNavigation'
 
 interface FormLayerProps {
   pdf: PDFDocumentProxy
@@ -11,6 +17,10 @@ interface FormLayerProps {
   activeTool: Tool
   formValues: Record<string, FormValue>
   dispatch: (action: EditorAction) => void
+  loadFormWidgets?: FormWidgetLoader
+  focusRequest?: FormFieldFocusRequest | null
+  onFormFieldFocus?: (target: FormFieldTarget) => void
+  onFormFocusRequestHandled?: (requestId: string) => void
 }
 
 interface PlacedWidget {
@@ -25,8 +35,20 @@ interface PlacedWidget {
  * participates in undo/redo, the dirty flag, and local recovery, and the export
  * writes them into the real AcroForm fields — not as overlaid text.
  */
-export function FormLayer({ pdf, page, pageSize, activeTool, formValues, dispatch }: FormLayerProps) {
+export function FormLayer({
+  pdf,
+  page,
+  pageSize,
+  activeTool,
+  formValues,
+  dispatch,
+  loadFormWidgets,
+  focusRequest = null,
+  onFormFieldFocus,
+  onFormFocusRequestHandled,
+}: FormLayerProps) {
   const [placed, setPlaced] = useState<PlacedWidget[]>([])
+  const fieldRefs = useRef(new Map<string, HTMLElement>())
 
   useEffect(() => {
     let active = true
@@ -39,7 +61,9 @@ export function FormLayer({ pdf, page, pageSize, activeTool, formValues, dispatc
           setPlaced([])
           return
         }
-        const widgets = await readPageFormFields(pdf, page.sourceIndex + 1)
+        const widgets = loadFormWidgets
+          ? await loadFormWidgets(page.sourceIndex)
+          : await readPageFormFields(pdf, page.sourceIndex + 1)
         if (!active || widgets.length === 0) {
           if (active) setPlaced([])
           return
@@ -70,7 +94,18 @@ export function FormLayer({ pdf, page, pageSize, activeTool, formValues, dispatc
     }
     void locate()
     return () => { active = false }
-  }, [pdf, page])
+  }, [loadFormWidgets, pdf, page])
+
+  useEffect(() => {
+    if (!focusRequest || focusRequest.pageId !== page.id) return
+    const target = fieldRefs.current.get(focusRequest.widgetId)
+    if (!target) return
+    target.focus()
+    if (typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ block: 'center', inline: 'nearest' })
+    }
+    onFormFocusRequestHandled?.(focusRequest.requestId)
+  }, [focusRequest, onFormFocusRequestHandled, page.id, placed])
 
   if (placed.length === 0) return null
 
@@ -81,6 +116,18 @@ export function FormLayer({ pdf, page, pageSize, activeTool, formValues, dispatc
     dispatch({ type: 'setFormValue', fieldName: widget.fieldName, value, historyGroup })
 
   const endGroup = () => dispatch({ type: 'endHistoryGroup' })
+  const rememberField = (widgetId: string) => (element: HTMLElement | null) => {
+    if (element) fieldRefs.current.set(widgetId, element)
+    else fieldRefs.current.delete(widgetId)
+  }
+  const reportFocus = (widget: FormFieldWidget) => {
+    const target = targetForFormWidget(
+      page.id,
+      placed.map((entry) => entry.widget),
+      widget.id,
+    )
+    if (target) onFormFieldFocus?.(target)
+  }
 
   return (
     // The layer itself never intercepts the pointer: annotation tools keep
@@ -103,11 +150,14 @@ export function FormLayer({ pdf, page, pageSize, activeTool, formValues, dispatc
             ? (
               <textarea
                 key={key}
+                ref={rememberField(widget.id)}
                 className="form-field-input"
                 style={style}
+                data-form-widget-id={widget.id}
                 value={value}
                 aria-label={`Form field ${widget.fieldName}`}
                 disabled={widget.readOnly}
+                onFocus={() => reportFocus(widget)}
                 onChange={(event) => setValue(widget, event.target.value, group)}
                 onBlur={endGroup}
               />
@@ -115,12 +165,15 @@ export function FormLayer({ pdf, page, pageSize, activeTool, formValues, dispatc
             : (
               <input
                 key={key}
+                ref={rememberField(widget.id)}
                 type="text"
                 className="form-field-input"
                 style={style}
+                data-form-widget-id={widget.id}
                 value={value}
                 aria-label={`Form field ${widget.fieldName}`}
                 disabled={widget.readOnly}
+                onFocus={() => reportFocus(widget)}
                 onChange={(event) => setValue(widget, event.target.value, group)}
                 onBlur={endGroup}
               />
@@ -130,12 +183,15 @@ export function FormLayer({ pdf, page, pageSize, activeTool, formValues, dispatc
           return (
             <input
               key={key}
+              ref={rememberField(widget.id)}
               type="checkbox"
               className="form-field-checkbox"
               style={style}
+              data-form-widget-id={widget.id}
               checked={valueFor(widget) === true}
               aria-label={`Form field ${widget.fieldName}`}
               disabled={widget.readOnly}
+              onFocus={() => reportFocus(widget)}
               onChange={(event) => setValue(widget, event.target.checked)}
             />
           )
@@ -144,13 +200,16 @@ export function FormLayer({ pdf, page, pageSize, activeTool, formValues, dispatc
           return (
             <input
               key={key}
+              ref={rememberField(widget.id)}
               type="radio"
               className="form-field-checkbox"
               style={style}
+              data-form-widget-id={widget.id}
               name={`form-radio-${widget.fieldName}`}
               checked={valueFor(widget) === widget.onValue}
               aria-label={`Form field ${widget.fieldName}, option ${widget.onValue}`}
               disabled={widget.readOnly}
+              onFocus={() => reportFocus(widget)}
               onChange={() => setValue(widget, widget.onValue)}
             />
           )
@@ -158,11 +217,14 @@ export function FormLayer({ pdf, page, pageSize, activeTool, formValues, dispatc
         return (
           <select
             key={key}
+            ref={rememberField(widget.id)}
             className="form-field-input"
             style={style}
+            data-form-widget-id={widget.id}
             value={String(valueFor(widget))}
             aria-label={`Form field ${widget.fieldName}`}
             disabled={widget.readOnly}
+            onFocus={() => reportFocus(widget)}
             onChange={(event) => setValue(widget, event.target.value)}
           >
             {/* An empty entry keeps an unset dropdown representable. */}
