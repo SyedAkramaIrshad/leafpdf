@@ -52,6 +52,7 @@ function isAdvancedTool(tool: Tool) {
 }
 
 export function ToolRail({ activeTool, detailsOpen = false, onTool, onImage, onSignature, onDetails }: ToolRailProps) {
+  const railRef = useRef<HTMLElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const advancedButtonRef = useRef<HTMLButtonElement>(null)
   const textMarksButtonRef = useRef<HTMLButtonElement>(null)
@@ -65,6 +66,7 @@ export function ToolRail({ activeTool, detailsOpen = false, onTool, onImage, onS
   const [palette, setPalette] = useState<'annotate' | 'shapes' | 'marks' | 'forms' | null>(null)
   const [advancedOpen, setAdvancedOpen] = useState(() => isAdvancedTool(activeTool))
   const finishChoice = (tool: Tool) => {
+    advancedButtonRef.current?.focus()
     onTool(tool)
     setPalette(null)
     setAdvancedOpen(false)
@@ -85,6 +87,19 @@ export function ToolRail({ activeTool, detailsOpen = false, onTool, onImage, onS
     { tool: 'form-radio', label: 'Add radio choice', glyph: '◉' },
     { tool: 'form-dropdown', label: 'Add dropdown field', glyph: '▾' },
   ]
+  useEffect(() => {
+    if (!advancedOpen) return
+    formsButtonRef.current?.focus()
+    const dismissOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !railRef.current?.contains(event.target)) {
+        setPalette(null)
+        setAdvancedOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', dismissOutside)
+    return () => document.removeEventListener('pointerdown', dismissOutside)
+  }, [advancedOpen])
+
   useEffect(() => {
     const menu = palette === 'annotate'
       ? textMarksMenuRef.current
@@ -153,7 +168,25 @@ export function ToolRail({ activeTool, detailsOpen = false, onTool, onImage, onS
   )
 
   return (
-    <nav className="tool-rail" aria-label="Editing tools">
+    <nav
+      ref={railRef}
+      className="tool-rail"
+      aria-label="Editing tools"
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || palette !== null || !advancedOpen) return
+        event.preventDefault()
+        event.stopPropagation()
+        setAdvancedOpen(false)
+        advancedButtonRef.current?.focus()
+      }}
+      onBlur={(event) => {
+        if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) {
+          setPalette(null)
+          setAdvancedOpen(false)
+        }
+      }}
+    >
+      <div className="tool-rail-scroll">
       <span className="rail-label" aria-hidden="true">SELECT</span>
       <div className="tool-group tool-group-select" role="group" aria-label="Selection tool">
         {selectionTools.map(renderToolButton)}
@@ -226,7 +259,7 @@ export function ToolRail({ activeTool, detailsOpen = false, onTool, onImage, onS
           }}
         />
       </div>
-      <span className="tool-group-label more-tools-label" aria-hidden="true">MORE</span>
+      <span className="tool-group-label more-tools-label" aria-hidden="true">EDIT & MARK</span>
       <div className="tool-group tool-group-more" role="group" aria-label="More editing tools disclosure">
         <button
           ref={advancedButtonRef}
@@ -242,8 +275,9 @@ export function ToolRail({ activeTool, detailsOpen = false, onTool, onImage, onS
           }}
         >
           <span className="tool-button-glyph" aria-hidden="true">•••</span>
-          <span className="tool-button-label" aria-hidden="true">More</span>
+          <span className="tool-button-label" aria-hidden="true">Tools</span>
         </button>
+      </div>
       </div>
       <div
         id="advanced-editing-tools"
@@ -251,13 +285,15 @@ export function ToolRail({ activeTool, detailsOpen = false, onTool, onImage, onS
         role="group"
         aria-label="Advanced editing tools"
         hidden={!advancedOpen}
-        onKeyDown={(event) => {
-          if (event.key !== 'Escape' || palette !== null) return
-          event.preventDefault()
+      >
+      <header className="advanced-tools-header">
+        <div><strong>Editing tools</strong><p>Choose a tool, then use it on the page.</p></div>
+        <button type="button" aria-label="Close editing tools" onClick={() => {
+          setPalette(null)
           setAdvancedOpen(false)
           advancedButtonRef.current?.focus()
-        }}
-      >
+        }}>×</button>
+      </header>
       <span className="tool-group-label" aria-hidden="true">FORMS</span>
       <div className="tool-group tool-group-forms" role="group" aria-label="Form creation tools">
         <div className="tool-palette-anchor">

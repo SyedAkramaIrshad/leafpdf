@@ -89,14 +89,14 @@ export function ProjectToolsMenu({
         ref={triggerRef}
         type="button"
         className="project-tools-trigger"
-        aria-label="More tools"
+        aria-label="Document tools"
         aria-haspopup="menu"
         aria-controls="project-tools-menu"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        <span aria-hidden="true">•••</span>
-        <span className="project-tools-trigger-label" aria-hidden="true">More</span>
+        <span className="project-tools-trigger-label" aria-hidden="true">Document</span>
+        <span aria-hidden="true">▾</span>
       </button>
       {open && (
         <div
@@ -107,7 +107,7 @@ export function ProjectToolsMenu({
           aria-label="Project tools"
           onKeyDown={navigateMenu}
         >
-          <span className="project-tools-heading" aria-hidden="true">PROJECT TOOLS</span>
+          <span className="project-tools-heading" aria-hidden="true">DOCUMENT TOOLS</span>
           {items.map((item) => (
             <button
               key={item.label}

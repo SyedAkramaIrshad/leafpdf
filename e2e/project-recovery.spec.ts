@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 async function openReview(page: import('@playwright/test').Page) {
-  await page.getByRole('button', { name: 'More tools' }).click()
+  await page.getByRole('button', { name: 'Document tools' }).click()
   await page.getByRole('menuitem', { name: /^Review comments/ }).click()
 }
 

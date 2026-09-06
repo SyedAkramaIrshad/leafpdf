@@ -21,7 +21,7 @@ describe('ProjectToolsMenu', () => {
     const props = menuProps()
     render(<ProjectToolsMenu {...props} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'More tools' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Document tools' }))
     const save = screen.getByRole('menuitem', { name: 'Save project' })
     await waitFor(() => expect(save).toHaveFocus())
     expect(save).toHaveTextContent('Keep every source and edit for later')
@@ -34,7 +34,7 @@ describe('ProjectToolsMenu', () => {
   it('disables the project command while a project download is being built', () => {
     render(<ProjectToolsMenu {...menuProps(true)} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'More tools' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Document tools' }))
     expect(screen.getByRole('menuitem', { name: 'Saving project' })).toBeDisabled()
   })
 })

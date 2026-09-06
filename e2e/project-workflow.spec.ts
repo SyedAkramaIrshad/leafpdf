@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 
 async function openReview(page: import('@playwright/test').Page) {
-  await page.getByRole('button', { name: 'More tools' }).click()
+  await page.getByRole('button', { name: 'Document tools' }).click()
   await page.getByRole('menuitem', { name: /^Review comments/ }).click()
 }
 
@@ -25,7 +25,7 @@ test('saves and reopens a complete editable project with inserted PDFs and comme
   await expect(page.getByText('Portable review comment')).toBeVisible()
 
   const projectDownload = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'More tools' }).click()
+  await page.getByRole('button', { name: 'Document tools' }).click()
   await page.getByRole('menuitem', { name: 'Save project' }).click()
   const project = await projectDownload
   expect(project.suggestedFilename()).toBe('mvp-fixture.leafpdf')

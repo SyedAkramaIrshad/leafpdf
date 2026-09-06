@@ -3,7 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRef, PDFString } from 'pdf-lib'
 
 async function openDocumentMarks(page: import('@playwright/test').Page) {
-  await page.getByRole('button', { name: 'More tools' }).click()
+  await page.getByRole('button', { name: 'Document tools' }).click()
   await page.getByRole('menuitem', { name: 'Watermark & page numbers' }).click()
 }
 
@@ -198,7 +198,7 @@ test('shows whether the current PDF copy is saved', async ({ page }) => {
   await expect(identity).not.toContainText('Project saved')
   await expect(page.getByRole('button', { name: 'Save PDF' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Save project' })).toHaveCount(0)
-  const more = page.getByRole('button', { name: 'More tools' })
+  const more = page.getByRole('button', { name: 'Document tools' })
   await more.click()
   await expect(page.getByRole('menuitem', { name: 'Save project' })).toBeVisible()
   await page.keyboard.press('Escape')
@@ -1820,7 +1820,7 @@ test('keeps document marks reachable at the 1024px minimum viewport', async ({ p
   await page.goto('/')
   await page.locator('input[type="file"]').first().setInputFiles('tmp/pdfs/mvp-fixture.pdf')
   await expect(page.getByLabel('Rendered PDF page').first()).toBeVisible()
-  const more = page.getByRole('button', { name: 'More tools' })
+  const more = page.getByRole('button', { name: 'Document tools' })
   await expect(more).toBeVisible()
   await openDocumentMarks(page)
   await expect(page.getByRole('dialog', { name: 'Add marks to this PDF' })).toBeVisible()
@@ -1863,7 +1863,7 @@ test('keeps history controls available at the minimum laptop width', async ({ pa
   expect(dockBounds.y + dockBounds.height).toBeCloseTo(700, 0)
 
   await expect(page.getByRole('button', { name: 'Save project' })).toHaveCount(0)
-  const more = page.getByRole('button', { name: 'More tools' })
+  const more = page.getByRole('button', { name: 'Document tools' })
   await more.click()
   await expect(page.getByRole('menuitem', { name: 'Save project' })).toBeVisible()
   await page.keyboard.press('Escape')
@@ -2590,21 +2590,23 @@ test('preserves explicit zoom at the minimum laptop width', async ({ page }) => 
 
   const fit = page.getByRole('button', { name: 'Fit page width' })
   await expect(fit).toHaveAttribute('aria-pressed', 'false')
-  await expect(fit).toHaveText('Fit 100%')
+  const zoom = page.getByRole('status', { name: 'Current zoom' })
+  await expect(fit).toHaveText('Fit width')
+  await expect(zoom).toHaveText('100%')
 
   await page.setViewportSize({ width: 1024, height: 800 })
   await expect(fit).toHaveAttribute('aria-pressed', 'false')
-  await expect(fit).toHaveText('Fit 100%')
+  await expect(zoom).toHaveText('100%')
 
   await page.setViewportSize({ width: 1200, height: 800 })
   await expect(fit).toHaveAttribute('aria-pressed', 'false')
-  await expect(fit).toHaveText('Fit 100%')
+  await expect(zoom).toHaveText('100%')
 
   await page.getByRole('button', { name: 'Zoom in' }).click()
-  await expect(fit).toHaveText('Fit 115%')
+  await expect(zoom).toHaveText('115%')
   await page.setViewportSize({ width: 1024, height: 800 })
   await expect(fit).toHaveAttribute('aria-pressed', 'false')
-  await expect(fit).toHaveText('Fit 115%')
+  await expect(zoom).toHaveText('115%')
 
   await fit.click()
   await expect(fit).toHaveAttribute('aria-pressed', 'true')

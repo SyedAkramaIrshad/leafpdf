@@ -67,7 +67,7 @@ describe('community contribution files', () => {
     const workflow = read('.github/workflows/preview-screenshots.yml')
     const ignore = read('.gitignore')
 
-    for (const name of ['More tools', 'Review comments', 'Privacy check', 'Help & shortcuts']) {
+    for (const name of ['Document tools', 'Review comments', 'Privacy check', 'Help & shortcuts']) {
       expect(capture).toContain(name)
     }
     for (const file of [

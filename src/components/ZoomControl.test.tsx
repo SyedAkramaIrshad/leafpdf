@@ -16,7 +16,8 @@ describe('ZoomControl', () => {
 
     expect(screen.getByRole('group', { name: 'Page zoom' })).toBeInTheDocument()
     const fit = screen.getByRole('button', { name: 'Fit page width' })
-    expect(fit).toHaveTextContent('Fit 33%')
+    expect(fit).toHaveTextContent('Fit width')
+    expect(screen.getByRole('status', { name: 'Current zoom' })).toHaveTextContent('33%')
     expect(fit).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(fit)
     expect(onFitWidth).toHaveBeenCalledTimes(1)
@@ -34,6 +35,7 @@ describe('ZoomControl', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Fit page width' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('status', { name: 'Current zoom' })).toHaveTextContent('100%')
     fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }))
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }))
     expect(onZoom).toHaveBeenNthCalledWith(1, 0.85)

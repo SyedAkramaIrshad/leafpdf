@@ -2,11 +2,11 @@ import { mkdirSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 
 async function openProjectTool(page: import('@playwright/test').Page, name: string | RegExp) {
-  await page.getByRole('button', { name: 'More tools' }).click()
+  await page.getByRole('button', { name: 'Document tools' }).click()
   await page.getByRole('menuitem', { name }).click()
 }
 
-test('opens project tools from More with full keyboard navigation', async ({ page }) => {
+test('opens project tools from Document with full keyboard navigation', async ({ page }) => {
   await page.goto('/')
   await page.locator('input[type="file"]').first().setInputFiles('tmp/pdfs/mvp-fixture.pdf')
   await expect(page.getByLabel('Rendered PDF page').first()).toBeVisible()
@@ -15,7 +15,7 @@ test('opens project tools from More with full keyboard navigation', async ({ pag
   await page.locator('.annotation-layer').first().click({ position: { x: 140, y: 180 } })
   await expect(page.getByRole('button', { name: 'Done' })).toBeVisible()
 
-  const more = page.getByRole('button', { name: 'More tools' })
+  const more = page.getByRole('button', { name: 'Document tools' })
   await expect(more).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'Privacy check' })).toHaveCount(0)
 

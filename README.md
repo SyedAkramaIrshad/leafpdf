@@ -92,7 +92,8 @@ Open the local URL printed by Vite. No API key, server, database, or environment
 - Worker-based PDF export with two explicit outputs: the normal `-edited.pdf` copy keeps real form
   controls fillable, while `-flattened.pdf` fixes their current appearances into the pages and
   removes the controls. Flattening is not encryption or tamper-proofing
-- Laptop/desktop editor for viewports 1024 px and wider, with keyboard-accessible menus/dialogs,
+- Laptop/desktop editor with a full-width layout at 1024 px and wider and a compact desktop-pane
+  layout from 720 px, with keyboard-accessible menus/dialogs,
   focus indicators, and reduced-motion support
 
 ## Explicitly not included yet
@@ -188,7 +189,8 @@ thumbnails plus blank-page, insert-PDF, move, rotate, and delete actions, then c
 a page so the paper gets the workspace back. Drag the perforated grip on a thumbnail to preview a
 new order and release once to commit it; ↑ and ↓ remain the keyboard-friendly precision controls.
 **Save PDF** stays prominent in the top bar. **Save project**, Review, Privacy, OCR, Compare, and
-watermark/page-number controls are grouped under **More tools**.
+watermark/page-number controls are grouped under **Document**. The left-hand **Tools** button opens
+additional editing tools such as forms, shapes, and markup.
 
 When a placement tool is active, the page says whether to click or drag and **Escape** cancels it.
 Date remains a one-click placement tool. Select the placed date to choose a Calendar date and one of
@@ -225,7 +227,7 @@ it follows the current page order and hands focus to the real text, checkbox, ra
 control. Native Tab navigation continues from there. Read-only, unsupported, inserted-page, and
 blank-page controls are skipped, while optional unfilled controls remain optional.
 
-**More → Help & shortcuts** repeats the finishing sequence inside the editor and explains three
+**Document → Help & shortcuts** repeats the finishing sequence inside the editor and explains three
 outputs: **Save project** keeps a portable editable `.leafpdf` project for later; the main
 **Save PDF** action creates a fillable `.pdf`; and its adjacent output menu offers a flattened
 `.pdf` whose current form appearances remain visible without editable form controls. Flattening
@@ -459,7 +461,7 @@ python3 scripts/verify_export.py tmp/pdfs/edge-form.pdf output/pdf/edge-form-com
 - Playwright covers real browser workflows: source-text replacement with one-step keyboard undo,
   every shape and fill symbol, all three signature modes, typed initials and styles,
   reusable signatures, the signature desk, transforms, object layers, watermarks, page numbers,
-  recovery, final export, the 1024 px minimum-width workspace, text formatting,
+  recovery, final export, full-width and compact desktop workspaces, text formatting,
   page-operation confirmation, keyboard movement, modal focus,
   unsaved-change protection, UI responsiveness during export, and an assertion that no request ever
   leaves the test origin.

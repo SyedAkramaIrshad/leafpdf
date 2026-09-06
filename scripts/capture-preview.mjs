@@ -10,7 +10,7 @@ async function openPdf(page, path) {
 }
 
 async function openProjectTool(page, name) {
-  await page.getByRole('button', { name: 'More tools' }).click()
+  await page.getByRole('button', { name: 'Document tools' }).click()
   await page.getByRole('menuitem', { name }).click()
 }
 
