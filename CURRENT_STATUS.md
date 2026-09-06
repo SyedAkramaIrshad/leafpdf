@@ -16,15 +16,16 @@ The primary workflow is:
 Phone-number details and `tel:` link annotations are PDF content features and remain supported;
 they are unrelated to phone-sized application layouts.
 
-## Last pushed baseline
+## Verified remote state
 
 - Repository: `SyedAkramaIrshad/leafpdf`
 - Branches: `main` and `feature/next-level-workbench`
-- Last pushed baseline: `6c1aea5a729daa5c0ecb83580386a7aa120ba52d`
+- Verified product commit: `79ec78e4ea0c6f60a5b57249896f93779e136c62`
+- GitHub Actions: run `34017479018` passed both `test-and-build` and `e2e` jobs.
 
-That baseline contains the laptop-first editor work, including explicit text completion,
-Copy → Paste → Undo history behavior, and grouped selection/alignment. The current follow-up brings
-tests, public documentation, screenshots, and CI into sync with that source.
+Both remote branches were confirmed at that commit after non-force fast-forward pushes. It contains
+the laptop-first editor work, explicit text completion, Copy → Paste → Undo history behavior,
+grouped selection/alignment, synchronized tests, current public documentation, screenshots, and CI.
 
 ## Current follow-up changes
 
@@ -49,9 +50,9 @@ Fresh local evidence completed during this follow-up:
 - README screenshot generation: 1 passed; both images inspected at original resolution.
 - Desktop preview generation: five states captured and inspected.
 
-The local follow-up is verified. Remaining release work is repository-only: review the exact diff,
-commit it, push it without force to the feature branch and `main`, and confirm the resulting GitHub
-Actions run.
+The requested cleanup, verification, and product-code pushes are complete through the verified
+product commit above. This status update is documentation-only. No implementation work remains in
+this cleanup; begin a new change only from a new user request or a freshly reproduced defect.
 
 ## Continuation guardrails
 
