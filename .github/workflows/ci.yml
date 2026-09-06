@@ -49,6 +49,13 @@ jobs:
       - run: npm run test:e2e
         env:
           LEAFPDF_E2E_SERVER: preview
+      # A repository-style base path exercises manifest/service-worker scoping and
+      # then performs a complete open/edit/export workflow with Chromium offline.
+      - name: Verify nested static hosting and offline editor shell
+        run: npx playwright test e2e/hosting.spec.ts
+        env:
+          LEAFPDF_BASE_PATH: /leafpdf/
+          LEAFPDF_HOSTING_TEST: '1'
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

@@ -139,6 +139,16 @@ describe('analyzeSourcePdf', () => {
     expect(features.hasDigitalSignatures).toBe(false)
   })
 
+  it('does not advertise an empty AcroForm with no field tree entries', async () => {
+    const document = await PDFDocument.create()
+    document.addPage([400, 500])
+    document.getForm()
+
+    const features = await analyzeSourcePdf(await document.save())
+    expect(features.hasAcroForm).toBe(false)
+    expect(features.hasDigitalSignatures).toBe(false)
+  })
+
   it('detects a digital signature through a /FT /Sig field', async () => {
     const features = await analyzeSourcePdf(await signedPdf())
     expect(features.hasDigitalSignatures).toBe(true)

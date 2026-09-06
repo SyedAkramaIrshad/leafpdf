@@ -3,6 +3,16 @@
 Thanks for helping improve LeafPDF. The project is intentionally local-first: a contribution must
 not upload a user's PDF, annotation data, signature, or recovery record to an external service.
 
+## Reporting issues
+
+Use the structured [bug report](https://github.com/SyedAkramaIrshad/leafpdf/issues/new?template=bug_report.yml)
+for reproducible problems and the [feature request](https://github.com/SyedAkramaIrshad/leafpdf/issues/new?template=feature_request.yml)
+for an everyday PDF workflow or usability proposal. Search existing issues first.
+
+Never attach a real personal PDF, offer letter, ID, signature, confidential document, credential, or
+secret. Reproduce bugs with the generated fixtures, a new synthetic PDF, or a public document URL.
+Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md), not in a public issue.
+
 ## Development setup
 
 ```bash
@@ -42,3 +52,5 @@ be preserved rather than silently claiming compatibility.
 - Explain the user-visible behavior and how it was verified.
 - Include screenshots for visual changes.
 - Never include real personal PDFs, signatures, credentials, or API keys.
+
+Maintainers preparing a version should follow the evidence gate in [RELEASING.md](RELEASING.md).

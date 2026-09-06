@@ -65,6 +65,7 @@ describe('exportInWorker', () => {
     // The file is passed by reference; the main thread never reads its bytes.
     expect(message.sourceFile).toBe(file)
     expect(message.allowCompatibilityCopy).toBe(false)
+    expect(message.formOutput).toBe('fillable')
 
     instances[0].emit({ type: 'complete', bytes: new Uint8Array([1, 2, 3]).buffer })
     await expect(pending).resolves.toEqual(new Uint8Array([1, 2, 3]))
@@ -81,6 +82,21 @@ describe('exportInWorker', () => {
     const [{ message }] = instances[0].posted
     if (message.type !== 'start') throw new Error('expected a start request')
     expect(message.allowCompatibilityCopy).toBe(true)
+
+    instances[0].emit({ type: 'complete', bytes: new Uint8Array([1]).buffer })
+    await pending
+  })
+
+  it('forwards flattened form output to the worker', async () => {
+    vi.stubGlobal('Worker', FakeWorker)
+    const pending = exportInWorker(fileOf([37]), createEditorState('sample.pdf', 1).present, undefined, {
+      formOutput: 'flattened',
+    })
+
+    await vi.waitFor(() => expect(instances[0]?.posted).toHaveLength(1))
+    const [{ message }] = instances[0].posted
+    if (message.type !== 'start') throw new Error('expected a start request')
+    expect(message.formOutput).toBe('flattened')
 
     instances[0].emit({ type: 'complete', bytes: new Uint8Array([1]).buffer })
     await pending

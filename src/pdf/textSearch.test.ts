@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import type { EditorPage } from '../model/editor'
-import { countMatches, searchDocument } from './textSearch'
+import {
+  countMatches,
+  findOccurrences,
+  searchCursorEntries,
+  searchDocument,
+} from './textSearch'
 
 function fakePdf(pageTexts: string[][]): PDFDocumentProxy {
   return {
@@ -34,6 +39,38 @@ describe('countMatches', () => {
   })
 })
 
+describe('findOccurrences', () => {
+  it('returns case-insensitive non-overlapping UTF-16 offsets', () => {
+    expect(findOccurrences('PDF leafPdf pdf', 'pdf')).toEqual([
+      { start: 0, end: 3 },
+      { start: 8, end: 11 },
+      { start: 12, end: 15 },
+    ])
+    expect(findOccurrences('aaaa', 'aa')).toEqual([
+      { start: 0, end: 2 },
+      { start: 2, end: 4 },
+    ])
+    expect(findOccurrences('anything', '')).toEqual([])
+  })
+})
+
+describe('searchCursorEntries', () => {
+  it('flattens source and OCR-only matches without inventing OCR geometry', () => {
+    expect(searchCursorEntries([
+      {
+        pageId: 'page-1',
+        pageNumber: 1,
+        matches: 3,
+        occurrences: [{ start: 4, end: 7 }, { start: 12, end: 15 }],
+      },
+    ])).toEqual([
+      { pageId: 'page-1', pageNumber: 1, occurrence: { start: 4, end: 7 } },
+      { pageId: 'page-1', pageNumber: 1, occurrence: { start: 12, end: 15 } },
+      { pageId: 'page-1', pageNumber: 1, occurrence: null },
+    ])
+  })
+})
+
 describe('searchDocument', () => {
   it('reports matching pages in current document order with display page numbers', async () => {
     const pdf = fakePdf([
@@ -45,8 +82,18 @@ describe('searchDocument', () => {
     const pages = pagesOf(2, 0, 1)
     const results = await searchDocument(pdf, new Map(), pages, 'approved')
     expect(results).toEqual([
-      { pageId: 'page-1', pageNumber: 1, matches: 2 },
-      { pageId: 'page-2', pageNumber: 2, matches: 1 },
+      {
+        pageId: 'page-1',
+        pageNumber: 1,
+        matches: 2,
+        occurrences: [{ start: 0, end: 8 }, { start: 16, end: 24 }],
+      },
+      {
+        pageId: 'page-2',
+        pageNumber: 2,
+        matches: 1,
+        occurrences: [{ start: 24, end: 32 }],
+      },
     ])
   })
 
@@ -69,6 +116,11 @@ describe('searchDocument', () => {
       }),
     } as unknown as PDFDocumentProxy
     const results = await searchDocument(pdf, new Map(), pagesOf(0, 1), 'word')
-    expect(results).toEqual([{ pageId: 'page-2', pageNumber: 2, matches: 1 }])
+    expect(results).toEqual([{
+      pageId: 'page-2',
+      pageNumber: 2,
+      matches: 1,
+      occurrences: [{ start: 0, end: 4 }],
+    }])
   })
 })

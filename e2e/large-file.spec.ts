@@ -44,10 +44,12 @@ test.describe(() => {
     await page.getByRole('button', { name: 'Add text' }).click()
     await page.locator('.annotation-layer').first().click({ position: { x: 120, y: 160 } })
     await expect(page.locator('.text-annotation')).toBeVisible()
+    await page.getByLabel('Edit text').fill('Large file export test')
+    await page.getByLabel('Edit text').press('Enter')
 
     const downloadPromise = page.waitForEvent('download', { timeout: 240_000 })
     const exportedAt = Date.now()
-    await page.getByRole('button', { name: /Export PDF/ }).click()
+    await page.getByRole('button', { name: /Save PDF/ }).click()
     const download = await downloadPromise
     const exportMs = Date.now() - exportedAt
 

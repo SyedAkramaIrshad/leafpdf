@@ -23,6 +23,21 @@ test.describe('IRS W-9 (XFA-hybrid AcroForm)', () => {
     await expect(page.getByLabel('Rendered PDF page').first()).toBeVisible()
     await expect(page.getByText('6 pages')).toBeVisible()
 
+    const guide = page.getByRole('region', { name: 'Fillable field guide' })
+    await guide.getByRole('button', { name: 'Start at first field' }).click()
+    const focusedField = page.locator('.form-layer [data-form-widget-id]:focus')
+    await expect(focusedField).toHaveCount(1)
+    const firstLabel = await focusedField.getAttribute('aria-label')
+    if (!firstLabel) throw new Error('The first W-9 form field has no accessible label.')
+
+    await guide.getByRole('button', { name: 'Next field' }).click()
+    await expect.poll(() => focusedField.getAttribute('aria-label')).not.toBe(firstLabel)
+    const secondLabel = await focusedField.getAttribute('aria-label')
+    if (!secondLabel) throw new Error('The second W-9 form field has no accessible label.')
+
+    await page.keyboard.press('Tab')
+    await expect.poll(() => focusedField.getAttribute('aria-label')).not.toBe(secondLabel)
+
     // The name line (f1_01) and one federal-classification checkbox (c1_1[0]).
     const nameField = page.getByLabel('Form field topmostSubform[0].Page1[0].f1_01[0]')
     await expect(nameField).toBeVisible()
@@ -31,7 +46,7 @@ test.describe('IRS W-9 (XFA-hybrid AcroForm)', () => {
     await checkbox.check()
 
     const downloadPromise = page.waitForEvent('download')
-    await page.getByRole('button', { name: /Export PDF/ }).click()
+    await page.getByRole('button', { name: /Save PDF/ }).click()
     const download = await downloadPromise
     mkdirSync('output/pdf', { recursive: true })
     await download.saveAs('output/pdf/fw9-filled.pdf')
@@ -59,11 +74,15 @@ test.describe('PDF 32000 specification (756 pages, full catalog)', () => {
     // it displays everywhere, but no honest editor can rewrite it without
     // decrypting. LeafPDF must say so up front and disable export.
     await expect(page.getByText(/This PDF is encrypted/)).toBeVisible()
-    await expect(page.getByRole('button', { name: /Export PDF/ })).toBeDisabled()
+    await expect(page.getByRole('button', { name: /Save PDF/ })).toBeDisabled()
 
     // Viewing still works at full depth: deep navigation through the rail...
-    await page.getByRole('button', { name: 'Select page 400', exact: true }).click()
-    await expect(page.getByText('PAGE 400 / 756')).toBeVisible()
+    await page.getByRole('button', { name: /^Open page organizer, page/ }).click()
+    await page.getByRole('dialog', { name: 'Document pages' })
+      .getByRole('button', { name: 'Select page 400', exact: true }).click()
+    await expect(page.getByRole('button', { name: /^Open page organizer, page/ })).toHaveAccessibleName(
+      'Open page organizer, page 400 of 756',
+    )
 
     // ...and find-in-document across a real 756-page book.
     const search = page.getByRole('searchbox', { name: 'Find text in document' })

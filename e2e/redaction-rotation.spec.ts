@@ -1,5 +1,10 @@
 import { mkdirSync } from 'node:fs'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+async function openAdvancedEditingTools(page: Page) {
+  const more = page.getByRole('button', { name: 'More editing tools' })
+  if (await more.getAttribute('aria-expanded') !== 'true') await more.click()
+}
 
 test('burns a rotated redaction into the same pixels shown by the editor', async ({ page }) => {
   await page.goto('/')
@@ -7,26 +12,30 @@ test('burns a rotated redaction into the same pixels shown by the editor', async
   await expect(page.getByLabel('Rendered PDF page').first()).toBeVisible()
 
   const layer = page.locator('.annotation-layer').first()
-  const layerBounds = await layer.boundingBox()
-  if (!layerBounds) throw new Error('The annotation layer is not visible.')
+  const placementLayerBounds = await layer.boundingBox()
+  if (!placementLayerBounds) throw new Error('The annotation layer is not visible.')
 
   // Draw in a deliberately empty part of the fixture, leaving enough room on the
   // left for a near-right-angle rotation around the box's top-left pivot.
+  await openAdvancedEditingTools(page)
   await page.getByRole('button', { name: 'Redact' }).click()
-  await page.mouse.move(layerBounds.x + 260, layerBounds.y + 470)
+  await page.mouse.move(placementLayerBounds.x + 260, placementLayerBounds.y + 470)
   await page.mouse.down()
-  await page.mouse.move(layerBounds.x + 500, layerBounds.y + 550)
+  await page.mouse.move(placementLayerBounds.x + 500, placementLayerBounds.y + 550)
   await page.mouse.up()
 
   const redaction = page.locator('.redaction-annotation')
   await expect(redaction).toBeVisible()
   const unrotated = await redaction.boundingBox()
-  if (!unrotated) throw new Error('The redaction box is not measurable.')
+  const selectedLayerBounds = await layer.boundingBox()
+  if (!unrotated || !selectedLayerBounds) throw new Error('The redaction box is not measurable.')
 
-  const pivotX = (unrotated.x - layerBounds.x) / layerBounds.width
-  const pivotY = (unrotated.y - layerBounds.y) / layerBounds.height
-  const width = unrotated.width / layerBounds.width
-  const height = unrotated.height / layerBounds.height
+  // The selected redaction opens the adaptive inspector, so derive export sample
+  // points from the page's current screen-space bounds rather than the placement frame.
+  const pivotX = (unrotated.x - selectedLayerBounds.x) / selectedLayerBounds.width
+  const pivotY = (unrotated.y - selectedLayerBounds.y) / selectedLayerBounds.height
+  const width = unrotated.width / selectedLayerBounds.width
+  const height = unrotated.height / selectedLayerBounds.height
 
   const handle = page.getByRole('button', { name: 'Rotate item' })
   const handleBounds = await handle.boundingBox()
@@ -65,7 +74,7 @@ test('burns a rotated redaction into the same pixels shown by the editor', async
   }
 
   const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('button', { name: /Export PDF/ }).click()
+  await page.getByRole('button', { name: /Save PDF/ }).click()
   const download = await downloadPromise
   mkdirSync('output/pdf', { recursive: true })
   const exportedPath = 'output/pdf/rotated-redaction-edited.pdf'
@@ -76,7 +85,10 @@ test('burns a rotated redaction into the same pixels shown by the editor', async
   const canvas = page.getByLabel('Rendered PDF page').first()
   await expect(canvas).toBeVisible()
 
-  const pixels = await canvas.evaluate((node, points) => {
+  // The canvas element becomes visible before PDF.js finishes its asynchronous
+  // paint. Poll the exact exported pixels so this proves geometry rather than a
+  // transient blank canvas; a wrong export still times out with false values.
+  await expect.poll(() => canvas.evaluate((node, points) => {
     const target = node as HTMLCanvasElement
     const context = target.getContext('2d')
     if (!context) throw new Error('The exported page canvas has no 2D context.')
@@ -85,10 +97,16 @@ test('burns a rotated redaction into the same pixels shown by the editor', async
       const y = Math.max(0, Math.min(target.height - 1, Math.round(point.y * target.height)))
       return Array.from(context.getImageData(x, y, 1, 1).data)
     }
-    return { black: sample(points.black), white: sample(points.white) }
-  }, { black: expectedBlack, white: expectedWhite })
-
-  expect(pixels.black.slice(0, 3).every((channel) => channel < 20)).toBe(true)
-  expect(pixels.black[3]).toBe(255)
-  expect(pixels.white.slice(0, 3).every((channel) => channel > 225)).toBe(true)
+    const black = sample(points.black)
+    const white = sample(points.white)
+    return {
+      blackRgb: black.slice(0, 3).every((channel) => channel < 20),
+      blackAlpha: black[3] === 255,
+      whiteRgb: white.slice(0, 3).every((channel) => channel > 225),
+    }
+  }, { black: expectedBlack, white: expectedWhite }), { timeout: 5_000 }).toEqual({
+    blackRgb: true,
+    blackAlpha: true,
+    whiteRgb: true,
+  })
 })

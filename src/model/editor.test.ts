@@ -1,8 +1,83 @@
 import { describe, expect, it } from 'vitest'
 import { moveAnnotation } from './annotationMovement'
-import { createEditorState, editorReducer, type InkAnnotation, type TextAnnotation } from './editor'
+import {
+  DEFAULT_ADDED_TEXT,
+  createEditorState,
+  editorReducer,
+  hasRedactions,
+  isUnfinishedTextAnnotation,
+  replacementTextForWhiteout,
+  type CreatedFormFieldAnnotation,
+  type InkAnnotation,
+  type StampAnnotation,
+  type TextAnnotation,
+  type WhiteoutAnnotation,
+} from './editor'
 
 describe('editorReducer', () => {
+  it('derives replacement text from the exact whiteout geometry', () => {
+    const whiteout: WhiteoutAnnotation = {
+      id: 'whiteout-1', pageId: 'page-1', kind: 'whiteout',
+      x: 0.12, y: 0.34, width: 0.46, height: 0.07, rotation: 4,
+    }
+
+    expect(replacementTextForWhiteout(whiteout, 'replacement-1')).toEqual({
+      id: 'replacement-1', pageId: 'page-1', kind: 'text',
+      x: 0.12, y: 0.34, width: 0.46, height: 0.07, rotation: 4,
+      text: DEFAULT_ADDED_TEXT, color: '#182026', fontSize: 18,
+    })
+  })
+
+  it('treats whiteout as an undoable visual cover, not secure redaction', () => {
+    const whiteout: WhiteoutAnnotation = {
+      id: 'whiteout-1', pageId: 'page-1', kind: 'whiteout', x: 0.1, y: 0.2,
+      width: 0.4, height: 0.08,
+    }
+    let state = createEditorState('sample.pdf', 1)
+
+    state = editorReducer(state, { type: 'addAnnotation', annotation: whiteout })
+    expect(state.present.annotations).toEqual([whiteout])
+    expect(state.selectedAnnotationIds).toEqual(['whiteout-1'])
+    expect(hasRedactions(state.present)).toBe(false)
+
+    state = editorReducer(state, { type: 'undo' })
+    expect(state.present.annotations).toHaveLength(0)
+    state = editorReducer(state, { type: 'redo' })
+    expect(state.present.annotations).toEqual([whiteout])
+  })
+
+  it('recognizes only empty or untouched added text as unfinished', () => {
+    const text: TextAnnotation = {
+      id: 'annotation-1', pageId: 'page-1', kind: 'text', x: 0.1, y: 0.2,
+      width: 0.3, height: 0.08, text: DEFAULT_ADDED_TEXT, color: '#182026', fontSize: 18,
+    }
+    const checkmark: StampAnnotation = {
+      id: 'annotation-2', pageId: 'page-1', kind: 'stamp', stamp: 'check', x: 0.1, y: 0.2,
+      width: 0.05, height: 0.05, color: '#182026', strokeWidth: 2.5,
+    }
+
+    expect(DEFAULT_ADDED_TEXT).toBe('Type here')
+    expect(isUnfinishedTextAnnotation(text)).toBe(true)
+    expect(isUnfinishedTextAnnotation({ ...text, text: '  ' })).toBe(true)
+    expect(isUnfinishedTextAnnotation({ ...text, text: 'Approved by Syed' })).toBe(false)
+    expect(isUnfinishedTextAnnotation(checkmark)).toBe(false)
+  })
+
+  it('keeps zoom view-only and clamps explicit zoom', () => {
+    let state = createEditorState('sample.pdf', 1)
+    const originalDocument = state.present
+
+    state = editorReducer(state, { type: 'setZoom', zoom: 0.1 })
+    expect(state.zoom).toBe(0.25)
+    state = editorReducer(state, { type: 'setZoom', zoom: 0.33 })
+    expect(state.zoom).toBe(0.33)
+    state = editorReducer(state, { type: 'setZoom', zoom: 3 })
+    expect(state.zoom).toBe(2.25)
+    expect(state.present).toBe(originalDocument)
+    expect(state.dirty).toBe(false)
+    expect(state.past).toHaveLength(0)
+  })
+
   it('selects, rotates, reorders, and removes pages', () => {
     let state = createEditorState('sample.pdf', 3)
     state = editorReducer(state, { type: 'selectPage', pageId: 'page-2' })
@@ -240,6 +315,100 @@ describe('editorReducer', () => {
     expect(state.present.annotations.at(-1)?.id).toBe('duplicate')
   })
 
+  it('keeps an ordered same-page selection and replaces it across pages', () => {
+    const name: TextAnnotation = {
+      id: 'name', pageId: 'page-1', kind: 'text', x: 0.1, y: 0.1,
+      width: 0.2, height: 0.08, text: 'Syed', color: '#182026', fontSize: 18,
+    }
+    const date: TextAnnotation = { ...name, id: 'date', x: 0.4, text: '30 Aug 2026' }
+    const otherPage: TextAnnotation = { ...name, id: 'page-2-item', pageId: 'page-2', text: 'Other' }
+    let state = editorReducer(createEditorState('offer.pdf', 2), {
+      type: 'addAnnotations', annotations: [name, date, otherPage], selectLast: false,
+    })
+
+    state = editorReducer(state, { type: 'selectAnnotation', annotationId: 'name' })
+    state = editorReducer(state, { type: 'toggleAnnotationSelection', annotationId: 'date' })
+    expect(state.selectedAnnotationIds).toEqual(['name', 'date'])
+
+    state = editorReducer(state, { type: 'toggleAnnotationSelection', annotationId: 'name' })
+    expect(state.selectedAnnotationIds).toEqual(['date'])
+
+    state = editorReducer(state, { type: 'toggleAnnotationSelection', annotationId: 'page-2-item' })
+    expect(state.selectedAnnotationIds).toEqual(['page-2-item'])
+    expect(state.selectedPageId).toBe('page-2')
+  })
+
+  it('moves and removes a selected group atomically', () => {
+    const name: TextAnnotation = {
+      id: 'name', pageId: 'page-1', kind: 'text', x: 0.1, y: 0.1,
+      width: 0.2, height: 0.08, text: 'Syed', color: '#182026', fontSize: 18,
+    }
+    const date: TextAnnotation = { ...name, id: 'date', x: 0.4, text: '30 Aug 2026' }
+    let state = editorReducer(createEditorState('offer.pdf', 1), {
+      type: 'addAnnotations', annotations: [name, date],
+    })
+    const depth = state.past.length
+
+    state = editorReducer(state, {
+      type: 'replaceAnnotations',
+      annotations: [moveAnnotation(name, 0.1, 0.2), moveAnnotation(date, 0.1, 0.2)],
+    })
+    expect(state.past).toHaveLength(depth + 1)
+    expect(state.present.annotations.map(({ x, y }) => ({ x, y }))).toEqual([
+      { x: 0.2, y: 0.3 },
+      { x: 0.5, y: 0.3 },
+    ])
+    state = editorReducer(state, { type: 'undo' })
+    expect(state.present.annotations).toEqual([name, date])
+
+    state = editorReducer(state, { type: 'removeAnnotations', annotationIds: ['name', 'date'] })
+    expect(state.present.annotations).toHaveLength(0)
+    state = editorReducer(state, { type: 'undo' })
+    expect(state.present.annotations).toEqual([name, date])
+  })
+
+  it('assigns fresh field names when a created form field is pasted or duplicated', () => {
+    const annotation: CreatedFormFieldAnnotation = {
+      id: 'source-field', pageId: 'page-1', kind: 'form-field', fieldType: 'text',
+      fieldName: 'leafpdf.text.1', x: 0.1, y: 0.1, width: 0.3, height: 0.06,
+      required: false, defaultText: '', multiline: false,
+    }
+    let state = editorReducer(createEditorState('sample.pdf', 1), { type: 'addAnnotation', annotation })
+    state = editorReducer(state, { type: 'copyAnnotation', annotationId: annotation.id })
+    state = editorReducer(state, { type: 'pasteAnnotation', pageId: 'page-1', newId: 'pasted-field' })
+    expect(state.present.annotations.at(-1)).toMatchObject({
+      id: 'pasted-field', fieldName: 'leafpdf.text.2', x: 0.12, y: 0.12,
+    })
+
+    state = editorReducer(state, { type: 'duplicateAnnotation', annotationId: annotation.id, newId: 'duplicate-field' })
+    expect(state.present.annotations.at(-1)).toMatchObject({
+      id: 'duplicate-field', fieldName: 'leafpdf.text.3', x: 0.12, y: 0.12,
+    })
+  })
+
+  it('keeps radio copies in one group with fresh option values and no copied default', () => {
+    const annotation: CreatedFormFieldAnnotation = {
+      id: 'source-radio', pageId: 'page-1', kind: 'form-field', fieldType: 'radio',
+      fieldName: 'relocation', optionValue: 'Option 1', selectedByDefault: true,
+      x: 0.1, y: 0.1, width: 0.05, height: 0.05, required: true,
+    }
+    let state = editorReducer(createEditorState('sample.pdf', 1), { type: 'addAnnotation', annotation })
+    state = editorReducer(state, { type: 'copyAnnotation', annotationId: annotation.id })
+    state = editorReducer(state, { type: 'pasteAnnotation', pageId: 'page-1', newId: 'pasted-radio' })
+    expect(state.present.annotations.at(-1)).toMatchObject({
+      id: 'pasted-radio', fieldName: 'relocation', optionValue: 'Option 2',
+      selectedByDefault: false, required: true, x: 0.165, y: 0.1,
+    })
+
+    state = editorReducer(state, { type: 'duplicateAnnotation', annotationId: annotation.id, newId: 'duplicate-radio' })
+    expect(state.present.annotations.at(-1)).toMatchObject({
+      id: 'duplicate-radio', fieldName: 'relocation', optionValue: 'Option 3',
+      selectedByDefault: false,
+    })
+    state = editorReducer(state, { type: 'undo' })
+    expect(state.present.annotations.map(({ id }) => id)).toEqual(['source-radio', 'pasted-radio'])
+  })
+
   it('changes layer order and adds document-wide annotations atomically', () => {
     const make = (id: string): TextAnnotation => ({
       id, pageId: 'page-1', kind: 'text', x: 0.1, y: 0.1, width: 0.2, height: 0.05,
@@ -252,6 +421,80 @@ describe('editorReducer', () => {
     expect(state.present.annotations.map(({ id }) => id)).toEqual(['b', 'a', 'c'])
     state = editorReducer(state, { type: 'sendBackward', annotationId: 'c' })
     expect(state.present.annotations.map(({ id }) => id)).toEqual(['b', 'c', 'a'])
+  })
+
+  it('groups a source replacement and its first typing run into one undo entry', () => {
+    const whiteout: WhiteoutAnnotation = {
+      id: 'whiteout-1', pageId: 'page-1', kind: 'whiteout',
+      x: 0.1, y: 0.2, width: 0.3, height: 0.05,
+    }
+    const replacement: TextAnnotation = {
+      id: 'replacement-1', pageId: 'page-1', kind: 'text',
+      x: 0.1, y: 0.2, width: 0.3, height: 0.05,
+      text: 'Syed Akrama', color: '#182026', fontSize: 12, sourceReplacement: true,
+    }
+    const historyGroup = `annotation-${replacement.id}-text`
+    let state = createEditorState('offer.pdf', 1)
+
+    state = editorReducer(state, {
+      type: 'addAnnotations', annotations: [whiteout, replacement], historyGroup,
+    })
+    // Focusing the already-selected inline editor must not close the creation
+    // group before the first character is typed.
+    state = editorReducer(state, {
+      type: 'selectAnnotation', annotationId: replacement.id,
+    })
+    expect(state.historyGroupKey).toBe(historyGroup)
+    state = editorReducer(state, {
+      type: 'updateAnnotation', annotationId: replacement.id,
+      patch: { text: 'Syed Akram' }, historyGroup,
+    })
+
+    expect(state.past).toHaveLength(1)
+    expect(state.present.annotations.at(-1)).toMatchObject({ text: 'Syed Akram' })
+    state = editorReducer(state, { type: 'selectAnnotation', annotationId: null })
+    expect(state.historyGroupKey).toBeNull()
+    state = editorReducer(state, { type: 'undo' })
+    expect(state.present.annotations).toEqual([])
+  })
+
+  it('groups a document-wide replacement without focusing every generated text box', () => {
+    const replacement = (id: string, pageId: string): TextAnnotation => ({
+      id,
+      pageId,
+      kind: 'text',
+      x: 0.1,
+      y: 0.2,
+      width: 0.3,
+      height: 0.05,
+      text: 'sheet',
+      color: '#182026',
+      fontSize: 12,
+      sourceReplacement: true,
+    })
+    const historyGroup = 'search-replace-1'
+    let state = createEditorState('offer.pdf', 2)
+
+    state = editorReducer(state, {
+      type: 'addAnnotations',
+      annotations: [replacement('replacement-1', 'page-1')],
+      historyGroup,
+      selectLast: false,
+    })
+    state = editorReducer(state, { type: 'viewPage', pageId: 'page-2' })
+    state = editorReducer(state, {
+      type: 'addAnnotations',
+      annotations: [replacement('replacement-2', 'page-2')],
+      historyGroup,
+      selectLast: false,
+    })
+    state = editorReducer(state, { type: 'endHistoryGroup' })
+
+    expect(state.present.annotations).toHaveLength(2)
+    expect(state.past).toHaveLength(1)
+    expect(state.selectedAnnotationIds).toEqual([])
+    state = editorReducer(state, { type: 'undo' })
+    expect(state.present.annotations).toHaveLength(0)
   })
 
   it('restores a recovered document and selects its first page', () => {
@@ -279,6 +522,25 @@ describe('editorReducer', () => {
 
     const undone = editorReducer(state, { type: 'undo' })
     expect(undone.present.pages.map(({ id }) => id)).toEqual(['page-1', 'page-2'])
+  })
+
+  it('moves a page directly to an exact position as one undoable edit', () => {
+    let state = createEditorState('sample.pdf', 3)
+    state = editorReducer(state, { type: 'selectPage', pageId: 'page-2' })
+    const depth = state.past.length
+
+    state = editorReducer(state, { type: 'movePageToIndex', pageId: 'page-3', targetIndex: 0 })
+    expect(state.present.pages.map(({ id }) => id)).toEqual(['page-3', 'page-1', 'page-2'])
+    expect(state.selectedPageId).toBe('page-2')
+    expect(state.past).toHaveLength(depth + 1)
+
+    state = editorReducer(state, { type: 'undo' })
+    expect(state.present.pages.map(({ id }) => id)).toEqual(['page-1', 'page-2', 'page-3'])
+
+    const unchanged = createEditorState('sample.pdf', 3)
+    expect(editorReducer(unchanged, { type: 'movePageToIndex', pageId: 'page-1', targetIndex: 0 })).toBe(unchanged)
+    expect(editorReducer(unchanged, { type: 'movePageToIndex', pageId: 'missing', targetIndex: 1 })).toBe(unchanged)
+    expect(editorReducer(unchanged, { type: 'movePageToIndex', pageId: 'page-2', targetIndex: Number.NaN })).toBe(unchanged)
   })
 
   it('inserts external pages at the front when asked', () => {

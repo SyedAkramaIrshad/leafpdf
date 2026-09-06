@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { moveAnnotation, resizeAnnotation, resizeAnnotationFromCorner, rotateAnnotation } from './annotationMovement'
-import type { ImageAnnotation, InkAnnotation, TextAnnotation } from './editor'
+import type { CreatedFormFieldAnnotation, ImageAnnotation, InkAnnotation, TextAnnotation } from './editor'
 
 const textAnnotation: TextAnnotation = {
   id: 'annotation-1',
@@ -157,6 +157,15 @@ describe('universal transforms', () => {
   it('normalizes rotation to the signed visual range', () => {
     expect(rotateAnnotation(image, 450).rotation).toBe(90)
     expect(rotateAnnotation(image, -450).rotation).toBe(-90)
+  })
+
+  it('never rotates a created form field', () => {
+    const field: CreatedFormFieldAnnotation = {
+      id: 'field-1', pageId: 'page-1', kind: 'form-field', fieldType: 'text',
+      fieldName: 'leafpdf.text.1', x: 0.1, y: 0.2, width: 0.4, height: 0.08,
+      required: false, defaultText: '', multiline: false,
+    }
+    expect(rotateAnnotation(field, 90)).toBe(field)
   })
 
   it('resizes and rotates ink points instead of treating ink as a full-page object', () => {

@@ -1,0 +1,71 @@
+name: Feature request
+description: Propose an everyday PDF workflow or usability improvement
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        LeafPDF prioritizes common document-finishing work that stays in the browser. Describe the human task first, then the control or feature you think would help.
+
+        **Do not attach a real personal PDF, signature, ID, offer letter, or confidential document.** Use a synthetic example or public document.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What PDF job is difficult or impossible today? Describe the user's goal, not only a proposed button.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Proposed workflow
+      description: Walk through how the user would discover, use, finish, and verify the feature.
+      placeholder: |
+        1. The user opens ...
+        2. They choose ...
+        3. LeafPDF shows ...
+        4. The exported PDF ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: audience
+    attributes:
+      label: Who benefits
+      description: Which users or documents need this, and how often?
+    validations:
+      required: true
+
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Local-first privacy impact
+      description: Explain whether this needs network access, new stored data, document extraction, or permissions. Prefer a browser-local design.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What do users do today in LeafPDF or another editor, and why is that insufficient?
+
+  - type: textarea
+    id: safe_example
+    attributes:
+      label: Safe example
+      description: Describe a synthetic offer, form, or public PDF that demonstrates the need without exposing personal data.
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I searched existing issues for this request.
+          required: true
+        - label: This request does not depend on silently uploading PDF content, annotations, signatures, recovery data, or extracted text.
+          required: true
+        - label: I did not attach or paste a real personal document, signature, ID, confidential content, credential, or secret.
+          required: true

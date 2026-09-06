@@ -519,9 +519,9 @@ textarea.form-field-input { resize: none; line-height: 1.2; }
 .object-actions button { min-height: 36px; padding: 7px; color: #46536a; background: white; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 700; }
 .object-actions button:disabled { opacity: .4; cursor: default; }
 .object-actions button:nth-last-child(-n+2) { grid-column: span 1; }
-.toast-region { position: fixed; z-index: 30; right: 24px; bottom: 24px; }
+.toast-region { position: fixed; z-index: 30; right: 24px; bottom: 24px; pointer-events: none; }
 .toast { display: flex; gap: 14px; align-items: center; max-width: 420px; padding: 13px 16px; color: white; background: var(--ink-raised); border: 1px solid #526079; border-radius: 7px; box-shadow: 0 14px 36px rgba(8,16,29,.3); font-size: 12px; }
-.toast button { flex: none; padding: 0 4px; color: #aab2b4; background: transparent; border: 0; border-radius: 2px; cursor: pointer; font-size: 18px; line-height: 1; }
+.toast button { flex: none; padding: 0 4px; color: #aab2b4; background: transparent; border: 0; border-radius: 2px; cursor: pointer; font-size: 18px; line-height: 1; pointer-events: auto; }
 .toast button:hover { color: white; }
 .dialog-backdrop { position: fixed; z-index: 40; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(16,23,27,.74); backdrop-filter: blur(3px); }
 .signature-dialog { width: min(620px, 100%); max-height: calc(100vh - 48px); padding: 28px; overflow-y: auto; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 28px 90px rgba(8,16,29,.38); }
@@ -605,19 +605,6 @@ textarea.form-field-input { resize: none; line-height: 1.2; }
 .field-help { color: #747b77; font-size: 11px; line-height: 1.35; }
 .document-marks-dialog .dialog-actions { margin-top: 22px; }
 
-@media (max-width: 1060px) and (min-width: 1024px) {
-  .workbench-grid { grid-template-columns: 58px minmax(340px, 1fr); }
-  .workbench-grid.has-item-properties { grid-template-columns: 58px minmax(340px, 1fr); }
-  .tool-rail { align-items: center; padding-inline: 6px; }
-  .rail-label, .tool-group-label, .tool-button-label { display: none; }
-  .tool-group { width: 100%; align-items: center; }
-  .advanced-tool-groups { width: 100%; align-items: center; }
-  .tool-button { display: grid; grid-template-columns: 1fr; place-items: center; width: 44px; min-height: 44px; padding: 4px; text-align: center; }
-  .tool-palette-anchor { width: 100%; }
-  .tool-palette-anchor > .tool-button { margin-inline: auto; }
-  .tool-palette { left: calc(100% + 8px); }
-  .statusbar { padding-left: 62px; }
-}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }

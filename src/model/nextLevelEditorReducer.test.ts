@@ -56,4 +56,29 @@ describe('nextLevelEditorReducer', () => {
     state = nextLevelEditorReducer(state, { type: 'selectAnnotation', annotationId: 'text-2' })
     expect(state.historyGroupKey).toBeNull()
   })
+
+  it('collapses consecutive selected-group keyboard nudges into one undo entry', () => {
+    const second: TextAnnotation = { ...text(), id: 'text-2', x: 0.5 }
+    let state = editorReducer(createEditorState('sample.pdf', 1), {
+      type: 'addAnnotations', annotations: [text(), second],
+    })
+    const depth = state.past.length
+    const historyGroup = 'group-text-1-text-2-keyboard-nudge'
+
+    state = nextLevelEditorReducer(state, {
+      type: 'replaceAnnotations',
+      annotations: [{ ...text(), x: 0.11 }, { ...second, x: 0.51 }],
+      historyGroup,
+    })
+    state = nextLevelEditorReducer(state, {
+      type: 'replaceAnnotations',
+      annotations: [{ ...text(), x: 0.12 }, { ...second, x: 0.52 }],
+      historyGroup,
+    })
+
+    expect(state.past).toHaveLength(depth + 1)
+    state = nextLevelEditorReducer(state, { type: 'endHistoryGroup' })
+    state = nextLevelEditorReducer(state, { type: 'undo' })
+    expect(state.present.annotations).toEqual([text(), second])
+  })
 })

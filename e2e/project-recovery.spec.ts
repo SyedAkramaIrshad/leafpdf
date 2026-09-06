@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test'
 
+async function openReview(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: 'More tools' }).click()
+  await page.getByRole('menuitem', { name: /^Review comments/ }).click()
+}
+
 async function recoveryRecord(page: import('@playwright/test').Page) {
   return page.evaluate(async () => {
     const request = indexedDB.open('leafpdf-project-recovery')
@@ -41,9 +46,12 @@ test('recovers inserted PDFs, page order, and review comments after a reload', a
   await page.locator('input[type="file"]').first().setInputFiles('tmp/pdfs/mvp-fixture.pdf')
   await expect(page.getByLabel('Rendered PDF page').first()).toBeVisible()
 
-  await page.getByLabel('Choose a PDF to insert').setInputFiles('tmp/pdfs/edge-metadata.pdf')
+  await page.getByRole('button', { name: /^Open page organizer, page/ }).click()
+  const organizer = page.getByRole('dialog', { name: 'Document pages' })
+  await organizer.getByLabel('Choose a PDF to insert').setInputFiles('tmp/pdfs/edge-metadata.pdf')
   await expect(page.getByText('4 pages')).toBeVisible()
-  await page.getByRole('button', { name: /^Review/ }).click()
+  await organizer.getByRole('button', { name: 'Close page organizer' }).click()
+  await openReview(page)
   await page.getByPlaceholder('Add a review note').fill('Recovered project comment')
   await page.getByRole('button', { name: 'Add comment' }).click()
 
@@ -55,7 +63,7 @@ test('recovers inserted PDFs, page order, and review comments after a reload', a
 
   page.once('dialog', (dialog) => void dialog.accept())
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Annotate and sign PDFs.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Finish your PDF. Keep it yours.' })).toBeVisible()
 
   await page.locator('input[type="file"]').first().setInputFiles('tmp/pdfs/mvp-fixture.pdf')
   const recovery = page.getByRole('dialog', { name: 'Resume your previous editing session?' })
@@ -63,6 +71,6 @@ test('recovers inserted PDFs, page order, and review comments after a reload', a
   await recovery.getByRole('button', { name: 'Restore edits' }).click()
 
   await expect(page.getByText('4 pages')).toBeVisible()
-  await page.getByRole('button', { name: /^Review/ }).click()
+  await openReview(page)
   await expect(page.getByText('Recovered project comment')).toBeVisible()
 })

@@ -1,0 +1,93 @@
+name: Bug report
+description: Report a reproducible LeafPDF problem using safe sample data
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve LeafPDF.
+
+        **Do not attach a real personal PDF, signature, ID, offer letter, or confidential document.** Reproduce the problem with a synthetic fixture or link to a public document instead. Report security vulnerabilities through the private advisory link in the issue chooser.
+
+  - type: dropdown
+    id: workflow
+    attributes:
+      label: Affected workflow
+      description: Which part of LeafPDF shows the problem?
+      options:
+        - Opening a PDF or project
+        - Text and fill symbols
+        - Signature or image
+        - Existing PDF form fields
+        - Page operations
+        - Review, privacy, OCR, or compare
+        - Save project or recovery
+        - Exported PDF
+        - Keyboard or accessibility
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_behavior
+    attributes:
+      label: What happened?
+      description: Describe the visible result, error, or exported-PDF problem.
+      placeholder: Tell us what LeafPDF did, including any exact message shown.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+      description: What did you expect LeafPDF or the exported PDF to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Use a synthetic fixture or public document and list the smallest repeatable sequence.
+      placeholder: |
+        1. Open ...
+        2. Choose ...
+        3. Place or edit ...
+        4. Export or reopen ...
+        5. Observe ...
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and operating system
+      description: Include browser name/version, operating system, and whether LeafPDF was local, installed, or hosted.
+      placeholder: "Example: Safari 19 on macOS 16, local npm run dev"
+    validations:
+      required: true
+
+  - type: textarea
+    id: safe_sample
+    attributes:
+      label: Safe sample
+      description: Link to a public PDF or describe how to generate a synthetic fixture. Do not attach private content.
+      placeholder: Public URL or deterministic generation steps
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Paste only logs that contain no document text, personal data, file paths you consider private, or credentials.
+      render: shell
+
+  - type: checkboxes
+    id: safety_checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I searched existing issues for this problem.
+          required: true
+        - label: I did not attach or paste a real personal document, signature, ID, confidential content, credential, or secret.
+          required: true

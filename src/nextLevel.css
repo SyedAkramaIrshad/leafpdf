@@ -1,4 +1,5 @@
 .next-level-workbench .topbar {
+  z-index: 60;
   grid-template-columns: 180px minmax(150px, 1fr) auto auto auto;
 }
 

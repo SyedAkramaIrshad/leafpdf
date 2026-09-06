@@ -22,7 +22,28 @@ function project(): LeafProject {
     document: {
       fileName: 'source.pdf',
       pages: [{ id: 'page-1', kind: 'original', sourceIndex: 0, rotation: 0 }],
-      annotations: [],
+      annotations: [
+        {
+          id: 'created-field-1', pageId: 'page-1', kind: 'form-field', fieldType: 'text',
+          fieldName: 'leafpdf.text.1', x: 0.1, y: 0.2, width: 0.4, height: 0.06,
+          required: false, defaultText: 'Editable after recovery', multiline: false,
+        },
+        {
+          id: 'created-radio-yes', pageId: 'page-1', kind: 'form-field', fieldType: 'radio',
+          fieldName: 'relocation', optionValue: 'Yes', selectedByDefault: true,
+          x: 0.1, y: 0.3, width: 0.05, height: 0.05, required: true,
+        },
+        {
+          id: 'created-radio-no', pageId: 'page-1', kind: 'form-field', fieldType: 'radio',
+          fieldName: 'relocation', optionValue: 'No', selectedByDefault: false,
+          x: 0.2, y: 0.3, width: 0.05, height: 0.05, required: true,
+        },
+        {
+          id: 'created-dropdown', pageId: 'page-1', kind: 'form-field', fieldType: 'dropdown',
+          fieldName: 'office.location', options: ['Dubai', 'Abu Dhabi'], defaultOption: 'Dubai',
+          x: 0.1, y: 0.4, width: 0.3, height: 0.06, required: false,
+        },
+      ],
       formValues: {},
     },
     comments: [],
@@ -46,6 +67,10 @@ describe('project recovery', () => {
 
     const recovered = await loadProjectRecovery(key)
     expect(recovered).toEqual(project())
+    expect(recovered?.document.annotations[0]).toMatchObject({
+      kind: 'form-field', fieldName: 'leafpdf.text.1', defaultText: 'Editable after recovery',
+    })
+    expect(recovered?.document.annotations.slice(1)).toEqual(project().document.annotations.slice(1))
 
     recovered!.comments.push({
       id: 'comment', pageId: 'page-1', x: 0.1, y: 0.1, body: 'Review', author: '',
