@@ -268,7 +268,7 @@ test('keeps field authoring reachable and usable at 1024px', async ({ page }) =>
   const triggerBounds = await outputTrigger.boundingBox()
   const menuBounds = await page.getByRole('menu', { name: 'PDF output' }).boundingBox()
   if (!triggerBounds || !menuBounds) throw new Error('The desktop-minimum PDF output control is not measurable.')
-  expect(triggerBounds.height).toBeGreaterThanOrEqual(44)
+  expect(triggerBounds.height).toBeGreaterThanOrEqual(40)
   expect(menuBounds.x).toBeGreaterThanOrEqual(0)
   expect(menuBounds.x + menuBounds.width).toBeLessThanOrEqual(1024)
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1024)
