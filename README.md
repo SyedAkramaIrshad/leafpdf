@@ -21,7 +21,7 @@ signing, annotating, arranging pages, and exporting a new copy. PDF processing r
 browser, the protected source page stays untouched, and the project is open source so its privacy
 claims can be inspected rather than merely trusted.
 
-![LeafPDF editor with text, checkmark, and signature](docs/screenshots/leafpdf-editor.jpg)
+![LeafPDF editor with text formatting, date, checkmark, and separate PDF and project save states](docs/screenshots/leafpdf-editor-oct2.png)
 
 ## Quick start
 
@@ -135,12 +135,13 @@ locally available style stacks, and reuse remains an explicit browser-only choic
 carries a digital signature, LeafPDF says so before you edit: any edit invalidates that signature,
 and LeafPDF cannot re-sign a document.
 
-Recovery saves only LeafPDF's compact page/annotation model in browser IndexedDB; it never saves the
-source PDF bytes. A record is keyed by the source PDF's stable PDF.js fingerprint as well as file
+Recovery saves the complete editable project, including source PDFs, in browser IndexedDB on this
+device. A record is keyed by the source PDF's stable PDF.js fingerprint as well as file
 metadata, so edits are not offered for a different file that happens to share a name and size.
 Recovery writes and deletions are serialized to prevent a delayed autosave from resurrecting a
-discarded session. Exporting the current document clears its recovery record; edits made while an
-export is building remain dirty and are immediately preserved for a later export.
+discarded session. Exporting a PDF keeps the editable project's unsaved state and recovery intact.
+Saving the current `.leafpdf` project clears its recovery record; newer edits made during the save
+remain unsaved. Opening a project offers a matching recovery draft only when that draft is newer.
 
 Added text behaves like a small text box on the page: click it and type there. The blue grip above a
 selected text box moves it. Font size shows its exact point value and supports direct typing,
@@ -179,11 +180,14 @@ leaves the browser, and one Undo restores the previous image and geometry.
 
 The editing dock follows the usual finishing sequence: **Select**, **Text**, **Date**, **Check**,
 **Sign**, and **Image** are all one-click actions. **Details** follows them as an optional local
-quick-fill tray. **Text marks** groups Highlight, Underline, and Strikeout: Highlight fills an area,
+quick-fill tray. **Tools → Annotate** groups Highlight, Underline, and Strikeout: Highlight fills an area,
 while Underline and Strikeout draw precise lines; select any mark to adjust it before Save PDF. Drawing, shapes,
-**More marks** (Cross and Dot), **Link**, **Whiteout**, and **Redact** follow as secondary tools.
-Selecting an added item keeps the paper in place and opens a compact proofing slip. **Adjust** reveals
-its controls, **Hide** returns to the paper-first view, and **Done** clears the selection.
+**Tools → Marks** (Cross and Dot), **Link**, **Whiteout**, and **Redact** follow as secondary tools.
+Selecting added text immediately shows font, size, bold, italic, and color in a compact panel.
+Copy, Paste, and Duplicate are visible without expanding the panel.
+**Arrange** reveals text alignment and layer actions; other items use **Adjust**. The arrow in the
+panel header moves it left or right; it initially opens opposite the selected item's center.
+**Done** or clicking blank paper clears the selection. New text boxes stay within page bounds.
 **Pages current / total** opens the page organizer on laptop and desktop. It contains
 thumbnails plus blank-page, insert-PDF, move, rotate, and delete actions, then closes when you choose
 a page so the paper gets the workspace back. Drag the perforated grip on a thumbnail to preview a
@@ -193,7 +197,7 @@ watermark/page-number controls are grouped under **Document**. The left-hand **T
 additional editing tools such as forms, shapes, and markup.
 
 When a placement tool is active, the page says whether to click or drag and **Escape** cancels it.
-Date remains a one-click placement tool. Select the placed date to choose a Calendar date and one of
+Dates and checkmarks are centered where you click and stay within the page. Select the placed date to choose a Calendar date and one of
 four literal printed formats—Day month, Month day, Day first, or ISO—or type any wording in Date
 text. The visible label is exactly what Save PDF prints, so old and custom dates remain valid.
 **Sign** opens on Type with the name field ready, lets you choose full name or initials plus Script,
@@ -229,7 +233,8 @@ blank-page controls are skipped, while optional unfilled controls remain optiona
 
 **Document → Help & shortcuts** repeats the finishing sequence inside the editor and explains three
 outputs: **Save project** keeps a portable editable `.leafpdf` project for later; the main
-**Save PDF** action creates a fillable `.pdf`; and its adjacent output menu offers a flattened
+**Save PDF** action initially creates a fillable `.pdf` and remembers the last successful output
+type for subsequent saves; its adjacent output menu also offers a flattened
 `.pdf` whose current form appearances remain visible without editable form controls. Flattening
 does not encrypt or make the PDF tamper-proof. Press **?** outside a text field to open the same guide.
 

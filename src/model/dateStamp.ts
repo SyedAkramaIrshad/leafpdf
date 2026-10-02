@@ -6,6 +6,21 @@ export type DatePresetFormat =
 
 export type DateStampFormat = DatePresetFormat | 'custom'
 
+// Shared by the on-page stamp and PDF output, in PDF points.
+export const DATE_STAMP_TYPOGRAPHY = {
+  minSize: 6,
+  maxSize: 16,
+  heightRatio: 0.55,
+  baselineOffset: 0.3,
+} as const
+
+export function dateStampFontSize(height: number): number {
+  return Math.max(DATE_STAMP_TYPOGRAPHY.minSize, Math.min(
+    DATE_STAMP_TYPOGRAPHY.maxSize,
+    height * DATE_STAMP_TYPOGRAPHY.heightRatio,
+  ))
+}
+
 export const DATE_FORMATS = [
   { id: 'day-month', label: 'Day month' },
   { id: 'month-day', label: 'Month day' },

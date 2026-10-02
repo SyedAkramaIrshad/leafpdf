@@ -6,6 +6,7 @@ interface PdfSaveMenuProps {
   disabledReason?: string
   exporting: boolean
   primaryLabel: string
+  primaryOutput?: PdfFormOutput
   progressLabel: string
   onSave: (output: PdfFormOutput) => void
 }
@@ -14,13 +15,11 @@ const outputs: Array<{
   output: PdfFormOutput
   label: string
   description: string
-  marker?: string
 }> = [
   {
     output: 'fillable',
     label: 'Save fillable PDF',
     description: 'Keep form fields editable',
-    marker: 'DEFAULT',
   },
   {
     output: 'flattened',
@@ -34,6 +33,7 @@ export function PdfSaveMenu({
   disabledReason,
   exporting,
   primaryLabel,
+  primaryOutput = 'fillable',
   progressLabel,
   onSave,
 }: PdfSaveMenuProps) {
@@ -87,9 +87,9 @@ export function PdfSaveMenu({
           type="button"
           className="export-button pdf-save-primary"
           disabled={unavailable}
-          title={disabled ? disabledReason : undefined}
+          title={disabled ? disabledReason : `Save ${primaryOutput} PDF`}
           aria-label={visibleLabel}
-          onClick={() => save('fillable')}
+          onClick={() => save(primaryOutput)}
         >
           <span className="pdf-save-primary-full" aria-hidden="true">{visibleLabel}</span>
           <span className="pdf-save-primary-compact" aria-hidden="true">{compactLabel}</span>
@@ -129,7 +129,7 @@ export function PdfSaveMenu({
             >
               <span className="pdf-save-option-title" aria-hidden="true">
                 <strong>{item.label}</strong>
-                {item.marker && <small>{item.marker}</small>}
+                {item.output === primaryOutput && <small>DEFAULT</small>}
               </span>
               <span aria-hidden="true">{item.description}</span>
             </button>

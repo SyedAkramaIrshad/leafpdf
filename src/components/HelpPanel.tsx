@@ -3,7 +3,7 @@ const SOURCE_URL = 'https://github.com/SyedAkramaIrshad/leafpdf'
 const finishSteps = [
   {
     title: 'Add what is missing',
-    body: 'Choose Text, Details, Date, Check, Sign, or Image on the left, then place it on the page. Tools opens the extra editing tools.',
+    body: 'Choose Text, Details, Date, Check, Sign, or Image on the left, then place it on the page; new text boxes start within the page edges. Tools opens the extra editing tools.',
   },
   {
     title: 'Choose Done',
@@ -11,7 +11,7 @@ const finishSteps = [
   },
   {
     title: 'Save PDF',
-    body: 'Choose Save PDF at the top right to download your finished copy. Your original stays untouched. Use the arrow beside Save PDF for a flattened copy, or Document → Save project to keep editing later.',
+    body: 'Choose Save PDF at the top right to download your finished copy; the first save keeps form fields fillable, and Save again repeats your last output type. Your original stays untouched. Use the arrow beside the save button to switch output type, or Document → Save project to keep editing later.',
   },
 ]
 
@@ -26,7 +26,7 @@ const toolGuides = [
   {
     title: 'Dates, signatures, and images',
     paragraphs: [
-      'Date stays one-click; select it to choose a calendar date and one of four exact printed formats, or type any wording in Date text.',
+      'Date and checkmarks are centered where you click. Select a date and choose Adjust for a calendar date and four exact printed formats, or type any wording in Date text.',
       'Sign opens on Type with full-name or initials styles and saved local signatures first; Draw and Upload remain available. Signatures are visual marks, not certificate-backed signatures. For Sign or Image, preview it, then click where it belongs.',
       'For Image, preview and place it once; then select it and use Adjust for opacity, precise orientation, or Replace image. Replacement stays local and is one Undo.',
     ],
@@ -36,13 +36,13 @@ const toolGuides = [
     paragraphs: [
       'To correct repeated source words, Find the phrase, choose Replace, type the correction, then use Replace this or Replace all; the complete Replace all batch is one Undo. OCR-only matches stay searchable but cannot be replaced automatically.',
       'For manual placement, drag Whiteout over the old content, then choose Add replacement text and type directly on the page. Whiteout does not remove what is underneath; use Redact for permanent removal.',
-      'Text marks groups Highlight, Underline, and Strikeout for review notes: Highlight fills the dragged area, while Underline and Strikeout draw precise lines. Select any mark to adjust it before Save PDF. Cross and Dot stay under More marks.',
+      'Choose Tools → Annotate → Highlight / Underline / Strikeout for review notes: Highlight fills the dragged area, while Underline and Strikeout draw precise lines. Select any mark to adjust it before Save PDF. Cross and Dot are under Tools → Marks.',
     ],
   },
   {
     title: 'Arrange items, pages, and zoom',
     paragraphs: [
-      'Selecting an item keeps the paper in place and opens a compact proofing slip. Adjust reveals its controls, Hide returns to the paper-first view, and Done clears the selection. Select several items to move or align them together.',
+      'Select text to see font, size, bold, italic, and color immediately. Copy, Paste, and Duplicate stay visible in the item panel; Arrange opens alignment and layer actions, and other items use Adjust. The panel initially opens opposite the selected item; the arrow in its header lets you choose the other side. Done or a click on blank paper clears the selection. Select several items to move or align them together.',
       'Documents open at 100%. The percentage shows the current zoom. Use − or + to change it, or Fit width to fit the page to the workspace. While Fit width is active, the page follows the available workspace width.',
       'Pages current / total opens thumbnails plus add, insert, reorder, rotate, and delete controls. Drag a thumbnail grip to reorder; the arrows move one step, and the complete drop is one Undo.',
     ],
@@ -50,8 +50,8 @@ const toolGuides = [
   {
     title: 'Saving and editable copies',
     paragraphs: [
-      'The main Save PDF action keeps real form fields fillable. Open its adjacent output menu and choose Save flattened PDF when the current values should stay visible without editable form controls. Flattening is not encryption.',
-      'If a text box is empty or still says “Type here”, LeafPDF pauses so you can review it or save anyway. Your original file is never overwritten.',
+      'The first Save PDF keeps real form fields fillable; Save again repeats the last output type. Use the adjacent output menu to choose a fillable or flattened PDF. A flattened PDF keeps current values visible without editable form controls. Flattening is not encryption.',
+      'If a text box is empty or still says “Type here”, LeafPDF pauses so you can review it or save anyway. Your original file is never overwritten; exporting a PDF leaves unsaved project changes and local recovery intact. Use Document → Save project to save the editable project.',
     ],
   },
 ]

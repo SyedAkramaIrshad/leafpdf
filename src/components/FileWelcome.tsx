@@ -1,5 +1,4 @@
 import { useRef, useState, type DragEvent } from 'react'
-import { chooseLocalDocument, supportsNativeOpen } from '../pwa/fileAccess'
 
 interface FileWelcomeProps {
   busy: boolean
@@ -16,15 +15,6 @@ export function FileWelcome({ busy, error, onFile }: FileWelcomeProps) {
     setDragging(false)
     const file = event.dataTransfer.files[0]
     if (file) onFile(file)
-  }
-
-  const chooseNative = async () => {
-    try {
-      const file = await chooseLocalDocument()
-      if (file) onFile(file)
-    } catch {
-      inputRef.current?.click()
-    }
   }
 
   return (
@@ -65,7 +55,7 @@ export function FileWelcome({ busy, error, onFile }: FileWelcomeProps) {
               className="primary-button"
               disabled={busy}
               aria-label={busy ? 'Opening a PDF or project' : 'Choose a PDF'}
-              onClick={() => supportsNativeOpen() ? void chooseNative() : inputRef.current?.click()}
+              onClick={() => inputRef.current?.click()}
             >
               {busy ? 'Reading project' : 'Open PDF or project'}
             </button>

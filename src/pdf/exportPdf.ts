@@ -3,6 +3,7 @@ import { LineCapStyle, PDFArray, PDFCheckBox, PDFDict, PDFDocument, PDFDropdown,
 import { hasRedactions, imageOpacityOf, textMarkStrokeWidthOf, textMarkStyleOf, textStyleOf, type Annotation, type CreatedFormFieldAnnotation, type EditorDocument, type EditorPage, type FormValue } from '../model/editor'
 import { createdFormFieldCollectionIssue, formFieldNamesConflict } from '../model/createdFormFields'
 import { externalLinkDestination } from '../model/linkTarget'
+import { DATE_STAMP_TYPOGRAPHY, dateStampFontSize } from '../model/dateStamp'
 import { createFontRegistry, type FontRegistry } from './fontRegistry'
 import { appendExternalLinkAnnotation } from './linkAnnotation'
 import { analyzeLoadedPdf, chooseExportStrategy, describeFeatures, isEncryptedPdfError, type SourcePdfFeatures } from './sourceAnalysis'
@@ -368,10 +369,13 @@ async function paintAnnotation(
       page.drawEllipse({ x: center.x, y: center.y, xScale: metrics.drawWidth * 0.34, yScale: metrics.drawHeight * 0.34, color, rotate: angle })
     } else {
       const text = annotation.label || ' '
-      const size = Math.max(6, Math.min(16, metrics.drawHeight * 0.55))
+      const size = dateStampFontSize(metrics.drawHeight)
       const font = await fonts.fontFor({ text, fontFamily: 'mono', fontWeight: 700 })
-      const baseline = anchorAtOffsetFromTop(annotation, metrics.width, metrics.height, rotation, size)
-      page.drawText(text, { x: baseline.x, y: baseline.y, size, font, color, rotate: angle, maxWidth: metrics.drawWidth })
+      const baseline = pointInAnnotation(
+        0.5 - font.widthOfTextAtSize(text, size) / (2 * metrics.drawWidth),
+        0.5 + size * DATE_STAMP_TYPOGRAPHY.baselineOffset / metrics.drawHeight,
+      )
+      page.drawText(text, { x: baseline.x, y: baseline.y, size, font, color, rotate: angle })
     }
     return
   }

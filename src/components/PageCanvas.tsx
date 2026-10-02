@@ -293,7 +293,9 @@ export function PageCanvas({
       dispatch({
         type: 'addAnnotation',
         annotation: {
-          id: annotationId(), pageId: page.id, kind: 'text', x: point.x, y: point.y,
+          id: annotationId(), pageId: page.id, kind: 'text',
+          x: Math.max(0, Math.min(1 - width, point.x)),
+          y: Math.max(0, Math.min(1 - height, point.y)),
           width, height,
           text: preparedDetail?.text ?? DEFAULT_ADDED_TEXT,
           color: '#182026', fontSize: preparedDetail?.fontSize ?? 18,
@@ -311,7 +313,8 @@ export function PageCanvas({
         type: 'addAnnotation',
         annotation: {
           id: annotationId(), pageId: page.id, kind: 'stamp', stamp,
-          x: Math.min(1 - width, point.x), y: Math.min(1 - height, point.y),
+          x: Math.max(0, Math.min(1 - width, point.x - width / 2)),
+          y: Math.max(0, Math.min(1 - height, point.y - height / 2)),
           width, height, ...(dateDetails ?? {}),
           color: '#182026', strokeWidth: 2.5,
         },
@@ -455,7 +458,25 @@ export function PageCanvas({
         ref={surfaceRef}
         className="page-surface"
         style={{ width: dimensions.width, height: dimensions.height }}
-        onPointerDown={CREATED_FORM_TOOLS.includes(activeTool) || TEXT_MARK_TOOLS.includes(activeTool) || activeTool === 'link' || activeTool === 'whiteout' || activeTool === 'redact' || SHAPE_TOOLS.includes(activeTool as ShapeTool) ? (event) => setDragStart(pointFromEvent(event)) : undefined}
+        onPointerDown={(event) => {
+          if (activeTool === 'select') {
+            const target = event.target
+            const blankPaperOrSourceText = target === surfaceRef.current
+              || target === canvasRef.current
+              || (target instanceof Element && target.closest('.text-layer') !== null)
+            if (blankPaperOrSourceText && selectedAnnotationIds.length > 0) {
+              dispatch({ type: 'endHistoryGroup' })
+              dispatch({ type: 'selectAnnotation', annotationId: null })
+              if (multiSelectMode) onMultiSelectComplete?.()
+            }
+            return
+          }
+          if (CREATED_FORM_TOOLS.includes(activeTool) || TEXT_MARK_TOOLS.includes(activeTool)
+            || activeTool === 'link' || activeTool === 'whiteout' || activeTool === 'redact'
+            || SHAPE_TOOLS.includes(activeTool as ShapeTool)) {
+            setDragStart(pointFromEvent(event))
+          }
+        }}
         onPointerMove={mediaPlacementActive ? (event) => setMediaHoverPoint(pointFromEvent(event)) : undefined}
         onPointerLeave={mediaPlacementActive ? () => setMediaHoverPoint(null) : undefined}
       >

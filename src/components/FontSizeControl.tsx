@@ -24,7 +24,7 @@ export function FontSizeControl({ value, onChange, onCommit }: FontSizeControlPr
   const emit = (next: number) => {
     const clamped = clampFontSize(next)
     setDraft(String(clamped))
-    onChange(clamped)
+    if (clamped !== value) onChange(clamped)
   }
 
   const changeDraft = (event: ChangeEvent<HTMLInputElement>) => {
@@ -33,7 +33,8 @@ export function FontSizeControl({ value, onChange, onCommit }: FontSizeControlPr
     if (nextDraft === '') return
     const parsed = Number(nextDraft)
     if (Number.isFinite(parsed) && parsed >= MIN_FONT_SIZE && parsed <= MAX_FONT_SIZE) {
-      onChange(Math.round(parsed))
+      const rounded = Math.round(parsed)
+      if (rounded !== value) onChange(rounded)
     }
   }
 

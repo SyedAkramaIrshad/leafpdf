@@ -74,10 +74,16 @@ for (const width of [738, 1024]) {
     await page.getByLabel('Edit text').fill('Desktop review')
     const inspector = page.locator('.inspector')
     const bounds = await inspector.boundingBox()
-    expect(bounds?.height).toBeLessThanOrEqual(185)
-    for (const name of ['Delete', 'Done', 'Show item properties', 'Align selected item bottom on page']) {
+    expect(bounds?.height).toBeLessThanOrEqual(400)
+    for (const name of ['Delete', 'Done', 'Show item properties', 'Bold', 'Italic', 'Blue text', 'Move properties panel to the left']) {
       await reachable(inspector.getByRole('button', { name, exact: true }))
     }
+    await reachable(inspector.getByRole('spinbutton', { name: 'Font size' }))
+    await reachable(inspector.getByRole('combobox', { name: 'Font family' }))
+    await inspector.getByRole('button', { name: 'Show item properties' }).click()
+    await reachable(inspector.getByRole('button', { name: 'Align selected item bottom on page' }))
+    expect((await inspector.boundingBox())?.width).toBeCloseTo(bounds!.width, 0)
+    await inspector.getByRole('button', { name: 'Hide item properties' }).click()
     const after = await paper.boundingBox()
     expect(after?.x).toBeCloseTo(before!.x, 0)
     expect(after?.width).toBeCloseTo(before!.width, 0)

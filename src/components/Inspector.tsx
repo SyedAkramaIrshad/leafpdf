@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import { annotationId as createAnnotationId, imageOpacityOf, replacementTextForWhiteout, textMarkStrokeWidthOf, textMarkStyleOf, type Annotation, type EditorAction, type ImageAnnotation, type LinkTargetType } from '../model/editor'
 import {
   CREATED_FORM_FIELD_NAME_MAX_LENGTH,
@@ -86,6 +86,12 @@ export function Inspector({
   const replacementImageInputRef = useRef<HTMLInputElement>(null)
   const [collapsed, setCollapsed] = useState(() => annotation?.kind !== 'link' && annotation?.kind !== 'form-field')
   const [replacingImage, setReplacingImage] = useState(false)
+  // The selection key resets this default; manual moves persist for the current item.
+  const [panelOnLeft, setPanelOnLeft] = useState(() => {
+    if (!annotation) return false
+    const box = annotationBounds(annotation)
+    return box.x + box.width / 2 > 0.5
+  })
   const [fieldNameDraft, setFieldNameDraft] = useState(
     () => annotation?.kind === 'form-field' ? annotation.fieldName : '',
   )
@@ -176,11 +182,30 @@ export function Inspector({
 
   // One key per control, so typing groups separately from dragging a slider.
   const group = (property: string) => `annotation-${annotation.id}-${property}`
+  const pageAlignmentControls = (
+    <div className="page-alignment" aria-label="Align selected item on page">
+      <span>Align to page</span>
+      <div className="page-alignment-grid">
+        {PAGE_ALIGNMENTS.map(({ alignment, label, glyph }) => (
+          <button
+            key={alignment}
+            type="button"
+            aria-label={`Align selected item ${label.toLowerCase()} on page`}
+            title={label}
+            onClick={() => alignToPage(alignment, label)}
+          >
+            <span aria-hidden="true">{glyph}</span>
+            <small>{label}</small>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 
   return (
     <aside
       id="item-properties"
-      className={`inspector ${collapsed ? 'is-collapsed' : ''}`}
+      className={`inspector ${collapsed ? 'is-collapsed' : ''} ${annotation.kind === 'text' ? 'has-text-controls' : ''} ${panelOnLeft ? 'is-on-left' : ''}`}
       tabIndex={-1}
       aria-labelledby="item-properties-title"
     >
@@ -192,6 +217,15 @@ export function Inspector({
         <div className="inspector-header-actions">
           <button
             type="button"
+            className="inspector-position-button"
+            aria-label={`Move properties panel to the ${panelOnLeft ? 'right' : 'left'}`}
+            title={`Move panel ${panelOnLeft ? 'right' : 'left'} to uncover the page`}
+            onClick={() => setPanelOnLeft((current) => !current)}
+          >
+            <span aria-hidden="true">{panelOnLeft ? '⇥' : '⇤'}</span>
+          </button>
+          <button
+            type="button"
             className="inspector-toggle-button"
             aria-label={multiSelectMode
               ? 'Choose another item on the page'
@@ -200,35 +234,116 @@ export function Inspector({
             aria-controls={controlsId}
             onClick={() => setCollapsed((current) => !current)}
           >
-            {multiSelectMode ? 'Choosing…' : collapsed ? 'Adjust' : 'Hide'}
+            {multiSelectMode ? 'Choosing…' : collapsed ? annotation.kind === 'text' ? 'Arrange' : 'Adjust' : 'Hide'}
           </button>
           <button type="button" className="inspector-done-button" onClick={finishEditing}>Done</button>
         </div>
       </div>
+      {annotation.kind === 'text' && (
+        <section className="text-appearance" aria-label="Text formatting">
+          {annotation.sourceReplacement && (
+            <section className="source-replacement-copy" aria-label="Visual replacement safety">
+              <p className="inspector-copy">
+                <strong>Visual correction.</strong> The source text remains underneath these white covers
+                and may still be searchable, selectable, or recoverable. Use Redact when the original
+                content must be removed.
+              </p>
+            </section>
+          )}
+          <label className="text-font-family">Font family
+            <select
+              value={annotation.fontFamily ?? 'sans'}
+              onChange={(event) => update({ fontFamily: event.target.value as 'sans' | 'serif' | 'mono' })}
+            >
+              <option value="sans">Sans serif</option>
+              <option value="serif">Serif</option>
+              <option value="mono">Monospace</option>
+            </select>
+          </label>
+          <div className="text-appearance-row">
+            <label className="text-size-label">Size
+              <FontSizeControl
+                value={annotation.fontSize}
+                onChange={(fontSize) => update({ fontSize }, group('size'))}
+                onCommit={endGroup}
+              />
+            </label>
+            <div className="format-buttons" role="group" aria-label="Text emphasis">
+              <button
+                type="button"
+                aria-label="Bold"
+                aria-pressed={(annotation.fontWeight ?? 400) === 700}
+                onClick={() => update({ fontWeight: (annotation.fontWeight ?? 400) === 700 ? 400 : 700 })}
+              >
+                B
+              </button>
+              <button
+                type="button"
+                aria-label="Italic"
+                aria-pressed={(annotation.fontStyle ?? 'normal') === 'italic'}
+                onClick={() => update({ fontStyle: (annotation.fontStyle ?? 'normal') === 'italic' ? 'normal' : 'italic' })}
+              >
+                I
+              </button>
+            </div>
+          </div>
+          <div className="text-color-row">
+            <label className="text-color-label">Color
+              <input
+                type="color" value={annotation.color}
+                onChange={(event) => update({ color: event.target.value }, group('color'))}
+                onBlur={endGroup}
+              />
+            </label>
+            <div className="text-color-presets" role="group" aria-label="Text color presets">
+              {[
+                { label: 'Black', color: '#182026' },
+                { label: 'Blue', color: '#3157d5' },
+                { label: 'Red', color: '#b4473a' },
+                { label: 'Green', color: '#16815f' },
+              ].map(({ label, color }) => (
+                <button
+                  type="button"
+                  key={color}
+                  aria-label={`${label} text`}
+                  aria-pressed={annotation.color.toLowerCase() === color}
+                  title={label}
+                  style={{ '--swatch-color': color } as CSSProperties}
+                  onClick={() => { endGroup(); update({ color }) }}
+                >
+                  <span aria-hidden="true">{annotation.color.toLowerCase() === color ? '✓' : ''}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="text-format-hint">Type on the page. <kbd>Enter</kbd> finishes; <kbd>Shift + Enter</kbd> adds a line.</p>
+        </section>
+      )}
       <section className="inspector-essentials" aria-label="Selected item essentials">
         <div className="inspector-move-row">
-          <span className="inspector-move-hint"><span aria-hidden="true">✥</span> Drag on page to move</span>
+          <span className="inspector-move-hint"><span aria-hidden="true">✥</span> {annotation.kind === 'text' ? 'Drag the Move grip' : 'Drag on page to move'}</span>
           <button type="button" className="inspector-quick-delete" onClick={deleteItem}>Delete</button>
         </div>
-        <div className="page-alignment" aria-label="Align selected item on page">
-          <span>Align to page</span>
-          <div className="page-alignment-grid">
-            {PAGE_ALIGNMENTS.map(({ alignment, label, glyph }) => (
-              <button
-                key={alignment}
-                type="button"
-                aria-label={`Align selected item ${label.toLowerCase()} on page`}
-                title={label}
-                onClick={() => alignToPage(alignment, label)}
-              >
-                <span aria-hidden="true">{glyph}</span>
-                <small>{label}</small>
-              </button>
-            ))}
-          </div>
+        <div className="object-actions inspector-quick-actions" aria-label="Object actions">
+          <button type="button" onClick={() => {
+            dispatch({ type: 'duplicateAnnotation', annotationId: annotation.id, newId: createAnnotationId() })
+            announce?.(annotation.kind === 'form-field' && annotation.fieldType === 'radio'
+              ? 'Added another choice to this radio group. Undo removes it.'
+              : 'Duplicated item. Undo removes it.')
+          }}>{annotation.kind === 'form-field' && annotation.fieldType === 'radio' ? 'Add another choice' : 'Duplicate'}</button>
+          <button type="button" onClick={() => {
+            dispatch({ type: 'copyAnnotation', annotationId: annotation.id })
+            announce?.('Item copied. Paste creates an offset copy.')
+          }}>Copy</button>
+          <button type="button" disabled={!canPaste} onClick={() => {
+            dispatch({ type: 'pasteAnnotation', pageId: annotation.pageId, newId: createAnnotationId() })
+            announce?.('Pasted a new item. Undo removes it.')
+          }}>Paste</button>
         </div>
+        {annotation.kind !== 'text' && pageAlignmentControls}
       </section>
       <div id={controlsId} className="inspector-body">
+      {annotation.kind === 'text' && pageAlignmentControls}
       {onSelectMore && (
         <button
           type="button"
@@ -242,64 +357,6 @@ export function Inspector({
           <span aria-hidden="true">＋</span>
           <span>{multiSelectMode ? 'Choose another item…' : 'Select more items'}</span>
         </button>
-      )}
-      {annotation.kind === 'text' && (
-        <>
-          {annotation.sourceReplacement && (
-            <section className="source-replacement-copy" aria-label="Visual replacement safety">
-              <p className="inspector-copy">
-                <strong>Visual correction.</strong> The source text remains underneath these white covers
-                and may still be searchable, selectable, or recoverable. Use Redact when the original
-                content must be removed.
-              </p>
-            </section>
-          )}
-          <p className="inspector-copy inline-edit-hint">
-            Edit the words directly on the page. Enter finishes · Shift+Enter adds a new line. Use the blue grip to move the text.
-          </p>
-          <label>Font family
-            <select
-              value={annotation.fontFamily ?? 'sans'}
-              onChange={(event) => update({ fontFamily: event.target.value as 'sans' | 'serif' | 'mono' })}
-            >
-              <option value="sans">Sans serif</option>
-              <option value="serif">Serif</option>
-              <option value="mono">Monospace</option>
-            </select>
-          </label>
-          <div className="format-buttons" aria-label="Text emphasis">
-            <button
-              type="button"
-              aria-label="Bold"
-              aria-pressed={(annotation.fontWeight ?? 400) === 700}
-              onClick={() => update({ fontWeight: (annotation.fontWeight ?? 400) === 700 ? 400 : 700 })}
-            >
-              B
-            </button>
-            <button
-              type="button"
-              aria-label="Italic"
-              aria-pressed={(annotation.fontStyle ?? 'normal') === 'italic'}
-              onClick={() => update({ fontStyle: (annotation.fontStyle ?? 'normal') === 'italic' ? 'normal' : 'italic' })}
-            >
-              I
-            </button>
-          </div>
-          <label>Size
-            <FontSizeControl
-              value={annotation.fontSize}
-              onChange={(fontSize) => update({ fontSize }, group('size'))}
-              onCommit={endGroup}
-            />
-          </label>
-          <label>Color
-            <input
-              type="color" value={annotation.color}
-              onChange={(event) => update({ color: event.target.value }, group('color'))}
-              onBlur={endGroup}
-            />
-          </label>
-        </>
       )}
       {annotation.kind === 'highlight' && (
         <>
@@ -775,21 +832,7 @@ export function Inspector({
           The area is not recoverable from the exported file. Text on that page will no longer be selectable.
         </p>
       )}
-      <div className="object-actions" aria-label="Object actions">
-        <button type="button" onClick={() => {
-          dispatch({ type: 'duplicateAnnotation', annotationId: annotation.id, newId: createAnnotationId() })
-          announce?.(annotation.kind === 'form-field' && annotation.fieldType === 'radio'
-            ? 'Added another choice to this radio group. Undo removes it.'
-            : 'Duplicated item. Undo removes it.')
-        }}>{annotation.kind === 'form-field' && annotation.fieldType === 'radio' ? 'Add another choice' : 'Duplicate'}</button>
-        <button type="button" onClick={() => {
-          dispatch({ type: 'copyAnnotation', annotationId: annotation.id })
-          announce?.('Item copied. Paste creates an offset copy.')
-        }}>Copy</button>
-        <button type="button" disabled={!canPaste} onClick={() => {
-          dispatch({ type: 'pasteAnnotation', pageId: annotation.pageId, newId: createAnnotationId() })
-          announce?.('Pasted a new item. Undo removes it.')
-        }}>Paste</button>
+      <div className="object-actions" aria-label="Layer order">
         <button type="button" onClick={() => dispatch({ type: 'bringForward', annotationId: annotation.id })}>Bring forward</button>
         <button type="button" onClick={() => dispatch({ type: 'sendBackward', annotationId: annotation.id })}>Send backward</button>
       </div>

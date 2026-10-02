@@ -23,6 +23,7 @@ import {
   type Tool,
 } from '../model/editor'
 import { InlineTextEditor } from './InlineTextEditor'
+import { DATE_STAMP_TYPOGRAPHY } from '../model/dateStamp'
 
 function annotationSelectionLabel(annotation: Annotation) {
   if (annotation.kind === 'highlight') return `Select ${textMarkStyleOf(annotation)} annotation`
@@ -613,7 +614,18 @@ export function AnnotationLayer({
               )}
               {renderedAnnotation.kind === 'stamp' && (
                 renderedAnnotation.stamp === 'date'
-                  ? <span className="date-stamp" style={{ color: renderedAnnotation.color }}>{renderedAnnotation.label}</span>
+                  ? <span className="date-stamp">
+                    <svg width="100%" height="100%" aria-hidden="true">
+                      <text
+                        x="50%"
+                        y="50%"
+                        dy={`${DATE_STAMP_TYPOGRAPHY.baselineOffset}em`}
+                        textAnchor="middle"
+                        fill={renderedAnnotation.color}
+                        style={{ fontSize: `clamp(${DATE_STAMP_TYPOGRAPHY.minSize * renderScale}px, ${DATE_STAMP_TYPOGRAPHY.heightRatio * 100}cqh, ${DATE_STAMP_TYPOGRAPHY.maxSize * renderScale}px)` }}
+                      >{renderedAnnotation.label}</text>
+                    </svg>
+                  </span>
                   : <svg className="stamp-preview" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                     {renderedAnnotation.stamp === 'check' && <polyline points="8,52 38,82 94,15" fill="none" stroke={renderedAnnotation.color} strokeWidth={renderedAnnotation.strokeWidth * renderScale} vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />}
                     {renderedAnnotation.stamp === 'cross' && <><line x1="14" y1="14" x2="86" y2="86" stroke={renderedAnnotation.color} strokeWidth={renderedAnnotation.strokeWidth * renderScale} vectorEffect="non-scaling-stroke" strokeLinecap="round" /><line x1="86" y1="14" x2="14" y2="86" stroke={renderedAnnotation.color} strokeWidth={renderedAnnotation.strokeWidth * renderScale} vectorEffect="non-scaling-stroke" strokeLinecap="round" /></>}

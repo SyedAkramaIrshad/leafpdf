@@ -130,6 +130,7 @@ interface NextLevelWorkbenchProps {
 interface SavedPdfReceipt {
   document: EditorDocument
   comments: ReviewComment[]
+  formOutput: PdfFormOutput
 }
 
 type InsertedPdfEntry = { file: File; pdf: PDFDocumentProxy }
@@ -193,6 +194,7 @@ export function NextLevelWorkbench({
   const [insertedPdfs, setInsertedPdfs] = useState<Map<string, InsertedPdfEntry>>(new Map())
   const [projectReady, setProjectReady] = useState(initialProject === null)
   const [projectSavedDocument, setProjectSavedDocument] = useState<EditorDocument>(() => state.present)
+  const [hasSavedProject, setHasSavedProject] = useState(initialProject !== null)
   const [projectOnlyDirty, setProjectOnlyDirty] = useState(false)
   const [comments, setComments] = useState<ReviewComment[]>(() => structuredClone(initialProject?.project.comments ?? []))
   const [ocr, setOcr] = useState<OcrPageResult[]>(() => structuredClone(initialProject?.project.ocr ?? []))
@@ -341,6 +343,11 @@ export function NextLevelWorkbench({
     [state.present.pages],
   )
   const projectDirty = state.present !== projectSavedDocument || projectOnlyDirty
+  const projectSaveStatus = projectDirty
+    ? { label: 'Editable project: unsaved changes', tone: 'stale' }
+    : hasSavedProject
+      ? { label: 'Editable project: saved', tone: 'saved' }
+      : { label: 'Editable project: not saved', tone: 'ready' }
   const pdfCopyCurrent = savedPdfReceipt !== null
     && savedPdfReceipt.document === state.present
     && savedPdfReceipt.comments === comments
@@ -348,7 +355,7 @@ export function NextLevelWorkbench({
     ? { label: 'Ready to save PDF', tone: 'ready' }
     : pdfCopyCurrent
       ? { label: 'PDF copy saved', tone: 'saved' }
-      : { label: 'New changes to save', tone: 'stale' }
+      : { label: 'New PDF changes to save', tone: 'stale' }
   const visibleNotice = savedPdfReceipt !== null
     && !pdfCopyCurrent
     && (notice?.startsWith('Saved fillable PDF as ') || notice?.startsWith('Saved flattened PDF as '))
@@ -459,6 +466,7 @@ export function NextLevelWorkbench({
     commentsSnapshot: ReviewComment[],
     ocrSnapshot: OcrPageResult[],
   ): Promise<LeafProject> => {
+    const updatedAt = Date.now()
     const signature = sourceSignature(loaded.sourceFile, insertedPdfs)
     let base = projectSourceCache.current
     if (!base || base.signature !== signature) {
@@ -479,7 +487,7 @@ export function NextLevelWorkbench({
     }
     return {
       ...structuredClone(base.project),
-      updatedAt: Date.now(),
+      updatedAt,
       document: structuredClone(documentSnapshot),
       comments: structuredClone(commentsSnapshot),
       ocr: structuredClone(ocrSnapshot),
@@ -487,17 +495,25 @@ export function NextLevelWorkbench({
   }, [insertedPdfs, loaded.sourceFile])
 
   useEffect(() => {
-    if (!projectReady || !projectDirty) return
+    if (!projectReady || !projectDirty || savingProject) return
+    let active = true
     const documentSnapshot = state.present
     const commentsSnapshot = comments
     const ocrSnapshot = ocr
     const timer = window.setTimeout(() => {
       void buildProject(documentSnapshot, commentsSnapshot, ocrSnapshot)
-        .then((project) => recoveryQueue.current.save(recoveryKey, project))
-        .catch(() => setNotice('Complete local recovery is unavailable. Save a .leafpdf project to keep every source and edit.'))
+        .then((project) => {
+          if (active) return recoveryQueue.current.save(recoveryKey, project)
+        })
+        .catch(() => {
+          if (active) setNotice('Complete local recovery is unavailable. Save a .leafpdf project to keep every source and edit.')
+        })
     }, 800)
-    return () => window.clearTimeout(timer)
-  }, [buildProject, comments, ocr, projectDirty, projectReady, recoveryKey, state.present])
+    return () => {
+      active = false
+      window.clearTimeout(timer)
+    }
+  }, [buildProject, comments, ocr, projectDirty, projectReady, recoveryKey, savingProject, state.present])
 
   useEffect(() => {
     let active = true
@@ -507,16 +523,30 @@ export function NextLevelWorkbench({
     void loadPersonalDetails().then((details) => {
       if (active) setSavedDetails(details)
     }).catch(() => undefined)
-    if (!initialProject) {
+    if (projectReady) {
+      const openedDocument = latestDocument.current
+      const openedComments = latestComments.current
+      const openedOcr = latestOcr.current
       void loadProjectRecovery(recoveryKey).then((recovered) => {
-        if (active && recovered) {
-          setRecoveryProject(recovered)
-          setRecoveryOpen(true)
+        if (!active || !recovered
+          || latestDocument.current !== openedDocument
+          || latestComments.current !== openedComments
+          || latestOcr.current !== openedOcr) return
+        const recoveredPrimary = recovered.sources.find((source) => source.id === recovered.primarySourceId)
+        if (!recoveredPrimary
+          || projectRecoveryKey(recoveredPrimary, loaded.documentFingerprint) !== recoveryKey) return
+        if (initialProject) {
+          const openedPrimary = initialProject.project.sources.find((source) => source.id === initialProject.project.primarySourceId)
+          // Compare snapshot timestamps, not the recovery write time or the .leafpdf file's mtime.
+          if (!openedPrimary || recoveredPrimary.sha256 !== openedPrimary.sha256
+            || !(recovered.updatedAt > initialProject.project.updatedAt)) return
         }
+        setRecoveryProject(recovered)
+        setRecoveryOpen(true)
       })
     }
     return () => { active = false }
-  }, [initialProject, recoveryKey])
+  }, [initialProject, loaded.documentFingerprint, projectReady, recoveryKey])
 
   useEffect(() => {
     if (modalOpen) return
@@ -588,14 +618,14 @@ export function NextLevelWorkbench({
   }, [changeTool, commitPendingMedia, modalOpen, pendingDetail, pendingMedia, selectedAnnotation, selectedPage.id, state.clipboard, state.selectedAnnotationIds])
 
   useEffect(() => {
-    if (!state.dirty && !projectDirty) return
+    if (!projectDirty) return
     const confirmLeave = (event: BeforeUnloadEvent) => event.preventDefault()
     window.addEventListener('beforeunload', confirmLeave)
     return () => window.removeEventListener('beforeunload', confirmLeave)
-  }, [projectDirty, state.dirty])
+  }, [projectDirty])
 
   const requestClose = () => {
-    if (state.dirty || projectDirty) {
+    if (projectDirty) {
       setDiscardOpen(true)
       return
     }
@@ -1012,16 +1042,9 @@ export function NextLevelWorkbench({
         setNotice('PDF export cancelled.')
         return
       }
-      setSavedPdfReceipt({ document: documentSnapshot, comments: commentsSnapshot })
+      setSavedPdfReceipt({ document: documentSnapshot, comments: commentsSnapshot, formOutput })
       setCompatibilityFeatures(null)
-      dispatch({ type: 'markSaved', document: documentSnapshot })
-      const projectOnlyStateSaved = latestComments.current === commentsSnapshot
-        && latestOcr.current.length === 0
-      if (latestDocument.current === documentSnapshot && projectOnlyStateSaved) {
-        setProjectSavedDocument(documentSnapshot)
-        setProjectOnlyDirty(false)
-        await recoveryQueue.current.clear(recoveryKey)
-      }
+      // A PDF copy does not preserve the editable project or replace its recovery draft.
       const pdfSnapshotCurrent = latestDocument.current === documentSnapshot
         && latestComments.current === commentsSnapshot
       const outputLabel = formOutput === 'flattened' ? 'flattened PDF' : 'fillable PDF'
@@ -1093,20 +1116,20 @@ export function NextLevelWorkbench({
         signature: sourceSignature(loaded.sourceFile, insertedPdfs),
         project: structuredClone(project),
       }
-      if (latestDocument.current === documentSnapshot) {
-        setProjectSavedDocument(documentSnapshot)
-        dispatch({ type: 'markSaved', document: documentSnapshot })
-      }
+      setHasSavedProject(true)
+      setProjectSavedDocument(documentSnapshot)
+      dispatch({ type: 'markSaved', document: documentSnapshot })
       if (latestComments.current === commentsSnapshot && latestOcr.current === ocrSnapshot) setProjectOnlyDirty(false)
-      if (
-        latestDocument.current === documentSnapshot
+      const projectSnapshotCurrent = latestDocument.current === documentSnapshot
         && latestComments.current === commentsSnapshot
         && latestOcr.current === ocrSnapshot
-      ) {
+      if (projectSnapshotCurrent) {
         await recoveryQueue.current.clear(recoveryKey)
       }
       void requestPersistentStorage()
-      setNotice(`Saved editable project ${fileName}.`)
+      setNotice(projectSnapshotCurrent
+        ? `Saved editable project ${fileName}.`
+        : `Saved editable project ${fileName}. Newer edits still need saving.`)
     } catch (error) {
       setNotice(error instanceof Error ? `Project save failed: ${error.message}` : 'Project save failed.')
     } finally {
@@ -1236,15 +1259,21 @@ export function NextLevelWorkbench({
     <main className="workbench-shell next-level-workbench">
       <SkipNavigation hasItemProperties={selectedAnnotations.length > 0} />
       <header className="topbar">
-        <button type="button" className="brand-button" disabled={closing} onClick={requestClose} aria-label="Close document and return home">
+        <button type="button" className="brand-button" disabled={closing} onClick={requestClose} aria-label="Close document and return home" title="Home — open another PDF or project">
           <span className="brand-mark" aria-hidden="true">L</span>
-          <span>LeafPDF</span>
+          <span className="brand-home-label">LeafPDF<small>← Home</small></span>
         </button>
         <div className="document-identity">
           <h1 title={loaded.fileName}>{loaded.fileName}</h1>
           <span className={`pdf-save-status is-${pdfSaveStatus.tone}`}>
             <i className="status-dot" /> {state.present.pages.length} page{state.present.pages.length === 1 ? '' : 's'}
             {' · '}{formatFileSize(loaded.sourceFile.size)} · {pdfSaveStatus.label}
+          </span>
+          <span
+            className={`pdf-save-status is-${projectSaveStatus.tone}`}
+            title="Document → Save project keeps every source and edit for later."
+          >
+            <i className="status-dot" /> {projectSaveStatus.label}
           </span>
         </div>
         <div className="history-controls" aria-label="Edit history">
@@ -1275,6 +1304,7 @@ export function NextLevelWorkbench({
           disabledReason={loaded.features.isEncrypted ? 'Encrypted PDFs cannot be exported.' : undefined}
           exporting={exporting}
           primaryLabel={pdfCopyCurrent ? 'Save again' : 'Save PDF'}
+          primaryOutput={savedPdfReceipt?.formOutput ?? 'fillable'}
           progressLabel={exportProgress
             ? `Saving PDF… ${exportProgress.completedPages}/${exportProgress.totalPages}`
             : 'Saving PDF…'}
@@ -1373,8 +1403,9 @@ export function NextLevelWorkbench({
                 <input
                   ref={searchInputRef}
                   type="search"
-                  placeholder="Find in PDF or OCR"
+                  placeholder="Find or replace text"
                   aria-label="Find text in document"
+                  aria-description="Find a phrase, then choose Replace for a visual correction. Scanned OCR matches can be searched but not replaced."
                   value={searchQuery}
                   disabled={replacementBusy}
                   onChange={(event) => {
@@ -1639,6 +1670,8 @@ export function NextLevelWorkbench({
       />
       <DiscardChangesDialog
         open={discardOpen}
+        projectChanges={projectDirty}
+        pdfCopyCurrent={pdfCopyCurrent}
         onContinue={() => setDiscardOpen(false)}
         onDiscard={() => {
           void recoveryQueue.current.clear(recoveryKey).then(() => {

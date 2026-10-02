@@ -2536,7 +2536,7 @@ test('keeps the PDF stable while item properties open across supported laptop wi
   await expect(inspector).toBeVisible()
   await expect(inspector).toHaveClass(/is-collapsed/)
   const adjust = page.getByRole('button', { name: 'Show item properties' })
-  await expect(adjust).toHaveText('Adjust')
+  await expect(adjust).toHaveText('Arrange')
 
   const selectedStage = await stage.boundingBox()
   const selectedPaper = await paper.boundingBox()
@@ -2571,7 +2571,7 @@ test('keeps the PDF stable while item properties open across supported laptop wi
   const minimumWidthAdjust = await page.getByRole('button', { name: 'Show item properties' }).boundingBox()
   const minimumWidthDone = await page.getByRole('button', { name: 'Done' }).boundingBox()
   if (!minimumWidthInspector || !minimumWidthAdjust || !minimumWidthDone) throw new Error('Compact minimum-width laptop properties slip is missing.')
-  expect(minimumWidthInspector.height).toBeLessThanOrEqual(240)
+  expect(minimumWidthInspector.height).toBeLessThanOrEqual(400)
   expect(minimumWidthAdjust.height).toBeGreaterThanOrEqual(36)
   expect(minimumWidthDone.height).toBeGreaterThanOrEqual(36)
   await page.screenshot({ path: 'output/ui/m35-properties-desktop-minimum.png', fullPage: true })

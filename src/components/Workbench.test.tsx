@@ -972,7 +972,7 @@ describe('Inspector history grouping', () => {
 
     expect(inspector).toHaveClass('is-collapsed')
     const show = screen.getByRole('button', { name: 'Show item properties' })
-    expect(show).toHaveTextContent('Adjust')
+    expect(show).toHaveTextContent('Arrange')
     expect(show).toHaveAttribute('aria-expanded', 'false')
     expect(show).toHaveAttribute('aria-controls', controlsId)
     expect(view.container.querySelector(`#${controlsId}`)).toHaveClass('inspector-body')
