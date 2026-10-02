@@ -370,12 +370,20 @@ export function AnnotationLayer({
               type="button"
               className="rotation-handle"
               aria-label="Rotate item"
-              title="Drag to rotate"
+              title="Drag to rotate, or use Left/Right arrows (Shift: 15°)"
               style={{ left: '50%', top: 0 }}
               onPointerDown={(event) => beginRotate(event, annotation)}
               onPointerMove={previewRotate}
               onPointerUp={finishRotate}
               onPointerCancel={cancelRotate}
+              onKeyDown={(event) => {
+                if (!ARROW_DELTAS[event.key]) return
+                event.preventDefault()
+                event.stopPropagation()
+                const direction = event.key === 'ArrowLeft' || event.key === 'ArrowDown' ? -1 : 1
+                dispatch({ type: 'replaceAnnotation', annotation: rotateAnnotation(annotation,
+                  (annotation.rotation ?? 0) + direction * (event.shiftKey ? 15 : 1)) })
+              }}
             />
           </>
         )}
@@ -391,6 +399,17 @@ export function AnnotationLayer({
             onPointerMove={previewResize}
             onPointerUp={finishResize}
             onPointerCancel={cancelResize}
+            onKeyDown={(event) => {
+              const delta = ARROW_DELTAS[event.key]
+              if (!delta) return
+              event.preventDefault()
+              event.stopPropagation()
+              const step = event.shiftKey ? 0.02 : 0.005
+              dispatch({ type: 'replaceAnnotation', annotation: resizeAnnotationFromCorner(
+                annotation, corner, delta.dx * step, delta.dy * step,
+                annotation.kind === 'image' || (annotation.kind === 'form-field' && annotation.fieldType !== 'text'),
+              ) })
+            }}
           />
         ))}
       </div>

@@ -136,16 +136,20 @@ carries a digital signature, LeafPDF says so before you edit: any edit invalidat
 and LeafPDF cannot re-sign a document.
 
 Recovery saves the complete editable project, including source PDFs, in browser IndexedDB on this
-device. A record is keyed by the source PDF's stable PDF.js fingerprint as well as file
-metadata, so edits are not offered for a different file that happens to share a name and size.
+device. A record is keyed by the source PDF's stable PDF.js fingerprint, file metadata, and
+portable project identity, so independently created projects on the same PDF keep separate drafts.
 Recovery writes and deletions are serialized to prevent a delayed autosave from resurrecting a
 discarded session. Exporting a PDF keeps the editable project's unsaved state and recovery intact.
-Saving the current `.leafpdf` project clears its recovery record; newer edits made during the save
-remain unsaved. Opening a project offers a matching recovery draft only when that draft is newer.
+A confirmed native save of the current `.leafpdf` project clears its recovery record; newer edits
+made during the save remain unsaved. Browser downloads are labelled **download requested** and
+retain recovery because the browser cannot confirm the file reached disk. Reopen the downloaded
+project to verify it. Opening a project offers a matching recovery draft only when its content
+differs and its snapshot is newer. Undo back to the saved baseline clears obsolete recovery.
 
 Added text behaves like a small text box on the page: click it and type there. The blue grip above a
 selected text box moves it. Font size shows its exact point value and supports direct typing,
-plus/minus buttons, arrow keys, and the mouse wheel. Drag and resize gestures preview continuously
+plus/minus buttons, arrow keys, and the mouse wheel while the size input is focused. Text boxes grow
+vertically while you edit so additional lines remain visible. Drag and resize gestures preview continuously
 but enter history as one change, so a single Undo reverses the whole gesture.
 
 To correct existing words without building a cover and text box separately, keep **Select** active,
@@ -219,9 +223,11 @@ While dragging an added item, LeafPDF settles its edges or center onto nearby pa
 when they are close. Hold **Option/Alt** while dragging to move freely without guides. Arrow-key
 nudge remains exact and unsnapped for deliberate 1% or 5% adjustments.
 
-The desktop workspace opens at 100%. Use − or + for manual zoom, or choose **Fit width** whenever the
-complete paper should fill the available document area. Opening or hiding the compact properties slip
-never changes export coordinates or creates an undo step.
+The desktop workspace opens in **Fit width**. Use − or + for manual zoom. Item properties dock
+beside the page instead of covering it; Fit width follows the available document area. Opening or
+hiding properties never changes export coordinates or creates an undo step. **Help** stays visible
+in the top bar. Focus a corner handle and use the arrow keys to resize (Shift for larger steps), or
+focus the rotation handle and use Left/Right (Shift for 15-degree steps).
 
 Keyboard users can Tab to **Skip to PDF** or **Skip to item properties** instead of crossing every
 toolbar control. The open filename is the workspace heading, pages and properties have named

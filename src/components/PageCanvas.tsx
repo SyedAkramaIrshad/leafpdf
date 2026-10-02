@@ -120,7 +120,7 @@ export function PageCanvas({
 }: PageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const surfaceRef = useRef<HTMLDivElement>(null)
-  const [dimensions, setDimensions] = useState({ width: 612, height: 792 })
+  const [dimensions, setDimensions] = useState({ width: 612, height: 792, renderScale: 1 })
   // Read through a ref so an inline callback never re-runs the render effect.
   const onMeasuredRef = useRef(onMeasured)
   useEffect(() => {
@@ -201,7 +201,7 @@ export function PageCanvas({
           const sideways = page.rotation === 90 || page.rotation === 270
           const width = (sideways ? page.height : page.width) * 1.16 * zoom
           const height = (sideways ? page.width : page.height) * 1.16 * zoom
-          setDimensions({ width, height })
+          setDimensions({ width, height, renderScale: 1.16 * zoom })
           onMeasuredRef.current?.({ width, height }, zoom)
           const canvas = canvasRef.current
           const context = canvas?.getContext('2d', { alpha: false })
@@ -220,7 +220,7 @@ export function PageCanvas({
         const rotation = (sourcePage.rotate + page.rotation) % 360
         const viewport = sourcePage.getViewport({ scale: 1.16 * zoom, rotation })
         if (cancelled) return
-        setDimensions({ width: viewport.width, height: viewport.height })
+        setDimensions({ width: viewport.width, height: viewport.height, renderScale: 1.16 * zoom })
         onMeasuredRef.current?.({ width: viewport.width, height: viewport.height }, zoom)
         const canvas = canvasRef.current
         const context = canvas?.getContext('2d', { alpha: false })
@@ -507,7 +507,7 @@ export function PageCanvas({
           onDrawMove={drawMove}
           onDrawEnd={drawEnd}
           draftPoints={draftPoints}
-          renderScale={1.16 * zoom}
+          renderScale={dimensions.renderScale}
         />
         {/* Above the annotation layer so field inputs stay clickable; the layer
             itself is pointer-transparent, so tools keep working around fields. */}

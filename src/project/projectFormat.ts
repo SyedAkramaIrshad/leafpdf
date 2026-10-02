@@ -315,6 +315,7 @@ function validateProject(value: unknown): asserts value is LeafProject {
   assert(isRecord(value), 'This is not a LeafPDF project.')
   assert(value.format === LEAF_PROJECT_FORMAT, 'This is not a LeafPDF project.')
   assert(value.version === LEAF_PROJECT_VERSION, `LeafPDF project version ${String(value.version)} is not supported.`)
+  assert(value.id === undefined || (typeof value.id === 'string' && value.id.length > 0 && value.id.length <= 160), 'The project identity is invalid.')
   assert(finiteNumber(value.createdAt) && finiteNumber(value.updatedAt), 'The project timestamps are invalid.')
   assert(typeof value.primarySourceId === 'string' && value.primarySourceId.length > 0, 'The project primary source is missing.')
   assert(Array.isArray(value.sources) && value.sources.length > 0, 'The project has no PDF sources.')
@@ -365,6 +366,7 @@ export async function createLeafProject(input: LeafProjectInput): Promise<LeafPr
   assert(totalBytes <= PROJECT_LIMITS.maxProjectBytes, 'The project source PDFs exceed the project size limit.')
   const now = Date.now()
   const project: LeafProject = {
+    id: input.id ?? crypto.randomUUID(),
     format: LEAF_PROJECT_FORMAT,
     version: LEAF_PROJECT_VERSION,
     createdAt: input.createdAt ?? now,

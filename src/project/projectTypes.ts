@@ -45,6 +45,8 @@ export interface LeafProjectSource {
 }
 
 export interface LeafProject {
+  /** Stable identity separates projects made from the same source PDF. */
+  id?: string
   format: typeof LEAF_PROJECT_FORMAT
   version: typeof LEAF_PROJECT_VERSION
   createdAt: number
@@ -57,6 +59,7 @@ export interface LeafProject {
 }
 
 export interface LeafProjectInput {
+  id?: string
   primaryFile: File
   insertedFiles: Array<{ id: string; file: File }>
   document: EditorDocument

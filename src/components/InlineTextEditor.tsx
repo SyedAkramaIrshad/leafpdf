@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ChangeEvent, type KeyboardEvent, type PointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, type ChangeEvent, type KeyboardEvent, type PointerEvent } from 'react'
 import { textStyleOf, type EditorAction, type TextAnnotation } from '../model/editor'
 import { CSS_FONT_STACKS } from '../pdf/textTypography'
 
@@ -24,6 +24,22 @@ export function InlineTextEditor({
   const hasAutoSelectedReplacement = useRef(false)
   const style = textStyleOf(annotation)
   const historyGroup = `annotation-${annotation.id}-text`
+
+  useLayoutEffect(() => {
+    if (!selected) return
+    const editor = editorRef.current
+    const page = editor?.closest<HTMLElement>('.annotation-layer')
+    if (!editor || !page?.clientHeight) return
+    const previousHeight = editor.style.height
+    editor.style.height = '0px'
+    const contentHeight = editor.scrollHeight + 2
+    editor.style.height = previousHeight
+    const requiredHeight = contentHeight / page.clientHeight
+    if (requiredHeight > annotation.height + 0.002) {
+      dispatch({ type: 'fitTextHeight', annotationId: annotation.id, height: Math.min(1, requiredHeight) })
+    }
+  }, [annotation.id, annotation.text, annotation.width, annotation.height, annotation.fontSize,
+    style.fontFamily, style.fontWeight, style.fontStyle, renderScale, dispatch, selected])
 
   useEffect(() => {
     if (selected && !wasSelected.current) {

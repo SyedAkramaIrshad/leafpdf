@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { FileWelcome } from './components/FileWelcome'
 import type { LoadedPdf } from './pdf/types'
 import type { OpenedLeafProject } from './project/projectTypes'
@@ -14,6 +14,10 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [closing, setClosing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const leaveGuard = useRef<((proceed: () => void) => void) | null>(null)
+  const registerLeaveGuard = useCallback((guard: ((proceed: () => void) => void) | null) => {
+    leaveGuard.current = guard
+  }, [])
 
   const openFile = useCallback(async (file: File) => {
     setBusy(true)
@@ -46,12 +50,10 @@ export default function App() {
     }
   }, [])
 
-  useEffect(() => registerFileLaunchConsumer(openFile), [openFile])
-
   // `destroy()` tears down the PDF.js worker and releases its page and font caches;
   // the document leaves state before the await so a quick close-then-open cannot
   // be wiped by the old worker finishing its shutdown later.
-  const closeFile = async () => {
+  const closeFile = useCallback(async () => {
     const closingDocument = loaded
     setLoaded(null)
     setOpenedProject(null)
@@ -61,7 +63,20 @@ export default function App() {
     } finally {
       setClosing(false)
     }
-  }
+  }, [loaded])
+
+  useEffect(() => registerFileLaunchConsumer((file) => {
+    const proceed = () => {
+      // Unmount the previous editor before opening even the same file again.
+      // The guard has already preserved or explicitly discarded its recovery.
+      void (async () => {
+        if (loaded) await closeFile()
+        await openFile(file)
+      })().catch(() => setError('The previous document could not be closed. Please open your file again.'))
+    }
+    if (leaveGuard.current) leaveGuard.current(proceed)
+    else proceed()
+  }), [closeFile, loaded, openFile])
 
   return loaded
     ? (
@@ -72,6 +87,7 @@ export default function App() {
           initialProject={openedProject}
           closing={closing}
           onClose={closeFile}
+          registerLeaveGuard={registerLeaveGuard}
         />
       </Suspense>
     )

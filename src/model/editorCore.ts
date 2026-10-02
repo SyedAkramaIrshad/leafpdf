@@ -340,6 +340,8 @@ export type EditorAction =
       selectLast?: boolean
     }
   | { type: 'updateAnnotation'; annotationId: string; patch: Partial<Annotation>; historyGroup?: string }
+  /** Text measurement belongs to the edit that caused it, not another Undo step. */
+  | { type: 'fitTextHeight'; annotationId: string; height: number }
   | { type: 'replaceAnnotation'; annotation: Annotation }
   | { type: 'replaceAnnotations'; annotations: Annotation[]; historyGroup?: string }
   | { type: 'removeAnnotation'; annotationId: string }
@@ -554,6 +556,18 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
           : action.annotations.at(-1)?.id ? [action.annotations.at(-1)!.id] : [],
         activeTool: 'select',
       }
+    case 'fitTextHeight': {
+      const current = state.present.annotations.find(({ id }) => id === action.annotationId)
+      if (!current || current.kind !== 'text' || !Number.isFinite(action.height)
+        || action.height <= current.height + 0.002) return state
+      const height = Math.min(1, action.height)
+      return {
+        ...state,
+        present: { ...state.present, annotations: state.present.annotations.map((annotation) =>
+          annotation.id === current.id ? { ...current, height, y: Math.min(current.y, 1 - height) } : annotation) },
+        dirty: true,
+      }
+    }
     case 'updateAnnotation': {
       const annotations = state.present.annotations.map((annotation) =>
         annotation.id === action.annotationId
@@ -724,10 +738,20 @@ function offsetClone(
 ): Annotation {
   const clone = structuredClone(source)
   if (clone.kind === 'ink') {
+    const minX = Math.min(...clone.points.map(({ x }) => x), 1)
+    const minY = Math.min(...clone.points.map(({ y }) => y), 1)
     const maxX = Math.max(...clone.points.map(({ x }) => x), 0)
     const maxY = Math.max(...clone.points.map(({ y }) => y), 0)
-    const dx = Math.min(0.02, 1 - maxX)
-    const dy = Math.min(0.02, 1 - maxY)
+    let dx = Math.min(0.02, 1 - maxX)
+    let dy = Math.min(0.02, 1 - maxY)
+    const occupied = () => annotations.some((item) => item.pageId === pageId && item.kind === 'ink'
+      && Math.abs(Math.min(...item.points.map(({ x }) => x), 1) - minX - dx) < 0.001
+      && Math.abs(Math.min(...item.points.map(({ y }) => y), 1) - minY - dy) < 0.001)
+    for (let step = 2; occupied() && step <= 100; step += 1) {
+      const distance = Math.ceil(step / 2) * 0.02 * (step % 2 === 0 ? -1 : 1)
+      dx = Math.max(-minX, Math.min(1 - maxX, distance))
+      dy = Math.max(-minY, Math.min(1 - maxY, distance))
+    }
     return {
       ...clone, id, pageId,
       points: clone.points.map((point) => ({ x: point.x + dx, y: point.y + dy })),
@@ -737,6 +761,15 @@ function offsetClone(
     ...clone, id, pageId,
     x: Math.round(Math.min(1 - clone.width, clone.x + 0.02) * 1e6) / 1e6,
     y: Math.round(Math.min(1 - clone.height, clone.y + 0.02) * 1e6) / 1e6,
+  }
+  // Copy once, Paste repeatedly must not hide every copy at the same coordinates.
+  const occupied = (x: number, y: number) => annotations.some((item) =>
+    item.pageId === pageId && item.kind !== 'ink' && Math.abs(item.x - x) < 0.001 && Math.abs(item.y - y) < 0.001)
+  for (let step = 1; occupied(offset.x, offset.y) && step <= 100; step += 1) {
+    const direction = step % 2 === 0 ? -1 : 1
+    const distance = Math.ceil(step / 2) * 0.02 * direction
+    offset.x = Math.round(Math.max(0, Math.min(1 - clone.width, clone.x + distance)) * 1e6) / 1e6
+    offset.y = Math.round(Math.max(0, Math.min(1 - clone.height, clone.y + distance)) * 1e6) / 1e6
   }
   if (offset.kind !== 'form-field') return offset
   if (offset.fieldType === 'radio') {
@@ -752,8 +785,10 @@ function offsetClone(
         : { x: Math.max(0, clone.x - clone.width - gap), y: clone.y }
     return {
       ...offset,
-      x: Math.round(position.x * 1e6) / 1e6,
-      y: Math.round(position.y * 1e6) / 1e6,
+      ...(occupied(position.x, position.y) ? {} : {
+        x: Math.round(position.x * 1e6) / 1e6,
+        y: Math.round(position.y * 1e6) / 1e6,
+      }),
       optionValue: nextRadioOptionValue(offset.fieldName, annotations),
       selectedByDefault: false,
     }

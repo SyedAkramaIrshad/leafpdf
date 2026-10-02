@@ -7,6 +7,9 @@ interface RecoveryDialogProps {
   onDiscard: () => void
   /** Close the prompt without changing the locally stored recovery copy. */
   onClose: () => void
+  documentName?: string
+  updatedAt?: number
+  projectIdentity?: string
 }
 
 /**
@@ -18,7 +21,7 @@ export function RecoveryDialog({ open, ...handlers }: RecoveryDialogProps) {
   return <RecoveryDialogContent {...handlers} />
 }
 
-function RecoveryDialogContent({ onRestore, onDiscard, onClose }: Omit<RecoveryDialogProps, 'open'>) {
+function RecoveryDialogContent({ onRestore, onDiscard, onClose, documentName, updatedAt, projectIdentity }: Omit<RecoveryDialogProps, 'open'>) {
   const restoreRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useModalDialog<HTMLElement>({ onEscape: onClose, initialFocusRef: restoreRef })
 
@@ -37,6 +40,10 @@ function RecoveryDialogContent({ onRestore, onDiscard, onClose }: Omit<RecoveryD
         <span className="inspector-label">COMPLETE LOCAL RECOVERY</span>
         <h2 id="recovery-title">Resume your previous editing session?</h2>
         <div id="recovery-body">
+          <p><strong>{documentName ?? 'This document'}</strong>
+            {updatedAt !== undefined && <> — local draft from {new Date(updatedAt).toLocaleString()}</>}
+          </p>
+          {projectIdentity && <p className="dialog-note">Project {projectIdentity.slice(0, 12)}</p>}
           <p>
             LeafPDF saved the same complete representation used by a portable .leafpdf project:
             the primary PDF, inserted PDFs, page order, form values, editable annotations,

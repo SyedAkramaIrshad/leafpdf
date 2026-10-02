@@ -1,5 +1,5 @@
 import { Encodings } from '@pdf-lib/standard-fonts'
-import { LineCapStyle, PDFArray, PDFCheckBox, PDFDict, PDFDocument, PDFDropdown, PDFName, PDFRadioGroup, PDFRef, PDFTextField, degrees, rgb, type PDFPage } from 'pdf-lib'
+import { LineCapStyle, PDFArray, PDFCheckBox, PDFDict, PDFDocument, PDFDropdown, PDFName, PDFRadioGroup, PDFRef, PDFTextField, breakTextIntoLines, degrees, rgb, type PDFPage } from 'pdf-lib'
 import { hasRedactions, imageOpacityOf, textMarkStrokeWidthOf, textMarkStyleOf, textStyleOf, type Annotation, type CreatedFormFieldAnnotation, type EditorDocument, type EditorPage, type FormValue } from '../model/editor'
 import { createdFormFieldCollectionIssue, formFieldNamesConflict } from '../model/createdFormFields'
 import { externalLinkDestination } from '../model/linkTarget'
@@ -237,6 +237,13 @@ async function paintAnnotation(
       rotation,
       font.heightAtSize(annotation.fontSize, { descender: false }),
     )
+    const maxWidth = Math.max(metrics.drawWidth, annotation.fontSize)
+    const lines = breakTextIntoLines(text, output.defaultWordBreaks, maxWidth,
+      (line) => font.widthOfTextAtSize(line, annotation.fontSize))
+    if (lines.length * annotation.fontSize * 1.2 > metrics.drawHeight + 3
+      || lines.some((line) => font.widthOfTextAtSize(line, annotation.fontSize) > maxWidth + 1)) {
+      throw new Error(`Text "${text.slice(0, 40)}" does not fit its visible box. Widen the box or reduce its font size before saving.`)
+    }
     page.drawText(text, {
       x: baseline.x,
       y: baseline.y,
@@ -245,7 +252,7 @@ async function paintAnnotation(
       color: colorFromHex(annotation.color),
       rotate: angle,
       lineHeight: annotation.fontSize * 1.2,
-      maxWidth: Math.max(metrics.drawWidth, annotation.fontSize),
+      maxWidth,
       opacity: annotation.opacity ?? 1,
     })
     return
@@ -782,6 +789,7 @@ async function exportByPreserving(
 
   source.setProducer('LeafPDF')
   source.setModificationDate(new Date())
+  await fonts.finalize()
   return source.save()
 }
 
@@ -874,6 +882,7 @@ async function exportByRebuilding(
 
   output.setProducer('LeafPDF')
   output.setModificationDate(new Date())
+  await fonts.finalize()
   return output.save()
 }
 

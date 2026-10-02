@@ -60,6 +60,7 @@ export function FontSizeControl({ value, onChange, onCommit }: FontSizeControlPr
   }
 
   const handleWheel = (event: WheelEvent<HTMLInputElement>) => {
+    if (document.activeElement !== event.currentTarget) return
     event.preventDefault()
     if (event.deltaY === 0) return
     step(event.deltaY < 0 ? 1 : -1)

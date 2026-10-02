@@ -125,12 +125,14 @@ interface NextLevelWorkbenchProps {
   initialProject?: OpenedLeafProject | null
   closing?: boolean
   onClose: () => void
+  registerLeaveGuard?: (guard: ((proceed: () => void) => void) | null) => void
 }
 
 interface SavedPdfReceipt {
   document: EditorDocument
   comments: ReviewComment[]
   formOutput: PdfFormOutput
+  method: 'native' | 'download'
 }
 
 type InsertedPdfEntry = { file: File; pdf: PDFDocumentProxy }
@@ -185,6 +187,7 @@ export function NextLevelWorkbench({
   initialProject = null,
   closing = false,
   onClose,
+  registerLeaveGuard,
 }: NextLevelWorkbenchProps) {
   const [state, dispatch] = useReducer(
     editorReducer,
@@ -196,6 +199,17 @@ export function NextLevelWorkbench({
   const [projectSavedDocument, setProjectSavedDocument] = useState<EditorDocument>(() => state.present)
   const [hasSavedProject, setHasSavedProject] = useState(initialProject !== null)
   const [projectOnlyDirty, setProjectOnlyDirty] = useState(false)
+  const [projectDownload, setProjectDownload] = useState<{
+    document: EditorDocument; comments: ReviewComment[]; ocr: OcrPageResult[]
+  } | null>(null)
+  const [leaving, setLeaving] = useState(false)
+  const pendingLeave = useRef(onClose)
+  const recoveryWasDirty = useRef(false)
+  const recoveryChecked = useRef(false)
+  const projectIdentity = useRef(initialProject?.project.id
+    ?? (initialProject ? `legacy-${initialProject.project.createdAt}` : crypto.randomUUID()))
+  const projectCreatedAt = useRef(initialProject?.project.createdAt ?? Date.now())
+  const recoveryKeys = useRef(new Set<string>())
   const [comments, setComments] = useState<ReviewComment[]>(() => structuredClone(initialProject?.project.comments ?? []))
   const [ocr, setOcr] = useState<OcrPageResult[]>(() => structuredClone(initialProject?.project.ocr ?? []))
   const [activePanel, setActivePanel] = useState<NextPanel>(null)
@@ -217,6 +231,7 @@ export function NextLevelWorkbench({
   const [discardOpen, setDiscardOpen] = useState(false)
   const [marksOpen, setMarksOpen] = useState(false)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
+  const [recoveryReady, setRecoveryReady] = useState(false)
   const [recoveryProject, setRecoveryProject] = useState<LeafProject | null>(null)
   const [savedSignatures, setSavedSignatures] = useState<SavedSignature[]>([])
   const [savedDetails, setSavedDetails] = useState<PersonalDetails | null>(null)
@@ -245,7 +260,7 @@ export function NextLevelWorkbench({
   const [scrollTargetPageId, setScrollTargetPageId] = useState<string | null>(null)
   const pageOrderSignature = state.present.pages.map(({ id }) => id).join('\u0000')
   const previousPageOrderSignatureRef = useRef(pageOrderSignature)
-  const [zoomMode, setZoomMode] = useState<ZoomMode>('manual')
+  const [zoomMode, setZoomMode] = useState<ZoomMode>('fit-width')
   const [fitWidthRequest, setFitWidthRequest] = useState(0)
 
   const latestDocument = useRef(state.present)
@@ -342,8 +357,12 @@ export function NextLevelWorkbench({
     () => new Map(state.present.pages.map((page, index) => [page.id, index + 1])),
     [state.present.pages],
   )
-  const projectDirty = state.present !== projectSavedDocument || projectOnlyDirty
-  const projectSaveStatus = projectDirty
+  const downloadCurrent = projectDownload?.document === state.present
+    && projectDownload.comments === comments && projectDownload.ocr === ocr
+  const projectDirty = state.present !== projectSavedDocument || projectOnlyDirty || downloadCurrent
+  const projectSaveStatus = downloadCurrent
+    ? { label: 'Editable project: download requested', tone: 'stale' }
+    : projectDirty
     ? { label: 'Editable project: unsaved changes', tone: 'stale' }
     : hasSavedProject
       ? { label: 'Editable project: saved', tone: 'saved' }
@@ -354,7 +373,7 @@ export function NextLevelWorkbench({
   const pdfSaveStatus = savedPdfReceipt === null
     ? { label: 'Ready to save PDF', tone: 'ready' }
     : pdfCopyCurrent
-      ? { label: 'PDF copy saved', tone: 'saved' }
+      ? { label: savedPdfReceipt.method === 'download' ? 'PDF download requested' : 'PDF copy saved', tone: 'saved' }
       : { label: 'New PDF changes to save', tone: 'stale' }
   const visibleNotice = savedPdfReceipt !== null
     && !pdfCopyCurrent
@@ -369,9 +388,23 @@ export function NextLevelWorkbench({
     || compatibilityFeatures !== null
     || unfinishedText.length > 0
   const recoveryKey = useMemo(
-    () => projectRecoveryKey(loaded.sourceFile, loaded.documentFingerprint),
-    [loaded.documentFingerprint, loaded.sourceFile],
+    () => projectRecoveryKey(loaded.sourceFile, loaded.documentFingerprint,
+      initialProject ? initialProject.project.id ?? `legacy-${initialProject.project.createdAt}` : undefined),
+    [initialProject, loaded.documentFingerprint, loaded.sourceFile],
   )
+  const saveRecoverySnapshot = useCallback(async (project: LeafProject) => {
+    const identity = project.id ?? `legacy-${project.createdAt}`
+    const scopedKey = projectRecoveryKey(loaded.sourceFile, loaded.documentFingerprint, identity)
+    recoveryKeys.current.add(recoveryKey)
+    recoveryKeys.current.add(scopedKey)
+    await recoveryQueue.current.save(recoveryKey, project)
+    if (scopedKey !== recoveryKey) await recoveryQueue.current.save(scopedKey, project)
+  }, [loaded.documentFingerprint, loaded.sourceFile, recoveryKey])
+  const clearRecoverySnapshots = useCallback(async () => {
+    recoveryKeys.current.add(recoveryKey)
+    recoveryKeys.current.add(projectRecoveryKey(loaded.sourceFile, loaded.documentFingerprint, projectIdentity.current))
+    for (const key of recoveryKeys.current) await recoveryQueue.current.clear(key)
+  }, [loaded.documentFingerprint, loaded.sourceFile, recoveryKey])
   const privacyReport = useMemo(
     () => buildPrivacyReport(loaded.features, state.present, comments, ocr),
     [loaded.features, state.present, comments, ocr],
@@ -474,6 +507,8 @@ export function NextLevelWorkbench({
         documentSnapshot.pages.flatMap((page) => page.kind === 'external' ? [page.documentId] : []),
       )
       const project = await createLeafProject({
+        id: projectIdentity.current,
+        createdAt: projectCreatedAt.current,
         primaryFile: loaded.sourceFile,
         insertedFiles: Array.from(insertedPdfs)
           .filter(([id]) => referencedSourceIds.has(id))
@@ -487,6 +522,8 @@ export function NextLevelWorkbench({
     }
     return {
       ...structuredClone(base.project),
+      id: projectIdentity.current,
+      createdAt: projectCreatedAt.current,
       updatedAt,
       document: structuredClone(documentSnapshot),
       comments: structuredClone(commentsSnapshot),
@@ -495,7 +532,15 @@ export function NextLevelWorkbench({
   }, [insertedPdfs, loaded.sourceFile])
 
   useEffect(() => {
-    if (!projectReady || !projectDirty || savingProject) return
+    if (!projectReady || !recoveryReady || recoveryOpen || savingProject) return
+    if (!projectDirty) {
+      if (recoveryWasDirty.current) {
+        recoveryWasDirty.current = false
+        void clearRecoverySnapshots().catch(() => setNotice('Old recovery could not be cleared. Save your project before leaving.'))
+      }
+      return
+    }
+    recoveryWasDirty.current = true
     let active = true
     const documentSnapshot = state.present
     const commentsSnapshot = comments
@@ -503,7 +548,7 @@ export function NextLevelWorkbench({
     const timer = window.setTimeout(() => {
       void buildProject(documentSnapshot, commentsSnapshot, ocrSnapshot)
         .then((project) => {
-          if (active) return recoveryQueue.current.save(recoveryKey, project)
+          if (active) return saveRecoverySnapshot(project)
         })
         .catch(() => {
           if (active) setNotice('Complete local recovery is unavailable. Save a .leafpdf project to keep every source and edit.')
@@ -513,7 +558,7 @@ export function NextLevelWorkbench({
       active = false
       window.clearTimeout(timer)
     }
-  }, [buildProject, comments, ocr, projectDirty, projectReady, recoveryKey, savingProject, state.present])
+  }, [buildProject, clearRecoverySnapshots, comments, ocr, projectDirty, projectReady, recoveryOpen, recoveryReady, saveRecoverySnapshot, savingProject, state.present])
 
   useEffect(() => {
     let active = true
@@ -523,23 +568,45 @@ export function NextLevelWorkbench({
     void loadPersonalDetails().then((details) => {
       if (active) setSavedDetails(details)
     }).catch(() => undefined)
-    if (projectReady) {
+    if (projectReady && !recoveryChecked.current) {
       const openedDocument = latestDocument.current
       const openedComments = latestComments.current
       const openedOcr = latestOcr.current
-      void loadProjectRecovery(recoveryKey).then((recovered) => {
+      void (async () => {
+        let recovered = await loadProjectRecovery(recoveryKey)
+        if (initialProject) {
+          const legacyKey = projectRecoveryKey(loaded.sourceFile, loaded.documentFingerprint)
+          const legacy = await loadProjectRecovery(legacyKey)
+          if (legacy && (legacy.id ?? `legacy-${legacy.createdAt}`) === projectIdentity.current) {
+            recovered ??= legacy
+            // Track a matching legacy copy even when the scoped draft won.
+            // Otherwise clearing that draft reveals the obsolete copy next time.
+            recoveryKeys.current.add(legacyKey)
+          }
+        }
+        return recovered
+      })().then((recovered) => {
+        if (active) {
+          recoveryChecked.current = true
+          setRecoveryReady(true)
+        }
         if (!active || !recovered
           || latestDocument.current !== openedDocument
           || latestComments.current !== openedComments
           || latestOcr.current !== openedOcr) return
         const recoveredPrimary = recovered.sources.find((source) => source.id === recovered.primarySourceId)
         if (!recoveredPrimary
-          || projectRecoveryKey(recoveredPrimary, loaded.documentFingerprint) !== recoveryKey) return
+          || projectRecoveryKey(recoveredPrimary, loaded.documentFingerprint)
+            !== projectRecoveryKey(loaded.sourceFile, loaded.documentFingerprint)) return
         if (initialProject) {
           const openedPrimary = initialProject.project.sources.find((source) => source.id === initialProject.project.primarySourceId)
           // Compare snapshot timestamps, not the recovery write time or the .leafpdf file's mtime.
-          if (!openedPrimary || recoveredPrimary.sha256 !== openedPrimary.sha256
+          if (!openedPrimary || (recovered.id ?? `legacy-${recovered.createdAt}`) !== projectIdentity.current
+            || recoveredPrimary.sha256 !== openedPrimary.sha256
             || !(recovered.updatedAt > initialProject.project.updatedAt)) return
+          if (JSON.stringify(recovered.document) === JSON.stringify(initialProject.project.document)
+            && JSON.stringify(recovered.comments) === JSON.stringify(initialProject.project.comments)
+            && JSON.stringify(recovered.ocr) === JSON.stringify(initialProject.project.ocr)) return
         }
         setRecoveryProject(recovered)
         setRecoveryOpen(true)
@@ -625,11 +692,36 @@ export function NextLevelWorkbench({
   }, [projectDirty])
 
   const requestClose = () => {
+    pendingLeave.current = onClose
     if (projectDirty) {
       setDiscardOpen(true)
       return
     }
     onClose()
+  }
+
+  useEffect(() => {
+    registerLeaveGuard?.((proceed) => {
+      if (projectDirty || savingProject || exporting) {
+        pendingLeave.current = proceed
+        setDiscardOpen(true)
+      } else proceed()
+    })
+    return () => registerLeaveGuard?.(null)
+  }, [exporting, projectDirty, registerLeaveGuard, savingProject])
+
+  const keepRecoveryAndLeave = async () => {
+    setLeaving(true)
+    try {
+      const project = await buildProject(latestDocument.current, latestComments.current, latestOcr.current)
+      await saveRecoverySnapshot(project)
+      setDiscardOpen(false)
+      pendingLeave.current()
+    } catch {
+      setNotice('Could not preserve local recovery. Keep this document open and save a project copy.')
+    } finally {
+      setLeaving(false)
+    }
   }
 
   const placeImage = async (file: File) => {
@@ -1042,7 +1134,7 @@ export function NextLevelWorkbench({
         setNotice('PDF export cancelled.')
         return
       }
-      setSavedPdfReceipt({ document: documentSnapshot, comments: commentsSnapshot, formOutput })
+      setSavedPdfReceipt({ document: documentSnapshot, comments: commentsSnapshot, formOutput, method: result })
       setCompatibilityFeatures(null)
       // A PDF copy does not preserve the editable project or replace its recovery draft.
       const pdfSnapshotCurrent = latestDocument.current === documentSnapshot
@@ -1053,8 +1145,8 @@ export function NextLevelWorkbench({
         : commentsSnapshot.length ? ' It includes standard PDF comments.' : ''
       setNotice(
         pdfSnapshotCurrent
-          ? `Saved ${outputLabel} as ${fileName}.${outputDetail}`
-          : `Saved ${outputLabel} as ${fileName}. Edits made while it was building are not in that file.`,
+          ? `${result === 'download' ? 'Download requested for' : 'Saved'} ${outputLabel} as ${fileName}.${outputDetail}${result === 'download' ? ' Check your browser downloads.' : ''}`
+          : `${result === 'download' ? 'Download requested for' : 'Saved'} ${outputLabel} as ${fileName}. Edits made while it was building are not in that file.`,
       )
     } catch (error) {
       setNotice(error instanceof Error ? `Export failed: ${error.message}` : 'Export failed.')
@@ -1112,6 +1204,13 @@ export function NextLevelWorkbench({
         setNotice('Project save cancelled.')
         return
       }
+      if (result === 'download') {
+        await saveRecoverySnapshot(project)
+        setProjectDownload({ document: documentSnapshot, comments: commentsSnapshot, ocr: ocrSnapshot })
+        setNotice(`Project download requested: ${fileName}. Recovery is kept. Reopen the downloaded project to verify it, or explicitly discard recovery.`)
+        return
+      }
+      setProjectDownload(null)
       projectSourceCache.current = {
         signature: sourceSignature(loaded.sourceFile, insertedPdfs),
         project: structuredClone(project),
@@ -1124,7 +1223,7 @@ export function NextLevelWorkbench({
         && latestComments.current === commentsSnapshot
         && latestOcr.current === ocrSnapshot
       if (projectSnapshotCurrent) {
-        await recoveryQueue.current.clear(recoveryKey)
+        await clearRecoverySnapshots()
       }
       void requestPersistentStorage()
       setNotice(projectSnapshotCurrent
@@ -1232,6 +1331,8 @@ export function NextLevelWorkbench({
     if (!recoveryProject) return
     try {
       const opened = await hydrateLeafProject(recoveryProject)
+      projectIdentity.current = opened.project.id ?? `legacy-${opened.project.createdAt}`
+      projectCreatedAt.current = opened.project.createdAt
       const restoredInserted = await loadInsertedPdfMap(opened.insertedFiles)
       for (const entry of insertedPdfsRef.current.values()) void entry.pdf.loadingTask.destroy().catch(() => undefined)
       setInsertedPdfs(restoredInserted)
@@ -1287,6 +1388,8 @@ export function NextLevelWorkbench({
           }} aria-label="Redo">↷</button>
         </div>
         <div className="next-actions" aria-label="Project and review tools">
+          <button type="button" aria-label="Help and shortcuts" aria-pressed={activePanel === 'help'}
+            onClick={() => setActivePanel(activePanel === 'help' ? null : 'help')}>Help</button>
           <ProjectToolsMenu
             commentsCount={comments.length}
             savingProject={savingProject}
@@ -1494,6 +1597,9 @@ export function NextLevelWorkbench({
               onZoom={setManualZoom}
               onFitWidth={fitPageWidth}
             />
+            {state.activeTool === 'select' && selectedAnnotations.length === 0 && (
+              <p className="select-guidance">Click added items to edit. Select original words for a visual correction — the source stays underneath.</p>
+            )}
           </div>
           <ToolPlacementHint tool={state.activeTool} preparedDetail={pendingDetail} />
           <FormFieldGuide
@@ -1659,10 +1765,13 @@ export function NextLevelWorkbench({
       <DocumentMarksDialog open={marksOpen} onClose={() => setMarksOpen(false)} onApply={addDocumentMarks} />
       <RecoveryDialog
         open={recoveryOpen}
+        documentName={recoveryProject?.document.fileName}
+        updatedAt={recoveryProject?.updatedAt}
+        projectIdentity={recoveryProject?.id ?? (recoveryProject ? `legacy-${recoveryProject.createdAt}` : undefined)}
         onClose={() => setRecoveryOpen(false)}
         onRestore={() => void restoreRecovery()}
         onDiscard={() => {
-          void recoveryQueue.current.clear(recoveryKey).then(() => {
+          void clearRecoverySnapshots().then(() => {
             setRecoveryProject(null)
             setRecoveryOpen(false)
           }).catch(() => setNotice('The local recovery project could not be deleted.'))
@@ -1672,11 +1781,13 @@ export function NextLevelWorkbench({
         open={discardOpen}
         projectChanges={projectDirty}
         pdfCopyCurrent={pdfCopyCurrent}
+        busy={leaving || savingProject || exporting}
+        onKeepRecovery={() => void keepRecoveryAndLeave()}
         onContinue={() => setDiscardOpen(false)}
         onDiscard={() => {
-          void recoveryQueue.current.clear(recoveryKey).then(() => {
+          void clearRecoverySnapshots().then(() => {
             setDiscardOpen(false)
-            onClose()
+            pendingLeave.current()
           }).catch(() => setNotice('The local recovery project could not be deleted. Save the project before closing.'))
         }}
       />

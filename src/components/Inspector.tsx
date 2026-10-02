@@ -86,12 +86,6 @@ export function Inspector({
   const replacementImageInputRef = useRef<HTMLInputElement>(null)
   const [collapsed, setCollapsed] = useState(() => annotation?.kind !== 'link' && annotation?.kind !== 'form-field')
   const [replacingImage, setReplacingImage] = useState(false)
-  // The selection key resets this default; manual moves persist for the current item.
-  const [panelOnLeft, setPanelOnLeft] = useState(() => {
-    if (!annotation) return false
-    const box = annotationBounds(annotation)
-    return box.x + box.width / 2 > 0.5
-  })
   const [fieldNameDraft, setFieldNameDraft] = useState(
     () => annotation?.kind === 'form-field' ? annotation.fieldName : '',
   )
@@ -205,7 +199,7 @@ export function Inspector({
   return (
     <aside
       id="item-properties"
-      className={`inspector ${collapsed ? 'is-collapsed' : ''} ${annotation.kind === 'text' ? 'has-text-controls' : ''} ${panelOnLeft ? 'is-on-left' : ''}`}
+      className={`inspector ${collapsed ? 'is-collapsed' : ''} ${annotation.kind === 'text' ? 'has-text-controls' : ''}`}
       tabIndex={-1}
       aria-labelledby="item-properties-title"
     >
@@ -215,15 +209,6 @@ export function Inspector({
           <h2 id="item-properties-title">{itemName}</h2>
         </div>
         <div className="inspector-header-actions">
-          <button
-            type="button"
-            className="inspector-position-button"
-            aria-label={`Move properties panel to the ${panelOnLeft ? 'right' : 'left'}`}
-            title={`Move panel ${panelOnLeft ? 'right' : 'left'} to uncover the page`}
-            onClick={() => setPanelOnLeft((current) => !current)}
-          >
-            <span aria-hidden="true">{panelOnLeft ? '⇥' : '⇤'}</span>
-          </button>
           <button
             type="button"
             className="inspector-toggle-button"

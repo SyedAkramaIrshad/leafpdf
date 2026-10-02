@@ -51,9 +51,11 @@ async function openDatabase(): Promise<IDBDatabase | null> {
 export function projectRecoveryKey(
   file: Pick<File, 'name' | 'size' | 'lastModified'>,
   documentFingerprint: string,
+  projectId?: string,
 ): string {
   if (!documentFingerprint.trim()) throw new Error('A PDF fingerprint is required for project recovery.')
-  return `leafpdf-project:${encodeURIComponent(file.name)}:${file.size}:${file.lastModified}:${encodeURIComponent(documentFingerprint)}`
+  const sourceKey = `leafpdf-project:${encodeURIComponent(file.name)}:${file.size}:${file.lastModified}:${encodeURIComponent(documentFingerprint)}`
+  return projectId ? `${sourceKey}:project:${encodeURIComponent(projectId)}` : sourceKey
 }
 
 export async function saveProjectRecovery(key: string, project: LeafProject): Promise<void> {

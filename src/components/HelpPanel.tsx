@@ -34,6 +34,7 @@ const toolGuides = [
   {
     title: 'Correct text and mark up the page',
     paragraphs: [
+      'Added text boxes are directly editable. Original PDF words are different: with Select active, drag across them and choose Replace selected text. This creates a cover and an editable correction; it does not rewrite or remove the original words underneath. Use Redact for confidential content.',
       'To correct repeated source words, Find the phrase, choose Replace, type the correction, then use Replace this or Replace all; the complete Replace all batch is one Undo. OCR-only matches stay searchable but cannot be replaced automatically.',
       'For manual placement, drag Whiteout over the old content, then choose Add replacement text and type directly on the page. Whiteout does not remove what is underneath; use Redact for permanent removal.',
       'Choose Tools → Annotate → Highlight / Underline / Strikeout for review notes: Highlight fills the dragged area, while Underline and Strikeout draw precise lines. Select any mark to adjust it before Save PDF. Cross and Dot are under Tools → Marks.',
@@ -42,8 +43,8 @@ const toolGuides = [
   {
     title: 'Arrange items, pages, and zoom',
     paragraphs: [
-      'Select text to see font, size, bold, italic, and color immediately. Copy, Paste, and Duplicate stay visible in the item panel; Arrange opens alignment and layer actions, and other items use Adjust. The panel initially opens opposite the selected item; the arrow in its header lets you choose the other side. Done or a click on blank paper clears the selection. Select several items to move or align them together.',
-      'Documents open at 100%. The percentage shows the current zoom. Use − or + to change it, or Fit width to fit the page to the workspace. While Fit width is active, the page follows the available workspace width.',
+      'Select an added text box to see font, size, bold, italic, and color. Text boxes grow to show their content. Copy, Paste, and Duplicate stay visible in the docked properties panel; Arrange opens alignment and layer actions, and other items use Adjust. The panel sits beside the page, not over it. Done or a click on blank paper clears the selection. Select several items to move or align them together.',
+      'Documents open at Fit width so the whole page width stays visible beside the properties panel. The percentage shows the current zoom. Use − or + for a manual zoom, or Fit width to follow the available workspace width.',
       'Pages current / total opens thumbnails plus add, insert, reorder, rotate, and delete controls. Drag a thumbnail grip to reorder; the arrows move one step, and the complete drop is one Undo.',
     ],
   },
@@ -52,6 +53,7 @@ const toolGuides = [
     paragraphs: [
       'The first Save PDF keeps real form fields fillable; Save again repeats the last output type. Use the adjacent output menu to choose a fillable or flattened PDF. A flattened PDF keeps current values visible without editable form controls. Flattening is not encryption.',
       'If a text box is empty or still says “Type here”, LeafPDF pauses so you can review it or save anyway. Your original file is never overwritten; exporting a PDF leaves unsaved project changes and local recovery intact. Use Document → Save project to save the editable project.',
+      'In a browser, Download requested means the download was started, not that the file has arrived on disk. Check Downloads and reopen the .leafpdf file. Local recovery is retained; Keep recovery and leave preserves it when switching documents. Recovery is specific to each project and shows its timestamp.',
     ],
   },
 ]
@@ -62,6 +64,7 @@ const shortcuts = [
   { keys: 'Ctrl/Cmd+F', action: 'Find text' },
   { keys: 'Ctrl/Cmd+C / V / D', action: 'Copy / paste / duplicate selected item' },
   { keys: 'Arrow / Shift+Arrow', action: 'Move selected item / move faster' },
+  { keys: 'Arrows on a handle', action: 'Resize or rotate; Shift makes a larger step' },
   { keys: 'Option/Alt+drag', action: 'Move without alignment guides' },
   { keys: 'Delete / Backspace', action: 'Delete selected item' },
   { keys: 'Enter', action: 'Finish text / center a prepared image or signature' },

@@ -1,5 +1,5 @@
 import { Encodings } from '@pdf-lib/standard-fonts'
-import { StandardFonts, type PDFDocument, type PDFFont } from 'pdf-lib'
+import { PDFDict, PDFName, PDFNumber, StandardFonts, type PDFDocument, type PDFFont } from 'pdf-lib'
 
 // pdf-lib does not re-export its `Fontkit` type from the package root, so take it
 // from the method that consumes it rather than deep-importing internals.
@@ -50,12 +50,13 @@ export interface FontRegistry {
    * an export from writing font files the document never draws with.
    */
   fontFor(input: FontRequest): Promise<PDFFont>
+  finalize(): Promise<void>
 }
 
 /**
  * The standard 14 fonts include italic (oblique) faces, so italic survives export
- * for ASCII and Latin-1 text. The bundled Noto files are upright only; italic text
- * outside that range falls back to upright rather than being faked by shearing.
+ * for WinAnsi text, including common punctuation. Bundled Noto files are upright
+ * only; unsupported styled Unicode requests fail explicitly instead of changing style.
  */
 const STANDARD_FONTS: Record<FontFamily, Record<FontStyle, Record<FontWeight, StandardFonts>>> = {
   sans: {
@@ -178,20 +179,14 @@ function codePoints(text: string): number[] {
  * The standard 14 fonts are not embedded, so a viewer substitutes its own face
  * (Poppler uses Nimbus Sans for Helvetica). Substituted faces agree with the
  * Helvetica metrics for ASCII and the Latin-1 supplement, but not for the
- * cp1252-only range 0x80-0x9F: a `€` drawn as base-14 Helvetica collides with the
- * next character in Poppler because the substituted glyph is wider than the 556
- * advance pdf-lib declares. Those characters therefore go to an embedded font,
- * which carries its own widths and renders identically everywhere. Subsetting
- * keeps that cost at a few kilobytes.
+ * cp1252-only range 0x80-0x9F. The registry writes explicit glyph advances for
+ * standard fonts, retaining the chosen family/style for these characters.
  */
 function isSafeForStandardFont(text: string): boolean {
   // pdf-lib splits on line breaks before encoding, so they never reach the encoder.
   const encodable = text.replace(/[\n\r\t]/g, '')
   return codePoints(encodable).every((codePoint) => {
-    if (!Encodings.WinAnsi.canEncodeUnicodeCodePoint(codePoint)) return false
-    const isAscii = codePoint >= 0x20 && codePoint <= 0x7e
-    const isLatin1Supplement = codePoint >= 0xa0 && codePoint <= 0xff
-    return isAscii || isLatin1Supplement
+    return Encodings.WinAnsi.canEncodeUnicodeCodePoint(codePoint)
   })
 }
 
@@ -214,19 +209,41 @@ export async function createFontRegistry(document: PDFDocument): Promise<FontReg
   }
 
   return {
+    async finalize() {
+      for (const [key, pending] of embedded) {
+        if (!key.startsWith('standard:')) continue
+        const font = await pending
+        // Drawing marks a pdf-lib font modified; finalize after all text encoding
+        // so its next embed cannot overwrite the explicit widths dictionary.
+        await font.embed()
+        const widths = Array.from({ length: 224 }, () => 0)
+        for (const point of Encodings.WinAnsi.supportedCodePoints) {
+          const { code } = Encodings.WinAnsi.encodeUnicodeCodePoint(point)
+          if (code >= 32 && code <= 255) widths[code - 32] = font.widthOfTextAtSize(String.fromCodePoint(point), 1000)
+        }
+        const dictionary = document.context.lookup(font.ref, PDFDict)
+        dictionary.set(PDFName.of('FirstChar'), PDFNumber.of(32))
+        dictionary.set(PDFName.of('LastChar'), PDFNumber.of(255))
+        dictionary.set(PDFName.of('Widths'), document.context.obj(widths))
+      }
+    },
     async fontFor({
       text,
       fontFamily,
       fontWeight,
       fontStyle = 'normal',
     }) {
-      const wanted = codePoints(text)
+      const wanted = codePoints(text.replace(/[\n\r\t]/g, ''))
 
       // Ordinary Latin text keeps using the standard 14 fonts, so it embeds no
       // font file at all.
       if (isSafeForStandardFont(text)) {
         const standard = STANDARD_FONTS[fontFamily][fontStyle][fontWeight]
         return embed(`standard:${standard}`, () => document.embedFont(standard))
+      }
+
+      if (fontFamily !== 'sans' || fontStyle !== 'normal') {
+        throw new Error('This text needs a bundled Unicode font. Choose Sans serif and turn off Italic before saving; LeafPDF will not silently change your selected font.')
       }
 
       let closestMissing: number[] | null = null

@@ -7,6 +7,8 @@ interface DiscardChangesDialogProps {
   pdfCopyCurrent?: boolean
   onContinue: () => void
   onDiscard: () => void
+  onKeepRecovery?: () => void
+  busy?: boolean
 }
 
 /**
@@ -24,6 +26,8 @@ function DiscardChangesDialogContent({
   onDiscard,
   projectChanges = false,
   pdfCopyCurrent = false,
+  onKeepRecovery,
+  busy = false,
 }: Omit<DiscardChangesDialogProps, 'open'>) {
   const continueRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useModalDialog<HTMLDivElement>({ onEscape: onContinue, initialFocusRef: continueRef })
@@ -38,23 +42,26 @@ function DiscardChangesDialogContent({
         aria-labelledby="discard-title"
         aria-describedby="discard-body"
       >
-        <h2 id="discard-title">{projectChanges ? 'Close without saving the editable project?' : 'Close without exporting?'}</h2>
+        <h2 id="discard-title">Keep your edits before leaving?</h2>
         <p id="discard-body">
           {projectChanges ? <>
             {pdfCopyCurrent
-              ? 'Your current PDF copy is saved. '
+              ? 'A PDF copy was requested for these edits; check that the file finished saving. '
               : 'No current PDF copy has been saved in this session. '}
-            Closing discards the unsaved editable project changes and their local recovery copy.
-            Saved files stay on disk. To keep editing later, choose Continue editing, then
-            Document → Save project.
+            Keep recovery and leave preserves the editable project in this browser.
+            Discard editable changes removes that recovery copy. A download request alone
+            does not confirm a file was saved; reopen your .leafpdf file to check it.
           </> : <>
             This document has edits you have not exported. Closing it discards them. Your original
             file on disk is unchanged either way.
           </>}
         </p>
         <div className="dialog-actions">
-          <button type="button" ref={continueRef} onClick={onContinue}>Continue editing</button>
-          <button type="button" className="danger-button" onClick={onDiscard}>
+          <button type="button" ref={continueRef} disabled={busy} onClick={onContinue}>Continue editing</button>
+          {onKeepRecovery && <button type="button" className="primary-button" disabled={busy} onClick={onKeepRecovery}>
+            {busy ? 'Please wait…' : 'Keep recovery and leave'}
+          </button>}
+          <button type="button" className="danger-button" disabled={busy} onClick={onDiscard}>
             {projectChanges ? 'Discard editable changes' : 'Discard changes'}
           </button>
         </div>
